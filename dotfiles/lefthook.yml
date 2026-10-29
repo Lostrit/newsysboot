@@ -1,0 +1,50 @@
+# lefthook.yml — pre-commit：自动格式化并校验各配置文件
+#
+# 钩子随 `mise install` 自动安装（见 mise/config.toml 的 [hooks] postinstall），
+# 也可以手动执行：`lefthook install`；临时跳过：`LEFTHOOK=0 git commit`
+
+min_version: 1.10.10
+
+pre-commit:
+  parallel: false
+  commands:
+    # ---- TOML：格式化（taplo，与 VSCode Even Better TOML 同一引擎） ----
+    toml-format:
+      glob:
+        - "*.toml"
+        - "**/*.toml"
+      run: taplo format {staged_files}
+      stage_fixed: true
+
+    # ---- TOML：语法校验（--no-schema 不依赖网络；schema 校验在 VSCode 里交互进行） ----
+    toml-lint:
+      glob:
+        - "*.toml"
+        - "**/*.toml"
+      run: taplo lint --no-schema {staged_files}
+
+    # ---- JSON / YAML：格式化（prettier 兼容带注释的 JSONC） ----
+    prettier-format:
+      glob:
+        - "*.{json,jsonc,yaml,yml}"
+        - "**/*.{json,jsonc,yaml,yml}"
+      run: prettier --write {staged_files}
+      stage_fixed: true
+
+    # ---- shell 及旗标式配置：zsh -n 语法检查（只解析不执行，可拦截引号不闭合等错误；
+    #       zsh / ripgrep / bat 均无可靠的命令行格式化器，故只 lint 不 format） ----
+    shell-syntax:
+      glob:
+        - "zsh/.zshrc"
+        - "zsh/**/*.zsh"
+        - "fzf/fzfrc"
+        - "ripgrep/ripgreprc"
+        - "bat/config"
+      run: for f in {staged_files}; do zsh -n "$f" || exit 1; done
+
+    # ---- gitconfig：用 git 官方解析器校验语法 ----
+    gitconfig-syntax:
+      glob:
+        - "git/config"
+        - "delta/**/*.gitconfig"
+      run: for f in {staged_files}; do git config --file "$f" --list >/dev/null || exit 1; done

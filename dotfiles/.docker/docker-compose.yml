@@ -1,0 +1,33 @@
+name: playground
+services:
+  main:
+    image: base:local
+    restart: unless-stopped
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    ports:
+      # 绑定 ssh-server 端口
+      - "2224:22"
+      # 绑定 mosh-server 端口
+      - "60031-60040:60031-60040/udp"
+    # 使用 ssh 公钥 secret
+    secrets:
+      - authorized_keys
+    environment:
+      # 配置该容器使用的 mosh 端口（容器内 mosh server 启动时绑定）
+      MOSH_UDP_PORT: "60031-60040"
+      http_proxy: "http://host.docker.internal:7890"
+      https_proxy: "http://host.docker.internal:7890"
+      all_proxy: "socks5://host.docker.internal:7890"
+      no_proxy: "localhost, 127.0.0.1, ::1, mirrors.tencentyun.com, .tencentyun.com"
+    volumes:
+      - ../.config:/home/miniview/.config
+      - workspace:/workspace
+
+volumes:
+  workspace:
+
+# 绑定 ssh 公钥至容器
+secrets:
+  authorized_keys:
+    file: ./secrets/authorized_keys

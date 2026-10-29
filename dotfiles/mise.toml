@@ -1,0 +1,41 @@
+# mise.toml — 仅 dotfiles 开发环境（仓库检出目录内）生效的项目级配置
+#
+# 生产机器只把各子目录部署到 ~/.config，不会加载本文件；
+# 即使有仓库检出，未执行 `mise trust` 时项目配置也不生效。
+#
+# 首次使用：mise trust && mise install
+# （postinstall 会在包含 lefthook.yml 的 git 仓库中自动执行 lefthook install）
+
+[hooks]
+# mise install 完成后：在包含 lefthook.yml 的 git 仓库中自动安装提交钩子
+postinstall = '''
+if git rev-parse --git-dir >/dev/null 2>&1 \
+   && [ -f "$(git rev-parse --show-toplevel)/lefthook.yml" ]; then
+  lefthook install
+fi
+'''
+
+# ---------------------------------------------------------------------------
+# 开发工具：格式化 / 提交钩子（生产环境不需要）
+# ---------------------------------------------------------------------------
+
+[tools."aqua:tamasfe/taplo"]
+version = "0.10.0"
+postinstall = '''
+echo "[INFO] taplo postinstall"
+f="${XDG_DATA_HOME}/zsh/site-functions/_taplo"
+taplo completions zsh > "${f}.tmp" && mv "${f}.tmp" "${f}" \
+  || { rm -f "${f}.tmp"; echo '[WARNING] writing taplo completions fail.'; }
+'''
+
+[tools."aqua:evilmartians/lefthook"]
+version = "2.1.12"
+postinstall = '''
+echo "[INFO] lefthook postinstall"
+f="${XDG_DATA_HOME}/zsh/site-functions/_lefthook"
+lefthook completion zsh > "${f}.tmp" && mv "${f}.tmp" "${f}" \
+  || { rm -f "${f}.tmp"; echo '[WARNING] writing lefthook completions fail.'; }
+'''
+
+[tools.prettier]
+version = "3.9.6"

@@ -1,0 +1,50 @@
+{
+  // 主题
+  "colorscheme": "catppuccin-mocha-transparent",
+  // 启用鼠标
+  "mouse": true,
+  // 使用 OSC 52 转义序列，通过终端模拟器直接访问本地系统剪贴板
+  "clipboard": "terminal",
+  // 新建文件自动创建父级目录
+  "mkparents": true,
+  // tab 缩进
+  "tabsize": 2,
+  // tab 缩进类型
+  "tabstospaces": true,
+  // 自动缩进
+  "autoindent": true,
+  // 自动检测语言限制行数
+  "detectlimit": 100,
+  // 标尺
+  "ruler": true,
+  // 自动换行
+  "softwrap": true,
+  "wordwrap": true,
+  // 滚动条
+  "scrollbar": true,
+  // 语法高亮
+  "syntax": true,
+  // 高亮列
+  "colorcolumn": 120,
+  // 自动保存：关
+  "autosave": 0,
+  // 文件备份：禁用
+  "backup": false,
+  // 差异提示
+  "diffgutter": true,
+  // 文件结尾空行
+  "eofnewline": true,
+  // 删除行尾空白字符
+  "rmtrailingws": true,
+  // 底部状态栏
+  "statusline": true,
+  // 保存光标、undo状态：禁用
+  "savecursor": false,
+  "saveundo": false,
+  // 括号匹配高亮
+  "matchbrace": true,
+  // 搜索结果高亮
+  "hlsearch": true,
+  // 自动提权
+  "autosu": false
+}

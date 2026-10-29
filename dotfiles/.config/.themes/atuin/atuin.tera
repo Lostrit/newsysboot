@@ -1,0 +1,20 @@
+---
+whiskers:
+  version: "2.7.0"
+  matrix:
+    - flavor
+    - accent
+  filename: "themes/{{ flavor.identifier }}/catppuccin-{{ flavor.identifier }}-{{ accent }}.toml"
+---
+[theme]
+name = "catppuccin-{{ flavor.identifier }}-{{ accent }}"
+
+[colors]
+AlertInfo = "#{{ green.hex }}"
+AlertWarn = "#{{ peach.hex }}"
+AlertError = "#{{ red.hex }}"
+Annotation = "#{{ flavor.colors[accent].hex }}"
+Base = "#{{ text.hex }}"
+Guidance = "#{{ overlay2.hex }}"
+Important = "#{{ red.hex }}"
+Title = "#{{ flavor.colors[accent].hex }}"

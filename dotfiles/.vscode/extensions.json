@@ -1,0 +1,22 @@
+{
+  "recommendations": [
+    // 通用：让 .editorconfig（2 空格缩进、LF、去尾随空格）在 VSCode 中生效
+    "EditorConfig.EditorConfig",
+    // TOML（starship / mise / herdr / atuin / .bunfig.toml）：语法高亮 + taplo 格式化 + JSON Schema
+    "tamasfe.even-better-toml",
+    // YAML（eza/theme.yml）：语法高亮 + 格式化 + 校验
+    "redhat.vscode-yaml",
+    // gitconfig（git/config、delta/themes/*.gitconfig）
+    "sidneys1.gitconfig",
+    // tmux.conf
+    "malmaud.tmux",
+    // npmrc（npm/npmrc）：高亮 + 配置项悬停文档与校验
+    "xlaoyu.npmrc-helper",
+    // shell 格式化：内置引擎原生支持 .zsh（shfmt 不支持 zsh 语法）
+    "tooark.ark-format-shell",
+    // bash/zsh/sh 语法错误检查（.zshrc / fzfrc 无 shebang 也能校验）
+    "bmalehorn.shell-syntax",
+    // 更好的 shell 语法高亮（改进 zsh 专属语法的着色）
+    "jeff-hykin.better-shellscript-syntax"
+  ]
+}

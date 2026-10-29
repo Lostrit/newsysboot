@@ -1,0 +1,36 @@
+# Always use smart case (case-insensitive unless pattern has uppercase)
+--smart-case
+# Follow symlinks
+--follow
+
+# Theme style
+--colors=path:style:bold
+--colors=match:style:bold
+# Catppuccin Mocha
+--colors=path:fg:137,180,250
+--colors=line:fg:249,226,175
+--colors=column:fg:137,220,235
+--colors=match:fg:30,30,46
+--colors=match:bg:203,166,247
+# # Catppuccin Macchiato
+# --colors=path:fg:138,173,244
+# --colors=line:fg:238,212,159
+# --colors=column:fg:145,215,227
+# --colors=match:fg:36,39,58
+# --colors=match:bg:198,160,246
+# # Catppuccin Frappé
+# --colors=path:fg:140,170,238
+# --colors=line:fg:229,200,144
+# --colors=column:fg:153,209,219
+# --colors=match:fg:48,52,70
+# --colors=match:bg:202,158,230
+## Catppuccin Latte
+# --colors=path:fg:30,102,245
+# --colors=line:fg:223,142,29
+#--colors=column:fg:4,165,229
+# --colors=match:fg:239,241,245
+# --colors=match:bg:136,57,239
+## laylow
+# --colors=match:none
+# --colors=match:fg:250,179,135
+# --colors=match:style:bold

@@ -1,0 +1,52 @@
+{
+  // 保存时自动格式化
+  "editor.formatOnSave": true,
+
+  // 无扩展名文件的语法关联
+  "files.associations": {
+    "**/git/config": "gitconfig",
+    // ripgrep / bat 的旗标式配置：按 shell 语法着色（# 注释、引号字符串、数字）
+    "**/ripgrep/ripgreprc": "shellscript",
+    "**/bat/config": "shellscript",
+    // fd 的全局 ignore 文件是 gitignore 语法（内置 ignore 语言）
+    "**/fd/ignore": "ignore",
+    // 未来的 zsh 函数 / init 脚本（zsh/functions、zsh/init.d）
+    "*.zsh": "shellscript",
+    "fzfrc": "shellscript",
+    // npmrc-helper 只注册文件名 ".npmrc"（带点），仓库里是无点命名
+    "npmrc": "npmrc",
+    // micro 的 settings.json 支持注释（JSONC）
+    "settings.json": "jsonc"
+  },
+
+  // 各语言的默认格式化器
+  "[toml]": {
+    "editor.defaultFormatter": "tamasfe.even-better-toml"
+  },
+  "[yaml]": {
+    "editor.defaultFormatter": "redhat.vscode-yaml"
+  },
+  "[shellscript]": {
+    "editor.defaultFormatter": "tooark.ark-format-shell"
+  },
+  "[json]": {
+    "editor.defaultFormatter": "vscode.json-language-features"
+  },
+  "[jsonc]": {
+    "editor.defaultFormatter": "vscode.json-language-features"
+  },
+
+  // JSON Schema 补全与校验：
+  // starship.toml 已内联 "$schema"，无需在此配置
+  "evenBetterToml.schema.associations": {
+    "**/mise/config.toml": "https://mise.jdx.dev/schema/mise.json"
+  },
+
+  // shell 格式化遵循仓库的 .editorconfig（2 空格缩进、LF、末尾换行）
+  "arkFormatShell.useEditorConfig": true,
+  // 保留行内对齐注释（=1        # 注释）与多空格排版，不做空格折叠
+  "arkFormatShell.collapseSpaces": false,
+
+  // 仓库中的 shell 文件（.zshrc / fzfrc）均无 shebang，按 zsh 语法解析
+  "shell-syntax.defaultShell": "zsh"
+}
