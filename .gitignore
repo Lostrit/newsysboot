@@ -1,0 +1,13 @@
+# OS
+.DS_Store
+*~
+
+# 本地/机器私有
+*.local.toml
+miserc.local.toml
+.env
+.env.*
+
+# 测试产物
+/tmp/
+/.cache/
