@@ -24,9 +24,7 @@ bs_has_module() {
 # ---------------------------------------------------------------------------
 bs_stage_root() {
   if [ "$BS_MODE" = dotfiles ]; then
-    # 只部署 dotfiles：不改系统，直接以当前用户进入 user 阶段
-    bs_select_mirrors
-    bs_export_mirrors
+    # 只部署 dotfiles：不改系统，直接以当前用户进入 user 阶段（选源在 user 阶段进行）
     bs_stage_user
     return
   fi
@@ -138,7 +136,12 @@ bs_ensure_mise() {
   [ "$(bs_sha256 <"$BS_SRC/vendor/mise-install.sh")" = "$(cut -d' ' -f1 "$BS_SRC/vendor/mise-install.sh.sha256")" ] ||
     bs_die "vendor/mise-install.sh 校验失败"
   bs_log "安装 mise $_want（CDN：mise.jdx.dev）"
-  MISE_VERSION=$_want MISE_QUIET=1 sh "$BS_SRC/vendor/mise-install.sh"
+  mkdir -p "$BS_STATE_DIR"
+  # 安装脚本的 curl 进度条很长，输出写入日志，失败时再显示
+  if ! MISE_VERSION=$_want MISE_QUIET=1 sh "$BS_SRC/vendor/mise-install.sh" >"$BS_STATE_DIR/mise-install.log" 2>&1; then
+    cat "$BS_STATE_DIR/mise-install.log" >&2
+    bs_die "mise 安装失败"
+  fi
   bs_have mise || bs_die "mise 安装失败"
 }
 
@@ -169,12 +172,18 @@ bs_run_mise() {
 
   set -- bootstrap --yes
   [ -n "$BS_DRY_RUN" ] && set -- "$@" --dry-run
-  [ -n "$BS_SKIP" ] && set -- "$@" --skip "$BS_SKIP"
   if [ "$BS_MODE" = dotfiles ]; then
-    # 只部署用户目录内的内容（D-009）：不加载系统模块
-    set -- "$@" --only files,dotfiles,tools,task
+    # 只部署用户目录内的内容（D-009）：不加载系统模块。
+    # mise 不允许 --only 与 --skip 同时使用，因此从 --only 列表中去掉要跳过的部分
+    _only=
+    for _p in files dotfiles tools task; do
+      case ",$BS_SKIP," in *,"$_p",*) continue ;; esac
+      _only="${_only:+$_only,}$_p"
+    done
+    set -- "$@" --only "$_only"
     _envs=
   else
+    [ -n "$BS_SKIP" ] && set -- "$@" --skip "$BS_SKIP"
     _envs=$BOOTSTRAP_MODULES
   fi
 
