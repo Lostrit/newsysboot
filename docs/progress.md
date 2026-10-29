@@ -28,11 +28,17 @@
   SSH 加固；`tests/run-host.sh`（带 systemd 的特权容器）18 项检查，两次运行均通过（使用测试密钥与假节点）
 - 阶段 4 ✅：目录整理（D-002、D-019）、npm / bun 的 registry 由环境注入（D-018）、zsh 工具清单 + 缓存（D-010）、
   评审中 15 项里的 10 项（dotconfig-review.md）
+- 阶段 5–7（第一版，**均未在真机测试**）：SteamOS（D-020）、macOS（D-021）、Windows（D-022）；mihomo 场景化（D-023）
+- 回归：容器（debian:13 ×2）、`--dotfiles`（ubuntu:24.04）、主机（18 项检查 ×2）全部通过
 
-## 下一步
+## 下一步（需要用户参与）
 
-- 阶段 5–7：SteamOS / macOS / Windows（只能先写出配置，当前环境无法测试）
-- 用真实节点验证代理切换（需要用户执行，见 pitfalls P-018）
+1. 创建 GitHub / CNB 仓库，把地址填入 `bootstrap.sh` 与 `bootstrap.ps1` 中的 `CHANGE_ME`（D-011），配置 git remote 并推送
+2. 用真实节点验证代理切换：`TEST_REAL_SECRETS=1 FNOX_AGE_KEY=… tests/run-host.sh`（P-018）
+3. 在真实的腾讯云 / 阿里云 / 华为云新机器上各跑一次（验证内网源探测，以及华为云、火山引擎的内网域名）
+4. SteamOS / macOS / Windows 真机测试
+5. 整理各环境的 mihomo 配置（目前只有 server 场景的模板）
+6. dotconfig 评审中剩余的 ⏳ 项：herdr 配置、nvim 的 scripts/bootstrap.sh、.themes 精简、tmux 路径
 
 ## 说明
 

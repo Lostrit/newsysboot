@@ -164,7 +164,8 @@ fnox 是 mise 作者开发的机密管理工具：在 `fnox.toml` 中声明机�
 
 ## 待调研
 
-- SteamOS 上 `/etc` overlay 在系统升级后能否保留；`/usr/local` 是否只读。
+- SteamOS：`/etc` overlay 在系统升级后能否保留；`/usr/local` 是否只读；系统是否自带 zsh / git / curl / sudo（deck 用户需要先用 passwd 设置密码才能 sudo）。
+- mihomo 独立二进制的 sha256（v1.19.33）：linux-amd64 `.gz` `132f6f3e…`（已下载核对），linux-arm64 `ba408b31…`、darwin-arm64 `060b64b0…`、darwin-amd64 `551ae54e…`、windows-amd64 `.zip` `6ab21808…`（取自 GitHub API，未下载核对）。
 - macOS：mihomo 用 TUN 模式需要 root 的 LaunchDaemon（mise 只管理 LaunchAgent）；Homebrew 的国内镜像。
 - Windows：原生 PowerShell + winget/scoop；mihomo 用什么方式作为服务运行。
 - 国内可用的 Docker Hub 镜像加速：腾讯云内网 `mirror.ccs.tencentyun.com`；公网现状需要再查。

@@ -112,16 +112,15 @@ docs/
 - [x] zsh：`tools.zsh` + `zcache`，去掉 mise postinstall 中的重复代码（D-010、design-zsh-tools.md）
 - [x] 需要按环境区分的配置：npmrc / bunfig 改为环境变量（D-018）；herdr 待定
 
-### 阶段 5：SteamOS（不装 Docker）
+### 阶段 5：SteamOS（不装 Docker）🟡 第一版完成，未在真机测试
 - [ ] 不关闭只读：zsh/git 是否自带、chsh、`/etc` 下的 mihomo unit、二进制放在 `/var/lib` 或 `~/.local`
 
-### 阶段 6：macOS（不装 Docker）
+### 阶段 6：macOS（不装 Docker）🟡 第一版完成，未在真机测试
 - [ ] Homebrew（国内镜像）、mihomo（LaunchDaemon）
 
-### 阶段 7：Windows（不装 Docker）
+### 阶段 7：Windows（不装 Docker）🟡 第一版完成，未在真机测试
 - [ ] `bootstrap.ps1`、winget/scoop、mihomo 服务
 
 ## 4. 需要用户提供 / 确认
 
-1. 远程仓库创建后告知地址（D-011，不影响本地开发）。
-2. 各环境的 mihomo 配置以后再整理；目前的模板只覆盖「服务器」场景。
+见 progress.md 的「下一步（需要用户参与）」。

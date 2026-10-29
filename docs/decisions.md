@@ -249,3 +249,38 @@ stage-0 在 `env.sh` 中写入 `NPM_CONFIG_REGISTRY` 和 `BUN_CONFIG_REGISTRY`�
 
 原 dotconfig 根目录的 `mise.toml`（taplo / lefthook / prettier）移到本仓库根目录的 `mise.dev.toml`：只有 `MISE_ENV=dev` 时才加载，
 部署的机器不会安装这些工具。`lefthook.yml` 移到仓库根目录（lefthook 要求放在 git 根目录），glob 改为 `dotfiles/.config/...`。
+
+---
+
+## D-020 SteamOS：mihomo 用独立二进制，放在 /var/lib/mihomo 🟡（未在真机验证）
+
+**日期**：2026-10-29
+
+SteamOS 的根分区只读，不能用 pacman，也不能写 `/usr`。二进制装在 `/var/lib/mihomo/bin`（`/var` 可写，系统升级后保留），
+unit 文件写入 `/etc/systemd/system/mihomo.service`（`/etc` 是 overlay，升级后保留），其余与 Linux 主机的 mihomo 模块共用。
+SteamOS 不声明任何包；git / curl / zsh 依赖系统自带（待在真机核实）。
+
+## D-021 macOS：mihomo 以用户 LaunchAgent 运行 🟡（未在真机验证）
+
+**日期**：2026-10-29
+
+mise 的系统服务只支持 Linux，所以 macOS 不加载 `mise.mihomo.toml`，而是在 `mise.macos.toml` 中：`brew:mihomo` 安装、
+`[dotfiles]` 模板把配置渲染到 `~/.config/mihomo/config.yaml`（0600，与 Linux 共用模板和机密）、`[bootstrap.macos.launchd.agents.mihomo]` 运行。
+只监听本机（系统代理 / 环境变量方式）；TUN 模式需要 root 的 LaunchDaemon，暂不支持。
+Homebrew 由 stage-0 经清华大学镜像安装（`lib/macos.sh`）。
+
+## D-022 Windows 第一版只部署 dotfiles 与工具 🟡（未在真机验证）
+
+**日期**：2026-10-29
+
+`bootstrap.ps1`：winget 安装 Git 与 mise → GitHub 代理测速 → 检出仓库 → `mise bootstrap --only dotfiles,tools`。
+mise 的 `[bootstrap.files]` 在 Windows 上不可用；mihomo 与 Docker 在 Windows 上暂不处理。
+dotfiles 的 mise 全局配置中有些工具（如 tmux）没有 Windows 版本，实际使用前需要按 `os` 过滤。
+
+## D-023 mihomo 的监听设置按场景传入 ✅
+
+**日期**：2026-10-29
+
+`mise.mihomo.toml` 的 `[vars]` 从环境变量取值（`BOOTSTRAP_MIHOMO_PORT / _ALLOW_LAN / _BIND / _LAN_IPS`），由 stage-0 的 `bs_mihomo_profile` 设置：
+Linux 主机为 server（`allow-lan: true`，只放行本机和 Docker 网段），SteamOS / macOS 为 desktop（只监听 127.0.0.1）。
+用环境变量而不是在多个模块里重复定义 `[vars]`，避免依赖 mise 多个环境文件之间的优先级。

@@ -130,3 +130,18 @@
 - **现象**：`ztool fnox comp …` 在仓库目录外启动 shell 时报「生成失败」。
 - **原因**：fnox 只在本仓库的 `mise.toml` 中声明，只有在仓库目录内才在 PATH 中；在不同目录启动 shell，缓存键会来回变化。
 - **解决**：`tools.zsh` 只列全局工具（dotfiles 的 mise 配置中的工具）；部署时才用的工具（fnox、age）不生成补全。
+
+## P-023 执行下载来的二进制被权限规则拦截
+
+- **现象**：为核对 mihomo 独立二进制而执行 `./m.bin -v`，被 Claude Code 拦截（Code from External）。
+- **解决**：只下载并计算 sha256，不执行（与 GitHub API 给出的 digest 一致即可）。
+
+## P-024 mcr.microsoft.com 的镜像拉不下来
+
+- **现象**：`docker pull mcr.microsoft.com/powershell:lts-debian-12` 超时。Docker Hub 镜像加速只覆盖 Docker Hub，不覆盖 mcr。
+- **影响**：`bootstrap.ps1` 没有做语法检查。
+- **解决**：以后在 Windows 上或经 mihomo 代理拉取镜像后补做检查。
+
+## P-025 PowerShell 5.1 没有 `Invoke-WebRequest -NoProxy`
+
+- 这个参数只有 PowerShell 7 才有；Windows 自带的 5.1 用了会报错（被 catch 吞掉，结果是所有代理都被判为不可用）。已去掉。
