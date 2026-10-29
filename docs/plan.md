@@ -82,21 +82,21 @@ docs/
 ### 阶段 0：项目初始化 ✅
 - git、CLAUDE.md、docs、调研与决策；合并 dotconfig（subtree）
 
-### 阶段 1：PoC（在 Debian 13 容器中验证 mise bootstrap 的关键点）
-- [ ] 最小的 `mise.toml`：apt 包、directories、`~/.zshenv`、login_shell、dotfiles link、tools
-- [ ] 验证 research R-001 中尚未解决的问题（同一次运行中链接过来的全局 config 的 tools 是否会被安装）
-- [ ] `MISE_URL_REPLACEMENTS` + GH_PROXY 下 aqua 的安装和签名校验
+### 阶段 1：PoC（在 Debian 13 容器中验证 mise bootstrap 的关键点）✅
+- [x] 最小的 `mise.toml`：apt 包、directories、`~/.zshenv`、login_shell、dotfiles link、tools
+- [x] 验证 research R-001 中尚未解决的问题（同一次运行中链接过来的全局 config 的 tools 是否会被安装）
+- [x] `MISE_URL_REPLACEMENTS` + GH_PROXY 下 aqua 的安装和签名校验
 - [ ] `fnox exec` + `[bootstrap.secrets]` + `template = true` 渲染 mihomo 配置（模板已用 `mihomo -t` 验证过）
 - 结果写入 research / decisions；不通过的话重新讨论 D-001
 
-### 阶段 2：stage-0 + 容器基线
+### 阶段 2：stage-0 + 容器基线 ✅
 - [x] `lib/detect.sh`（含容器规则）
-- [ ] `lib/mirrors.sh`（内网探测 → 公网测速 → 缓存；GitHub 代理测速 + sha256 校验）
-- [ ] apt 换源（deb822 / sources.list，先备份）
-- [ ] 安装 mise（`vendor/mise-install.sh` + `MISE_VERSION`）
-- [ ] 拉取来源选择（GitHub / CNB）
-- [ ] container 模块 + dotfiles 模块；`bin/apply`
-- [ ] `tests/`：在 `debian:12`、`debian:13`、`ubuntu:22.04`、`ubuntu:24.04` 中无交互执行两遍，第二遍应该没有任何变更
+- [x] `lib/mirrors.sh`（内网探测 → 公网测速 → 缓存；GitHub 代理测速 + sha256 校验）
+- [x] apt 换源（deb822 / sources.list，先备份）
+- [x] 安装 mise（`vendor/mise-install.sh` + `MISE_VERSION`）
+- [x] 拉取来源选择（GitHub / CNB）
+- [x] container 模块 + dotfiles 模块（`bootstrap.sh --dotfiles` 代替 `bin/apply`）
+- [x] `tests/`：在 `debian:12`、`debian:13`、`ubuntu:22.04`、`ubuntu:24.04` 中无交互执行两遍，第二遍应该没有任何变更
 
 ### 阶段 3：Linux 主机（需要 systemd）
 - [ ] root → 普通用户：密码、免密 sudo、SSH 公钥迁移、确认后再加固 sshd（D-004）

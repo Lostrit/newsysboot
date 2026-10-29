@@ -20,12 +20,14 @@
 - `vendor/mise-install.sh`（锁定 mise 2026.10.22，D-012）
 - `lib/detect.sh`：环境检测 + 「容器中不装 Docker / mihomo」规则，已在主机、debian:13、ubuntu:24.04 中验证
 - `files/docker/{daemon.json,http-proxy.conf}.tera`（草稿，未经 mise 渲染验证）
+- 阶段 1 PoC ✅（research R-010）
+- 阶段 2 ✅：`bootstrap.sh`（管道模式 / root 阶段 / user 阶段）、`lib/{common,mirrors,apt,user,ssh,stage}.sh`、
+  `mise.toml` / `mise.debian.toml` / `mise.container.toml`、`dotfiles/.zshenv`、`tests/run.sh`、`tests/run-dotfiles.sh`；
+  debian:12 / 13、ubuntu:22.04 / 24.04 完整流程各执行两次通过，`--dotfiles` 模式在没有 sudo 的用户下通过
 
 ## 下一步
 
-- 阶段 1 PoC：在 debian:13 / ubuntu:24.04 容器中运行最小的 mise bootstrap（container 模块），验证 research R-001 中的问题
-  以及 Tera 模板的渲染（`json_encode`、数组循环、`secret()`）
-- 阶段 2：`lib/mirrors.sh`（apt / docker-ce / Docker Hub / GitHub 加速代理选源）、`bootstrap.sh`
+- 阶段 3：在带 systemd 的容器中测试 mihomo 模块（模板 + fnox 机密 + 服务）、docker 模块、SSH 加固
 
 ## 说明
 

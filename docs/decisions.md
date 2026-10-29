@@ -193,3 +193,20 @@ GitHub 加速代理的测速逻辑相同（参见 research R-002），并额外�
 
 `fnox = "1.43.0"`、`age = "1.3.2"`。fnox 部署时就需要；age CLI 只用来生成和查看密钥。
 mise 默认不选择刚发布不久的版本（1.44.0 因此被跳过），这正符合「锁定版本」的原则。
+
+---
+
+## D-014 容器测试：屏蔽 GitHub 直连，并使用工作区快照 ✅
+
+**日期**：2026-10-29
+
+- 当前主机直连 GitHub 时好时坏，不能代表国内网络。`tests/run.sh` 用 `--add-host` 把 github.com、api.github.com、
+  raw / objects / release-assets.githubusercontent.com、codeload.github.com 都指向 0.0.0.0，强制所有 GitHub 下载经由 GH_PROXY。
+- user 阶段用 `git clone` 复制仓库，只会带上已提交的内容；测试脚本先把工作区（含未提交、未跟踪但没被忽略的文件）提交到临时仓库，再挂载进容器。
+
+## D-015 root 用户在无人值守时必须指定用户名 ✅
+
+**日期**：2026-10-29
+
+以 root 运行且没有终端时，必须设置 `BOOTSTRAP_USER`（否则报错退出）；确实要以 root 继续（例如一次性的构建容器）时设置 `BOOTSTRAP_ALLOW_ROOT=1`。
+没有提供密码时锁定密码：仍然可以用 SSH 公钥登录，sudo 免密。

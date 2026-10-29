@@ -73,3 +73,24 @@
 - **现象**：没有 `FNOX_AGE_KEY` 时，`fnox exec -- true` 只输出 WARN（`Age identity file not found`），命令照常执行。
 - **影响**：这是需要的行为。mise bootstrap 只解析选中模板实际用到的机密，容器模式不需要 mihomo 节点，不应该因此失败；
   真正需要时，mise 会因为缺少值在任何改动之前报错退出。
+
+## P-013 本地 clone 时 `git -c safe.directory=*` 无效
+
+- **现象**：新用户从 root 所有的检出目录 `git -c safe.directory="*" clone` 时，仍然报 `detected dubious ownership`。
+- **原因**：本地 clone 时实际读取仓库的是 git 启动的 upload-pack 子进程，它不认命令行中给出的 safe.directory。
+- **解决**：创建一个临时的全局配置文件（`[safe] directory = *`），用 `GIT_CONFIG_GLOBAL=<临时文件> git clone …`（lib/stage.sh）。
+
+## P-014 基础镜像中没有 curl、wget 和 CA 证书
+
+- **现象**：debian / ubuntu 官方镜像中都没有 curl 和 wget，`/etc/ssl/certs` 为空，不能用 https 源。
+- **解决**：先把默认源的域名替换为 `http://mirrors.cloud.tencent.com`（http 不需要 CA 证书，全国各家云都能访问），装好 curl 和 ca-certificates 后再测速选源（lib/apt.sh、bootstrap.sh 的管道模式）。
+
+## P-015 测速时没有跟随跳转，直连 GitHub 总被判为失败
+
+- **现象**：GitHub 的 release 下载会 302 跳转到 githubusercontent，没有 `-L` 时 curl 只拿到 302。
+- **解决**：`bs_speed` 加上 `-L`。
+
+## P-016 `mise bootstrap` 不允许 `--only` 与 `--skip` 同时使用
+
+- **现象**：`--dotfiles --skip tools` 报错 `the argument '--only' cannot be used with '--skip'`。
+- **解决**：dotfiles 模式下，从 `--only` 的列表中去掉要跳过的部分（lib/stage.sh）。

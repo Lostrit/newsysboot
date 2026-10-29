@@ -140,6 +140,18 @@ fnox 是 mise 作者开发的机密管理工具：在 `fnox.toml` 中声明机�
 - 阿里云（`https://<id>.mirror.aliyuncs.com`）、华为云的加速器地址都和账号绑定，只能手动配置。
 - 第三方公网镜像经常失效（2024 年起大量公共镜像关闭），只作为辅助手段；主要依靠 mihomo 代理回源。
 
+## R-010 mise bootstrap PoC 结论（2026-10-29，mise 2026.10.22，容器内屏蔽 GitHub 直连）
+
+- **R-001 的问题 1 已验证**：运行过程中通过 `[dotfiles]` 链接过来的 `~/.config/mise/config.toml`，它的 `[tools]` 会在**同一次运行**的 tools 阶段被安装，不需要再补一次 `mise install`。
+- **`MISE_URL_REPLACEMENTS` 可行**：只改写 `https://github.com/` 和 `https://raw.githubusercontent.com/` 两个前缀，20 个工具（aqua / node / bun / claude）26 秒全部装好，签名校验通过，没有警告。
+  node 走 `MISE_NODE_MIRROR_URL=https://mirrors.cloud.tencent.com/nodejs-release/`。
+- **`[vars]` 不支持数组**（报错 `cannot be an array`）：列表用逗号分隔的字符串，模板中用 `split(pat=",")`；空字符串 split 后是 `[""]`，使用前要先判断。
+  `{{ env.X | default(value='') }}`、`json_encode()` 都可以用。
+- **幂等**：第二次运行时，packages / files / dotfiles / login shell / tools 全部显示已收敛或已安装。
+- `mise bootstrap` 不允许 `--only` 和 `--skip` 同时使用。
+- 测试矩阵：debian:12、debian:13、ubuntu:22.04、ubuntu:24.04 全部通过（各执行两次）。
+- 本机直连 GitHub 的 release 下载会超时（`curl -L` 跟随跳转到 githubusercontent 后卡住），与国内的真实情况一致；测速时 GitHub 代理中 `gh.qninq.cn`、`github.cnxiaobai.com` 较快，`ghproxy.net` 不可用。
+
 ## 待调研
 
 - SteamOS 上 `/etc` overlay 在系统升级后能否保留；`/usr/local` 是否只读。
