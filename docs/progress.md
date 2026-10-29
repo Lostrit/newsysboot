@@ -26,10 +26,12 @@
   debian:12 / 13、ubuntu:22.04 / 24.04 完整流程各执行两次通过，`--dotfiles` 模式在没有 sudo 的用户下通过
 - 阶段 3 ✅：`mise.mihomo.toml`、`mise.docker.toml`、`scripts/install-{mihomo,docker}.sh`、两次执行与代理切换、
   SSH 加固；`tests/run-host.sh`（带 systemd 的特权容器）18 项检查，两次运行均通过（使用测试密钥与假节点）
+- 阶段 4 ✅：目录整理（D-002、D-019）、npm / bun 的 registry 由环境注入（D-018）、zsh 工具清单 + 缓存（D-010）、
+  评审中 15 项里的 10 项（dotconfig-review.md）
 
 ## 下一步
 
-- 阶段 4：dotfiles 整理（目录、过时路径、npmrc 模板）与 zsh 解耦（tools.zsh + zcache）
+- 阶段 5–7：SteamOS / macOS / Windows（只能先写出配置，当前环境无法测试）
 - 用真实节点验证代理切换（需要用户执行，见 pitfalls P-018）
 
 ## 说明

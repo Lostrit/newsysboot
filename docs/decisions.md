@@ -230,3 +230,22 @@ SteamOS / macOS 不能用 deb 包，到第 5、6 阶段再单独处理。
 - 不能访问（节点不可用等）：给出警告，继续使用 GH_PROXY。
 
 `no_proxy` 包含本机、各家云的内网域名，以及选中的 apt / docker 镜像。
+
+---
+
+## D-018 npm / bun 的 registry 由 bootstrap 按环境注入 ✅
+
+**日期**：2026-10-29
+
+dotfiles 中的 npmrc、`.bunfig.toml` 不再写 registry（原来写死了腾讯云内网地址，离开腾讯云就无法使用）。
+stage-0 在 `env.sh` 中写入 `NPM_CONFIG_REGISTRY` 和 `BUN_CONFIG_REGISTRY`：apt 源选中腾讯云内网时用
+`https://mirrors.tencentyun.com/npm/`，否则用 `https://mirrors.cloud.tencent.com/npm/`；可以用 `BOOTSTRAP_NPM_REGISTRY` 覆盖。
+2026-10-29 实测：两个地址都可用（0.2s），npmmirror 1.6s，阿里云内网 npm 在腾讯云上不可访问。
+链接方式部署的目录（如 `~/.config/npm`）里的文件不能做模板，所以统一改用环境变量来区分环境。
+
+## D-019 开发工具放在 `mise.dev.toml` ✅
+
+**日期**：2026-10-29
+
+原 dotconfig 根目录的 `mise.toml`（taplo / lefthook / prettier）移到本仓库根目录的 `mise.dev.toml`：只有 `MISE_ENV=dev` 时才加载，
+部署的机器不会安装这些工具。`lefthook.yml` 移到仓库根目录（lefthook 要求放在 git 根目录），glob 改为 `dotfiles/.config/...`。

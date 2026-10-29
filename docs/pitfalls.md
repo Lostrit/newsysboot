@@ -118,3 +118,15 @@
 ## P-020 mihomo 的 deb 包自带 `/etc/mihomo/config.yaml`（conffile）
 
 - 用 `[bootstrap.files]` 覆盖它；安装时使用 `dpkg -i --force-confold`，以后升级 deb 时会保留我们的版本，不会弹出交互提示。
+
+## P-021 herdr 的 claude 集成依赖 claude 的目录，工具是并行安装的
+
+- **现象**：把 `herdr integration install claude` 改成 herdr 自己的 postinstall 后，安装失败：`claude directory not found … install claude code first`。
+- **原因**：mise 并行安装工具，herdr 装完时 claude 可能还没装好。原来的写法（全局 postinstall）能成功，正是因为它在所有工具装完后才执行。
+- **解决**：仍然放在全局 `[hooks] postinstall`，但只在 `MISE_INSTALLED_TOOLS` 包含 herdr 或 claude 时执行，并先 `mkdir -p` claude 的目录。
+
+## P-022 项目级工具不能放进 zsh 的工具清单
+
+- **现象**：`ztool fnox comp …` 在仓库目录外启动 shell 时报「生成失败」。
+- **原因**：fnox 只在本仓库的 `mise.toml` 中声明，只有在仓库目录内才在 PATH 中；在不同目录启动 shell，缓存键会来回变化。
+- **解决**：`tools.zsh` 只列全局工具（dotfiles 的 mise 配置中的工具）；部署时才用的工具（fnox、age）不生成补全。

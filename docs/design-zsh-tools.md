@@ -1,6 +1,6 @@
 # 设计：工具的 shell 集成（补全 / init 脚本 / 目录）与 zshrc 解耦
 
-状态：✅ 用户已接受（2026-10-29），在阶段 4 实现
+状态：✅ 已实现（2026-10-29）：`dotfiles/.config/zsh/{lib/zcache.zsh,tools.zsh}`。命中缓存时 zsh 启动约 0.08 秒；缓存键变化后会自动重新生成（已测试）
 
 ## 1. 现状的问题
 
@@ -55,8 +55,8 @@ ztool starship  init  'starship init zsh'   # 提示符，最后加载
 1. `(( $+commands[$cmd] )) || return`：机器上没有这个工具就直接跳过，不再需要逐个写判断；
 2. 用 `${commands[$cmd]:A}`（解析符号链接后的真实路径）作为缓存键。mise 的安装路径里带版本号，工具升级后路径变化，缓存自动失效；
 3. 缓存键和 stamp 文件中记录的不同时，执行生成命令，写入 `.tmp` 后再 `mv`（失败不会留下空文件）：
-   - `comp` → `$XDG_CACHE_HOME/zsh/completions/_<cmd>`（这个目录在 compinit 之前加入 fpath）
-   - `init` → `$XDG_CACHE_HOME/zsh/init/<cmd>.zsh`，在 compinit 之后按清单顺序 source
+   - `comp` → `$XDG_CACHE_HOME/zsh/zcache/completions/_<cmd>`（这个目录在 compinit 之前加入 fpath）
+   - `init` → `$XDG_CACHE_HOME/zsh/zcache/init/<cmd>.zsh`，在 compinit 之后按清单顺序 source
 4. 缓存命中时，每个工具只多一次 stat，不起子进程，启动反而比现在更快。
 
 要点：
@@ -80,3 +80,11 @@ ztool starship  init  'starship init zsh'   # 提示符，最后加载
 | 一个全局 postinstall hook 读取 `MISE_INSTALLED_TOOLS` 生成补全 | 解决了重复代码，但「补全目录被清掉 / 工具不由 mise 安装」的情况仍然不会重新生成；可以作为缓存预热的补充 |
 | carapace（一个程序提供上千个命令的补全） | 可以作为补充，但工具自带的补全更准确，而且 init 脚本的问题它解决不了 |
 | zinit / sheldon 等插件管理器 | 现有的 zsh_unplugged 已经足够；问题出在工具集成上，与插件管理器无关 |
+
+## 4. 实现说明（与设计的差异）
+
+- 新增 `env` 类型：在 compinit 之前 source（vivid 生成 LS_COLORS，补全配色要用）。
+- 生成失败时写入 `.failed` 标记，同一缓存键 24 小时内不再重试，避免网络问题拖慢每次启动；`zcache-clear` 清空全部缓存。
+- 有新生成的补全文件时，删除旧的 compdump，做一次完整的 compinit。
+- `mise activate` 仍然每次执行（后面所有的 `$+commands` 判断都依赖它设置的 PATH）。
+- herdr 的集成保留在全局 postinstall 中（P-021）；项目级工具不放进清单（P-022）。

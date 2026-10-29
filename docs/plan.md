@@ -106,11 +106,11 @@ docs/
 - [x] 测试：systemd 容器（tests/run-host.sh）
 - [ ] 一次性云服务器（腾讯云 / 阿里云 / 华为云各测一次内网源探测）— 需要用户提供机器
 
-### 阶段 4：dotfiles 整理与解耦
-- [ ] 目录整理（D-002 中所列）
-- [ ] 按 dotconfig-review 的 🔴 / 🟠 条目逐项修改
-- [ ] zsh：`tools.zsh` + `zcache`，去掉 mise postinstall 中的重复代码（D-010、design-zsh-tools.md）
-- [ ] 需要按环境区分的文件改成模板（npmrc、bunfig、herdr）
+### 阶段 4：dotfiles 整理与解耦 ✅
+- [x] 目录整理（D-002 中所列）
+- [x] 按 dotconfig-review 的 🔴 / 🟠 条目逐项修改（剩余 herdr、nvim 脚本、.themes 见评审文档）
+- [x] zsh：`tools.zsh` + `zcache`，去掉 mise postinstall 中的重复代码（D-010、design-zsh-tools.md）
+- [x] 需要按环境区分的配置：npmrc / bunfig 改为环境变量（D-018）；herdr 待定
 
 ### 阶段 5：SteamOS（不装 Docker）
 - [ ] 不关闭只读：zsh/git 是否自带、chsh、`/etc` 下的 mihomo unit、二进制放在 `/var/lib` 或 `~/.local`
