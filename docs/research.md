@@ -152,6 +152,16 @@ fnox 是 mise 作者开发的机密管理工具：在 `fnox.toml` 中声明机�
 - 测试矩阵：debian:12、debian:13、ubuntu:22.04、ubuntu:24.04 全部通过（各执行两次）。
 - 本机直连 GitHub 的 release 下载会超时（`curl -L` 跟随跳转到 githubusercontent 后卡住），与国内的真实情况一致；测速时 GitHub 代理中 `gh.qninq.cn`、`github.cnxiaobai.com` 较快，`ghproxy.net` 不可用。
 
+## R-011 主机流程测试结论（2026-10-29，带 systemd 的 debian:13 特权容器）
+
+- `[bootstrap.services.docker]` 声明的 unit 在运行开始时还不存在（Docker 由 post-packages hook 安装），**不会导致校验失败**：
+  services 阶段在 hook 之后执行，unit 已经就位。
+- `remove_empty = true` + `vars.mihomo_mixed_port | default(value="")`：不启用 mihomo 模块时 dockerd 代理 drop-in 不会被写入。
+- 第二次运行时 files / services / dotfiles / user / tools 全部显示已收敛；hooks 每次都会执行（脚本自身保证幂等）。
+- 容器内运行 dockerd：`/var/lib/docker` 必须挂载卷（overlay 上不能再叠 overlay）。
+- mihomo v1.19.33 的 deb 包：`/usr/bin/mihomo`、`/usr/lib/systemd/system/mihomo{,@}.service`、`/etc/mihomo/config.yaml`（conffile）。
+  amd64 sha256 `3f6f31f3…`（已下载核对，与 GitHub API 给出的值一致），arm64 `c01af414…`（取自 GitHub API，未下载核对）。
+
 ## 待调研
 
 - SteamOS 上 `/etc` overlay 在系统升级后能否保留；`/usr/local` 是否只读。

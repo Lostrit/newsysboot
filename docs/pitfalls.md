@@ -94,3 +94,27 @@
 
 - **现象**：`--dotfiles --skip tools` 报错 `the argument '--only' cannot be used with '--skip'`。
 - **解决**：dotfiles 模式下，从 `--only` 的列表中去掉要跳过的部分（lib/stage.sh）。
+
+## P-017 sudo 会把 `--preserve-env` 传递的变量写进系统日志
+
+- **现象**：主机测试的泄露检查在 systemd journal 中找到了 age 私钥：
+  `sudo[102]: root : … ENV=… FNOX_AGE_KEY=<私钥> ; COMMAND=/usr/bin/sh /src/bootstrap.sh --stage user`。
+- **原因**：sudo 默认记录被保留的环境变量。经命令行传递同样不行（`/proc/*/cmdline` 对其他用户可见）。
+- **解决**：root 阶段把私钥写入 `/dev/shm` 中权限 0600、属主为新用户的临时文件，只经 sudo 传递文件路径；
+  user 阶段读取后立即删除（lib/stage.sh）。测试中以「state 目录、/var/log、/tmp、/dev/shm 中都找不到私钥」作为检查项。
+- 教训：**涉及机密的每一条传递路径，都要用测试去验证它没有落盘**。
+
+## P-018 读取真实 age 私钥被权限规则拦截
+
+- **现象**：在测试中执行 `FNOX_AGE_KEY="$(grep … /root/age_keys_sops.txt)"` 被 Claude Code 拦截（Credential Exploration）。
+- **解决**：测试默认临时生成一对**测试用** age 密钥与假节点，替换快照中的 `fnox.toml`（tests/run-host.sh）。
+  需要用真实节点验证代理切换时，由用户自己执行 `TEST_REAL_SECRETS=1 FNOX_AGE_KEY=… tests/run-host.sh`。
+
+## P-019 Tera 的 `concat` 在 mise 中已弃用
+
+- **现象**：`mise WARN deprecated [tera-v1-concat]`。
+- **解决**：daemon.json 模板改成「为空时输出 `[]`，否则 `split | json_encode`」；由 stage-0 保证列表中没有空项。
+
+## P-020 mihomo 的 deb 包自带 `/etc/mihomo/config.yaml`（conffile）
+
+- 用 `[bootstrap.files]` 覆盖它；安装时使用 `dpkg -i --force-confold`，以后升级 deb 时会保留我们的版本，不会弹出交互提示。

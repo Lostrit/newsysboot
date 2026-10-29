@@ -210,3 +210,23 @@ mise 默认不选择刚发布不久的版本（1.44.0 因此被跳过），这�
 
 以 root 运行且没有终端时，必须设置 `BOOTSTRAP_USER`（否则报错退出）；确实要以 root 继续（例如一次性的构建容器）时设置 `BOOTSTRAP_ALLOW_ROOT=1`。
 没有提供密码时锁定密码：仍然可以用 SSH 公钥登录，sudo 免密。
+
+---
+
+## D-016 mihomo 用官方 deb 包安装，版本与 sha256 固定在脚本中 ✅
+
+**日期**：2026-10-29
+
+`scripts/install-mihomo.sh` 固定 v1.19.33（与当前主机一致），经 GH_PROXY 下载并校验 sha256，然后 `dpkg -i --force-confold`。
+deb 包自带 systemd unit，不需要我们维护 unit 文件。升级 = 修改脚本中的版本号和 sha256。
+SteamOS / macOS 不能用 deb 包，到第 5、6 阶段再单独处理。
+
+## D-017 有 mihomo 时分两次执行，mihomo 可用后改为经本机代理 ✅
+
+**日期**：2026-10-29
+
+第一次 `--only accounts,files,packages,services`，然后最多等 20 秒，经 `http://127.0.0.1:7890` 访问 GitHub：
+- 能访问：在 `env.sh` 中写入 `http_proxy` / `https_proxy` / `all_proxy` / `no_proxy`（以后由 `~/.zshenv` 加载），清空 GH_PROXY，再执行完整流程；
+- 不能访问（节点不可用等）：给出警告，继续使用 GH_PROXY。
+
+`no_proxy` 包含本机、各家云的内网域名，以及选中的 apt / docker 镜像。

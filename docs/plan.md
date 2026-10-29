@@ -98,12 +98,13 @@ docs/
 - [x] container 模块 + dotfiles 模块（`bootstrap.sh --dotfiles` 代替 `bin/apply`）
 - [x] `tests/`：在 `debian:12`、`debian:13`、`ubuntu:22.04`、`ubuntu:24.04` 中无交互执行两遍，第二遍应该没有任何变更
 
-### 阶段 3：Linux 主机（需要 systemd）
-- [ ] root → 普通用户：密码、免密 sudo、SSH 公钥迁移、确认后再加固 sshd（D-004）
-- [ ] mihomo：二进制、Tera 模板（✅ 已生成）、fnox 机密、unit、geodata 镜像；服务器上只监听本机和 docker 网桥
-- [ ] Docker：vendor 脚本 + DOWNLOAD_URL、daemon.json（Docker Hub 镜像，模板草稿 ✅）、dockerd 代理、加入 docker 组
-- [ ] 两次执行与代理切换
-- [ ] 测试：systemd 容器 + 一次性云服务器（腾讯云 / 阿里云 / 华为云各测一次内网源探测）
+### 阶段 3：Linux 主机（需要 systemd）✅
+- [x] root → 普通用户：密码、免密 sudo、SSH 公钥迁移、确认后再加固 sshd（D-004）
+- [x] mihomo：二进制、Tera 模板（✅ 已生成）、fnox 机密、unit、geodata 镜像；服务器上只监听本机和 docker 网桥
+- [x] Docker：vendor 脚本 + DOWNLOAD_URL、daemon.json（Docker Hub 镜像，模板草稿 ✅）、dockerd 代理、加入 docker 组
+- [x] 两次执行与代理切换
+- [x] 测试：systemd 容器（tests/run-host.sh）
+- [ ] 一次性云服务器（腾讯云 / 阿里云 / 华为云各测一次内网源探测）— 需要用户提供机器
 
 ### 阶段 4：dotfiles 整理与解耦
 - [ ] 目录整理（D-002 中所列）
