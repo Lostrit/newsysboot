@@ -78,7 +78,8 @@ bootstrap_detect() {
         fi
         ;;
       steamos) BOOTSTRAP_MODULES=steamos,mihomo ;;
-      macos) BOOTSTRAP_MODULES=macos,mihomo ;;
+      # macOS 的 mihomo 在 mise.macos.toml 中（LaunchAgent），不加载 Linux 的 mise.mihomo.toml
+      macos) BOOTSTRAP_MODULES=macos ;;
       *)
         printf 'detect: unsupported distro: %s\n' "$BOOTSTRAP_DISTRO" >&2
         return 1

@@ -14,6 +14,22 @@ bs_is_debian_like() {
   return 1
 }
 
+# mihomo 场景（mise.mihomo.toml 的 [vars]）：主机是 server，SteamOS / macOS 是 desktop（只监听本机）
+bs_mihomo_profile() {
+  case "$BOOTSTRAP_DISTRO" in
+    steamos | macos)
+      : "${BOOTSTRAP_MIHOMO_ALLOW_LAN:=false}" "${BOOTSTRAP_MIHOMO_BIND:=127.0.0.1}" "${BOOTSTRAP_MIHOMO_LAN_IPS:=127.0.0.0/8}"
+      ;;
+  esac
+  export BOOTSTRAP_MIHOMO_PORT="${BOOTSTRAP_MIHOMO_PORT:-7890}" BOOTSTRAP_MIHOMO_ALLOW_LAN="${BOOTSTRAP_MIHOMO_ALLOW_LAN:-true}" \
+    BOOTSTRAP_MIHOMO_BIND="${BOOTSTRAP_MIHOMO_BIND:-*}" BOOTSTRAP_MIHOMO_LAN_IPS="${BOOTSTRAP_MIHOMO_LAN_IPS:-127.0.0.0/8,172.16.0.0/12}"
+}
+
+# 是否需要 mihomo（机密、两次执行）：Linux 的 mihomo 模块，或 macOS（mihomo 在 macos 模块中）
+bs_wants_mihomo() {
+  bs_has_module mihomo || bs_has_module macos
+}
+
 bs_has_module() {
   case ",$BOOTSTRAP_MODULES," in *,"$1",*) return 0 ;; esac
   return 1
@@ -32,6 +48,7 @@ bs_stage_root() {
   if [ "$BOOTSTRAP_OS" = linux ] && bs_is_debian_like; then
     bs_apt_ensure_curl
   fi
+  [ "$BOOTSTRAP_OS" = macos ] && bs_macos_prepare
   bs_have curl || bs_die "需要 curl"
 
   bs_select_mirrors
@@ -120,6 +137,7 @@ bs_stage_user() {
 
   bs_ensure_checkout
   bs_ensure_mise
+  bs_mihomo_profile
   bs_write_env
   bs_run_mise
 }
@@ -199,6 +217,7 @@ bs_write_env() {
       bs_env_line no_proxy "$(bs_no_proxy)"
       echo 'export HTTP_PROXY="$http_proxy" HTTPS_PROXY="$https_proxy" NO_PROXY="$no_proxy"'
     fi
+    [ "$BOOTSTRAP_OS" = macos ] && bs_macos_env_lines
     # node / npm / bun 从国内镜像下载（腾讯云内网时用内网地址）
     bs_env_line MISE_NODE_MIRROR_URL "${MISE_NODE_MIRROR_URL:-https://mirrors.cloud.tencent.com/nodejs-release/}"
     _npm=${BOOTSTRAP_NPM_REGISTRY:-}
@@ -256,16 +275,19 @@ bs_run_mise() {
   fi
 
   # 需要机密的模块：读取 age 私钥，交给 fnox 注入（D-008）
-  if bs_has_module mihomo && [ "$BS_MODE" != dotfiles ] && [ -z "${FNOX_AGE_KEY:-}" ]; then
+  if bs_wants_mihomo && [ "$BS_MODE" != dotfiles ] && [ -z "${FNOX_AGE_KEY:-}" ]; then
     bs_ask FNOX_AGE_KEY "请输入 age 私钥（AGE-SECRET-KEY-…，用于解密 mihomo 配置）: " secret
   fi
   export FNOX_AGE_KEY="${FNOX_AGE_KEY:-}"
 
   # 有 mihomo 模块时分两次执行（plan.md）：先装好代理（只依赖国内镜像与 GH_PROXY），确认可用后切到代理再跑完整流程
-  if bs_has_module mihomo && [ "$BS_MODE" != dotfiles ] && [ -z "$BS_DRY_RUN" ]; then
-    bs_log "第一次：mise -E $_envs bootstrap --only accounts,files,packages,services"
-    bs_mise "$_envs" bootstrap --yes --only accounts,files,packages,services
-    _px="http://127.0.0.1:${BOOTSTRAP_MIHOMO_PORT:-7890}"
+  if bs_wants_mihomo && [ "$BS_MODE" != dotfiles ] && [ -z "$BS_DRY_RUN" ]; then
+    # macOS 的 mihomo 由 dotfiles（配置）与 LaunchAgent 组成
+    _first=accounts,files,packages,services
+    [ "$BOOTSTRAP_OS" = macos ] && _first=files,packages,dotfiles,macos-launchd-agents
+    bs_log "第一次：mise -E $_envs bootstrap --only $_first"
+    bs_mise "$_envs" bootstrap --yes --only "$_first"
+    _px="http://127.0.0.1:$BOOTSTRAP_MIHOMO_PORT"
     _i=0
     while [ "$_i" -lt 10 ] && ! bs_proxy_ok "$_px"; do
       sleep 2

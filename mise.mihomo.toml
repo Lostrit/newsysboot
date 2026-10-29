@@ -2,14 +2,15 @@
 #
 # 二进制：scripts/install-mihomo.sh（锁定版本 + sha256，经 GH_PROXY 下载）
 # 配置：files/mihomo/config.yaml.tera，机密节点来自 fnox 注入的 MIHOMO_PROXIES（D-008）
-# 下面的 [vars] 是「服务器」场景的默认值；桌面等其他场景在各自模块中覆盖。
+# 监听设置由 stage-0 按场景传入（lib/stage.sh 的 bs_mihomo_profile）：
+#   server（Linux 主机，默认）：允许 Docker 容器经网桥访问，只放行本机与 Docker 网段
+#   desktop（SteamOS / macOS）：只监听本机
 
 [vars]
-mihomo_mixed_port = 7890
-# 服务器：允许 Docker 容器通过网桥访问，只放行本机与 Docker 网段
-mihomo_allow_lan = true
-mihomo_bind_address = "*"
-mihomo_lan_allowed_ips = "127.0.0.0/8,172.16.0.0/12"
+mihomo_mixed_port = "{{ env.BOOTSTRAP_MIHOMO_PORT | default(value='7890') }}"
+mihomo_allow_lan = "{{ env.BOOTSTRAP_MIHOMO_ALLOW_LAN | default(value='true') }}"
+mihomo_bind_address = "{{ env.BOOTSTRAP_MIHOMO_BIND | default(value='*') }}"
+mihomo_lan_allowed_ips = "{{ env.BOOTSTRAP_MIHOMO_LAN_IPS | default(value='127.0.0.0/8,172.16.0.0/12') }}"
 
 [bootstrap.secrets.mihomo_proxies]
 env = "MIHOMO_PROXIES"

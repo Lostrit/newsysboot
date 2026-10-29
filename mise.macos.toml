@@ -1,0 +1,37 @@
+# mise.macos.toml — macOS（⚠️ 未在真机测试，docs/progress.md）
+#
+# Homebrew 由 stage-0 经清华镜像安装（lib/macos.sh）。不安装 Docker（D-005）。
+# mihomo：Homebrew 安装，以当前用户的 LaunchAgent 运行（只监听本机，系统代理模式）；
+#   配置渲染到 ~/.config/mihomo/config.yaml（0600，模板与机密同 Linux，D-008）。
+#   macOS 上 mise 的系统服务（[bootstrap.services] 的 system 级）不可用，因此不加载 mise.mihomo.toml。
+#   TUN 模式需要 root 的 LaunchDaemon，mise 不管理，暂不支持。
+
+[vars]
+mihomo_mixed_port = "{{ env.BOOTSTRAP_MIHOMO_PORT | default(value='7890') }}"
+mihomo_allow_lan = "false"
+mihomo_bind_address = "127.0.0.1"
+mihomo_lan_allowed_ips = "127.0.0.0/8"
+
+[bootstrap.secrets.mihomo_proxies]
+env = "MIHOMO_PROXIES"
+description = "mihomo 节点（fnox 解密；部署时输入 age 私钥）"
+
+[bootstrap.packages]
+"brew:mihomo" = "latest"
+
+[bootstrap.directories."~/.config/mihomo"]
+mode = "0700"
+[bootstrap.directories."~/Library/Logs"]
+
+[dotfiles."~/.config/mihomo/config.yaml"]
+source = "files/mihomo/config.yaml.tera"
+mode = "template"
+permissions = "0600"
+
+[bootstrap.macos.launchd.agents.mihomo]
+program = "{{ env.HOMEBREW_PREFIX | default(value='/opt/homebrew') }}/bin/mihomo"
+args = ["-d", "{{ env.HOME }}/.config/mihomo"]
+run_at_load = true
+keep_alive_on_failure = true
+stdout_path = "~/Library/Logs/mihomo.log"
+stderr_path = "~/Library/Logs/mihomo.err.log"

@@ -1,0 +1,14 @@
+# mise.steamos.toml — SteamOS（⚠️ 未在真机测试，docs/progress.md）
+#
+# 约束（CLAUDE.md）：不执行 steamos-readonly disable，不用 pacman 改根分区；
+# 系统级改动只落在 /etc、/var、/home（/etc 是 overlay，系统升级后保留）。
+# 因此这里不声明任何 pacman 包：SteamOS 自带 git、curl、zsh（未在真机核实，见 research「待调研」）。
+# mihomo：独立二进制装在 /var/lib/mihomo/bin（scripts/install-mihomo.sh），unit 写入 /etc/systemd/system。
+# 不安装 Docker（D-005）。
+
+[bootstrap.files."/etc/systemd/system/mihomo.service"]
+source = "files/mihomo/mihomo.service"
+owner = "root"
+group = "root"
+mode = "0644"
+notify = ["mihomo"]

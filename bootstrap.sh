@@ -76,7 +76,10 @@ if [ ! -f "$(bs_self_dir)/lib/common.sh" ]; then
     BOOTSTRAP_REPO=$BOOTSTRAP_REPO_GITHUB
     for _p in "${GH_PROXY:-}" "" https://gh-proxy.com/ https://ghfast.top/ https://gh.qninq.cn/ https://github.cnxiaobai.com/; do
       _say "clone ${_p}$BOOTSTRAP_REPO"
-      if timeout 120 git clone -q --depth 1 "${_p}$BOOTSTRAP_REPO" "$_tmp/repo" 2>/dev/null; then break; fi
+      # macOS 默认没有 timeout 命令
+      _to=
+      command -v timeout >/dev/null 2>&1 && _to="timeout 120"
+      if $_to git clone -q --depth 1 "${_p}$BOOTSTRAP_REPO" "$_tmp/repo" 2>/dev/null; then break; fi
       rm -rf "$_tmp/repo"
     done
     [ -d "$_tmp/repo" ] || _die "无法从 GitHub 拉取仓库，可改用 --source cnb"
@@ -95,6 +98,7 @@ BS_SRC=$(bs_self_dir)
 . "$BS_SRC/lib/apt.sh"
 . "$BS_SRC/lib/user.sh"
 . "$BS_SRC/lib/ssh.sh"
+. "$BS_SRC/lib/macos.sh"
 . "$BS_SRC/lib/stage.sh"
 
 BS_MODE=full

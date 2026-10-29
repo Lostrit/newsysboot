@@ -1,0 +1,19 @@
+# /etc/systemd/system/mihomo.service — 独立二进制安装时使用（SteamOS：/usr 只读，二进制在 /var/lib/mihomo）
+# 内容参照官方 deb 包中的 unit（v1.19.33）
+[Unit]
+Description=mihomo Daemon, Another Clash Kernel.
+Documentation=https://wiki.metacubex.one
+After=network.target nss-lookup.target network-online.target
+
+[Service]
+Type=simple
+CapabilityBoundingSet=CAP_NET_ADMIN CAP_NET_RAW CAP_NET_BIND_SERVICE CAP_SYS_TIME CAP_SYS_PTRACE CAP_DAC_READ_SEARCH CAP_DAC_OVERRIDE
+AmbientCapabilities=CAP_NET_ADMIN CAP_NET_RAW CAP_NET_BIND_SERVICE CAP_SYS_TIME CAP_SYS_PTRACE CAP_DAC_READ_SEARCH CAP_DAC_OVERRIDE
+ExecStart=/var/lib/mihomo/bin/mihomo -d /etc/mihomo
+ExecReload=/bin/kill -HUP $MAINPID
+Restart=on-failure
+RestartSec=10
+LimitNOFILE=infinity
+
+[Install]
+WantedBy=multi-user.target
