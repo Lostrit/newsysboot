@@ -16,7 +16,7 @@
 ## 关键约束
 
 - **默认国内网络**：mihomo 生效前不能假定能访问 GitHub / Docker 官网。GitHub 下载一律经由测速选出的
-  `GH_PROXY` 前缀，Docker 走腾讯云镜像（内网 `mirrors.tencentyun.com`，公网 `mirrors.cloud.tencent.com`）。
+  `GH_PROXY` 前缀；apt 和 docker-ce 源先探测各家云的内网镜像，没有就对公网镜像测速选择（D-006）。
 - **SteamOS**：不得执行 `steamos-readonly disable`，不得用 pacman 改根分区；系统级改动只落在 `/etc`、`/var`、`/home`。
 - **Docker 只装在 Linux 主机上**（SteamOS / macOS / Windows 不装）。
 - **容器环境**：不装 mihomo、不装 Docker，使用宿主机代理（`host.docker.internal:7890`）；必须能在 Dockerfile 里无交互运行。
