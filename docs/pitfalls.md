@@ -145,3 +145,9 @@
 ## P-025 PowerShell 5.1 没有 `Invoke-WebRequest -NoProxy`
 
 - 这个参数只有 PowerShell 7 才有；Windows 自带的 5.1 用了会报错（被 catch 吞掉，结果是所有代理都被判为不可用）。已去掉。
+
+## P-026 `{ : </dev/tty; }` 在没有终端时让整个 shell 静默退出
+
+- **现象**：管道模式在没有终端的容器中运行时，没有任何输出，退出码为 2（之前的测试都设置了 `BOOTSTRAP_NONINTERACTIVE=1`，所以没有发现）。
+- **原因**：`:` 是 POSIX 规定的「特殊内建命令」，它的重定向失败时，非交互 shell 会直接退出（dash 如此）。
+- **解决**：改为在子 shell 中尝试：`(exec </dev/tty) 2>/dev/null`（bootstrap.sh、lib/common.sh）。新增 `tests/run-pipe.sh`，不设置 NONINTERACTIVE，覆盖这个场景。

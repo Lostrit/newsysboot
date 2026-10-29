@@ -41,7 +41,8 @@ if [ ! -f "$(bs_self_dir)/lib/common.sh" ]; then
   _root() { if [ "$(id -u)" = 0 ]; then "$@"; else sudo "$@"; fi; }
 
   if [ -z "${BOOTSTRAP_SOURCE:-}" ]; then
-    if { : </dev/tty; } 2>/dev/null; then
+    # 在子 shell 中尝试打开 /dev/tty：`:` 是特殊内建命令，重定向失败会让整个 shell 退出（P-026）
+    if (exec </dev/tty) 2>/dev/null; then
       printf '从哪里拉取本仓库？ 1) GitHub（经加速代理）  2) CNB  [1]: ' >/dev/tty
       read -r _c </dev/tty || _c=
       case "$_c" in 2 | cnb) BOOTSTRAP_SOURCE=cnb ;; *) BOOTSTRAP_SOURCE=github ;; esac

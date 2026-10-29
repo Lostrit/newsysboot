@@ -24,7 +24,8 @@ bs_root() {
 # 是否有可交互的终端（curl | sh 时 stdin 是脚本本身，只能从 /dev/tty 读取）
 bs_has_tty() {
   [ "${BOOTSTRAP_NONINTERACTIVE:-0}" = 1 ] && return 1
-  { : </dev/tty; } 2>/dev/null
+  # 必须在子 shell 中尝试：`:` 是特殊内建命令，重定向失败会让整个 shell 退出（P-026）
+  (exec </dev/tty) 2>/dev/null
 }
 
 # bs_ask <变量名> <提示> [secret]：从 /dev/tty 读取一行，secret 时不回显

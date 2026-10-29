@@ -65,4 +65,6 @@ RUN BOOTSTRAP_USER=$BOOTSTRAP_USER BOOTSTRAP_NONINTERACTIVE=1 sh /path/to/bootst
 tests/run.sh debian:13               # 完整流程（root → 新用户），执行两次检查幂等
 tests/run.sh ubuntu:24.04 --skip tools
 tests/run-dotfiles.sh debian:13      # --dotfiles 模式（无 sudo 用户）
+tests/run-pipe.sh ubuntu:24.04       # 管道模式（curl | sh 入口，没有 git、没有终端）
+tests/run-host.sh                    # 主机流程（systemd 特权容器：mihomo、docker、SSH 加固；测试密钥 + 假节点）
 ```

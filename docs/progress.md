@@ -29,7 +29,7 @@
 - 阶段 4 ✅：目录整理（D-002、D-019）、npm / bun 的 registry 由环境注入（D-018）、zsh 工具清单 + 缓存（D-010）、
   评审中 15 项里的 10 项（dotconfig-review.md）
 - 阶段 5–7（第一版，**均未在真机测试**）：SteamOS（D-020）、macOS（D-021）、Windows（D-022）；mihomo 场景化（D-023）
-- 回归：容器（debian:13 ×2）、`--dotfiles`（ubuntu:24.04）、主机（18 项检查 ×2）全部通过
+- 回归：容器（debian:13 ×2）、`--dotfiles`（ubuntu:24.04）、主机（18 项检查 ×2）、管道模式（ubuntu:24.04、debian:13）全部通过
 
 ## 下一步（需要用户参与）
 
