@@ -1,2 +1,3 @@
+# bun 全局配置
+# registry 按环境由 bootstrap 写入 BUN_CONFIG_REGISTRY（~/.local/state/bootstrap/env.sh，D-006）
 [install]
-registry = "https://mirrors.tencentyun.com/npm/"

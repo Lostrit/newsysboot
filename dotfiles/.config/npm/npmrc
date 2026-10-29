@@ -1,1 +1,3 @@
-registry=https://mirrors.tencentyun.com/npm/
+# npm 用户配置（NPM_CONFIG_USERCONFIG 指向本文件）
+# registry 按环境由 bootstrap 写入 NPM_CONFIG_REGISTRY（~/.local/state/bootstrap/env.sh，D-006）：
+#   腾讯云内网 https://mirrors.tencentyun.com/npm/ ，其他环境 https://mirrors.cloud.tencent.com/npm/

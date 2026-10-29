@@ -23,6 +23,8 @@ bootstrap_user = "{{ env.USER | default(value='') }}"
 [bootstrap.directories."~/.local/share/zsh/plugins"]
 [bootstrap.directories."~/.local/state/zsh"]
 [bootstrap.directories."~/.cache/zsh"]
+# node 不会自己创建 REPL 历史所在的目录（dotfiles mise 配置中的 NODE_REPL_HISTORY）
+[bootstrap.directories."~/.local/state/node"]
 
 # ---------------------------------------------------------------------------
 # dotfiles（D-002：整目录链接，在 ~/.config 中修改就是修改仓库工作区）
@@ -53,3 +55,13 @@ bootstrap_user = "{{ env.USER | default(value='') }}"
 # ---------------------------------------------------------------------------
 [bootstrap.user]
 login_shell = "zsh"
+
+# ---------------------------------------------------------------------------
+# 收尾任务（每次 mise bootstrap 最后执行，须可重复）
+# ---------------------------------------------------------------------------
+[tasks.bootstrap]
+description = "bat 主题缓存；预热 zsh（克隆插件、生成补全 / init 缓存，D-010）"
+run = [
+  "if command -v bat >/dev/null 2>&1; then bat cache --build >/dev/null; fi",
+  "if command -v zsh >/dev/null 2>&1; then zsh -i -c exit </dev/null >/dev/null 2>&1 || true; fi",
+]

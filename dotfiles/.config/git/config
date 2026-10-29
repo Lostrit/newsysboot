@@ -25,3 +25,7 @@
 
 [merge]
     conflictstyle = zdiff3       # git 2.35+；旧版用 diff3
+
+# 本机覆盖（user.name / user.email 等机器相关配置），不入库（.gitignore）
+[include]
+    path = config.local

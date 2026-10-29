@@ -199,8 +199,17 @@ bs_write_env() {
       bs_env_line no_proxy "$(bs_no_proxy)"
       echo 'export HTTP_PROXY="$http_proxy" HTTPS_PROXY="$https_proxy" NO_PROXY="$no_proxy"'
     fi
-    # node 从国内镜像下载
+    # node / npm / bun 从国内镜像下载（腾讯云内网时用内网地址）
     bs_env_line MISE_NODE_MIRROR_URL "${MISE_NODE_MIRROR_URL:-https://mirrors.cloud.tencent.com/nodejs-release/}"
+    _npm=${BOOTSTRAP_NPM_REGISTRY:-}
+    if [ -z "$_npm" ]; then
+      case "${BOOTSTRAP_APT_MIRROR:-}" in
+        *mirrors.tencentyun.com*) _npm=https://mirrors.tencentyun.com/npm/ ;;
+        *) _npm=https://mirrors.cloud.tencent.com/npm/ ;;
+      esac
+    fi
+    bs_env_line NPM_CONFIG_REGISTRY "$_npm"
+    bs_env_line BUN_CONFIG_REGISTRY "$_npm"
   } >"$BS_STATE_DIR/env.sh"
   . "$BS_STATE_DIR/env.sh"
 }

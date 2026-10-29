@@ -1,6 +1,7 @@
 # ============================================================
 #  $ZDOTDIR/.zshrc  —  zsh_unplugged 版（替代 antigen）
-#  依赖 /etc/zsh/zshenv 已导出 XDG_*、ZDOTDIR、ZSH_COMPDUMP、fpath
+#  依赖 ~/.zshenv（仓库 dotfiles/.zshenv）已导出 XDG_*、ZDOTDIR、ZSH_COMPDUMP、fpath
+#  工具的补全 / init 脚本由 tools.zsh 声明、lib/zcache.zsh 生成并缓存（D-010）
 # ============================================================
 
 # ------------------------------------------------------------
@@ -114,7 +115,12 @@ function plugin-compile {
 #    LS_COLORS 必须在下面的 completion zstyle 之前生成
 # ------------------------------------------------------------
 (( $+commands[less] )) && export PAGER=less
-(( $+commands[vivid] )) && export LS_COLORS="$(vivid generate catppuccin-mocha)"
+
+# 工具清单：生成（或命中缓存）补全与 init 脚本；补全目录在 compinit 之前加入 fpath
+source "$ZDOTDIR/lib/zcache.zsh"
+source "$ZDOTDIR/tools.zsh"
+for _f in $_zcache_env; do source "$_f"; done
+unset _f
 
 # ------------------------------------------------------------
 # 4. compinit 之前的插件（只贡献 fpath，绝不能 defer）
@@ -163,6 +169,8 @@ zstyle ':completion:*' menu no
 
 () {
   local zcd="${ZSH_COMPDUMP:-$XDG_CACHE_HOME/zsh/zcompdump-$ZSH_VERSION}"
+  # 有新生成的补全文件时，丢弃旧的 dump，做一次完整的 compinit
+  (( _zcache_comp_changed )) && rm -f -- "$zcd" "$zcd.zwc"
   autoload -Uz compinit
   # 24 小时内只做一次完整 compaudit 扫描，其余走 -C 快速路径
   if [[ -n ${zcd}(#qN.mh-24) ]]; then
@@ -179,9 +187,8 @@ zstyle ':completion:*' menu no
 # ------------------------------------------------------------
 # 7. 外部工具初始化（注册 widget / 补全，必须在 fzf-tab 之前）
 # ------------------------------------------------------------
-(( $+commands[fzf] )) && source <(fzf --zsh)
-(( $+commands[atuin] )) && eval "$(atuin init zsh)"
-(( $+commands[zoxide] )) && eval "$(zoxide init zsh)"
+for _f in $_zcache_init; do source "$_f"; done
+unset _f
 
 # ------------------------------------------------------------
 # 8. compinit 之后的插件（顺序敏感）
@@ -200,7 +207,4 @@ plugin-load zsh-users/zsh-autosuggestions
 # fast-syntax-highlighting 必须是最后一个加载的 widget 插件
 plugin-load zdharma-continuum/fast-syntax-highlighting
 
-# ------------------------------------------------------------
-# 9. 提示符
-# ------------------------------------------------------------
-(( $+commands[starship] )) && eval "$(starship init zsh)"
+# 9. 提示符：starship 的 init 已在第 7 步随 tools.zsh 加载

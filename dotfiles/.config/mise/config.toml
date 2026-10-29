@@ -1,23 +1,27 @@
-# mise.toml
+# ~/.config/mise/config.toml — 全局工具（部署的机器都会加载）
 #
-# 约定：
-#   - ${XDG_DATA_HOME}/zsh/site-functions  存放真正的 #compdef 自动加载补全文件（_xxx）
-#   - ${XDG_DATA_HOME}/zsh/init.d          存放必须被 source 的 shell 集成脚本（xxx.zsh）
-#   - 每个 postinstall 先写 .tmp 再 mv，失败时删除临时文件，避免留下空的补全文件
+# 约定（D-010）：
+#   - 本文件只负责「安装工具」与工具相关的环境变量
+#   - 目录由 bootstrap 的 [bootstrap.directories] 创建；工具自己需要的目录大多会按需自动创建
+#   - 补全 / init 脚本由 zsh 的 $ZDOTDIR/tools.zsh 声明，启动时生成并缓存，不在 postinstall 中生成
+#   - 版本全部锁定；升级 = 修改版本号并提交
 
 # ---------------------------------------------------------------------------
 # hooks
 # ---------------------------------------------------------------------------
 [hooks]
-preinstall = '''
-mkdir -p \
-  "${XDG_CONFIG_HOME}" "${XDG_DATA_HOME}" "${XDG_STATE_HOME}" "${XDG_CACHE_HOME}" \
-  "${XDG_DATA_HOME}/zsh/site-functions"
-mise completion zsh > "${XDG_DATA_HOME}/zsh/site-functions/_mise"
-'''
-
+# herdr 的 claude 集成：要求 claude 的目录已存在，而工具是并行安装的，所以放在全局 postinstall（全部装完之后）。
+# 只在本次安装了 herdr 或 claude 时执行（MISE_INSTALLED_TOOLS 是本次安装的工具列表，JSON）
 postinstall = '''
-CLAUDE_CONFIG_DIR="${XDG_DATA_HOME}/claude" herdr integration install claude
+case "${MISE_INSTALLED_TOOLS:-}" in
+  *herdr* | *claude*)
+    if command -v herdr >/dev/null 2>&1; then
+      d="${XDG_DATA_HOME:-$HOME/.local/share}/claude"
+      mkdir -p "$d"
+      CLAUDE_CONFIG_DIR="$d" herdr integration install claude || echo "[WARNING] herdr integration install claude failed"
+    fi
+    ;;
+esac
 '''
 
 # ---------------------------------------------------------------------------
@@ -84,26 +88,9 @@ CLAUDE_CONFIG_DIR = "${XDG_DATA_HOME}/claude"
 
 [tools.node]
 version = "24.19.0"
-postinstall = '''
-echo "[INFO] node postinstall"
-mkdir -p "${XDG_CONFIG_HOME}/npm" "${XDG_DATA_HOME}/npm" "${XDG_CACHE_HOME}/npm" \
-         "${XDG_CACHE_HOME}/node" "${XDG_STATE_HOME}/node"
-# npm 的补全产物是「需要 source 的脚本」（内部自己调 compdef），不是 #compdef 文件
-# init="${XDG_DATA_HOME}/zsh/init.d/npm.zsh"
-# npm completion > "${init}.tmp" && mv "${init}.tmp" "${init}" \
-#   || { rm -f "${init}.tmp"; echo '[WARNING] writing npm completions fail.'; }
-'''
 
 [tools.bun]
-version = "1.4"
-postinstall = '''
-echo "[INFO] bun postinstall"
-mkdir -p "${XDG_DATA_HOME}/bun/bin" "${XDG_CACHE_HOME}/bun/install-cache"
-# bun 没有「打印补全到 stdout」的子命令，补全脚本随仓库维护
-f="${XDG_DATA_HOME}/zsh/site-functions/_bun"
-SHELL=zsh bun completions > "${f}.tmp" && mv "${f}.tmp" "${f}" \
-  || { rm -f "${f}.tmp"; echo '[WARNING] writing bun completions fail.'; }
-'''
+version = "1.4.4"
 
 # ---------------------------------------------------------------------------
 # cli tools
@@ -111,120 +98,36 @@ SHELL=zsh bun completions > "${f}.tmp" && mv "${f}.tmp" "${f}" \
 
 [tools."aqua:atuinsh/atuin"]
 version = "18.21.0"
-postinstall = '''
-echo "[INFO] atuin postinstall"
-mkdir -p "${XDG_CONFIG_HOME}/atuin" "${XDG_DATA_HOME}/atuin"
-f="${XDG_DATA_HOME}/zsh/site-functions/_atuin"
-atuin gen-completions --shell zsh > "${f}.tmp" && mv "${f}.tmp" "${f}" \
-  || { rm -f "${f}.tmp"; echo '[WARNING] writing atuin completions fail.'; }
-# 历史搜索的按键绑定来自 init 脚本，预生成可省掉每次启动的子进程
-# init="${XDG_DATA_HOME}/zsh/init.d/atuin.zsh"
-# atuin init zsh > "${init}.tmp" && mv "${init}.tmp" "${init}" \
-#   || { rm -f "${init}.tmp"; echo '[WARNING] writing atuin init fail.'; }
-'''
 
 [tools."aqua:sharkdp/bat"]
 version = "0.26.1"
-postinstall = '''
-echo "[INFO] bat postinstall"
-mkdir -p "${XDG_CACHE_HOME}/bat"
-f="${XDG_DATA_HOME}/zsh/site-functions/_bat"
-bat --completion zsh > "${f}.tmp" && mv "${f}.tmp" "${f}" \
-  || { rm -f "${f}.tmp"; echo '[WARNING] writing bat completions fail.'; }
-'''
 
 [tools."claude"]
-version = "latest"
-postinstall = '''
-echo "[INFO] claude-code postinstall"
-mkdir -p "${XDG_DATA_HOME}/claude"
-'''
+version = "2.1.312"
 
 [tools."aqua:dandavison/delta"]
 version = "0.19.2"
-postinstall = '''
-echo "[INFO] delta postinstall"
-# delta 的配置写在 git config 里，没有独立配置目录
-f="${XDG_DATA_HOME}/zsh/site-functions/_delta"
-delta --generate-completion zsh > "${f}.tmp" && mv "${f}.tmp" "${f}" \
-  || { rm -f "${f}.tmp"; echo '[WARNING] writing delta completions fail.'; }
-'''
 
 [tools."aqua:eza-community/eza"]
 version = "0.23.5"
-postinstall = '''
-echo "[INFO] eza postinstall"
-mkdir -p "${XDG_CONFIG_HOME}/eza"
-f="${XDG_DATA_HOME}/zsh/site-functions/_eza"
-curl -fsSL "${GH_PROXY:-}https://raw.githubusercontent.com/eza-community/eza/refs/heads/main/completions/zsh/_eza" \
-  -o "${f}.tmp" && mv "${f}.tmp" "${f}" \
-  || { rm -f "${f}.tmp"; echo '[WARNING] writing eza completions fail.'; }
-'''
 
 [tools."aqua:sharkdp/fd"]
 version = "10.5.0"
-postinstall = '''
-echo "[INFO] fd postinstall"
-# fd 默认读取 ${XDG_CONFIG_HOME}/fd/ignore 作为全局 ignore
-mkdir -p "${XDG_CONFIG_HOME}/fd"
-f="${XDG_DATA_HOME}/zsh/site-functions/_fd"
-fd --gen-completions zsh > "${f}.tmp" && mv "${f}.tmp" "${f}" \
-  || { rm -f "${f}.tmp"; echo '[WARNING] writing fd completions fail.'; }
-'''
 
 [tools."aqua:junegunn/fzf"]
 version = "0.56.3"
-postinstall = '''
-echo "[INFO] fzf postinstall"
-mkdir -p "${XDG_CONFIG_HOME}/fzf"
-[ -f "${XDG_CONFIG_HOME}/fzf/fzfrc" ] || touch "${XDG_CONFIG_HOME}/fzf/fzfrc"
-# fzf 没有 #compdef 文件，模糊补全和 CTRL-R/CTRL-T 都在同一份 source 脚本里
-# init="${XDG_DATA_HOME}/zsh/init.d/fzf.zsh"
-# fzf --zsh > "${init}.tmp" && mv "${init}.tmp" "${init}" \
-#   || { rm -f "${init}.tmp"; echo '[WARNING] writing fzf shell integration fail.'; }
-'''
 
 [tools."aqua:herdrdev/herdr"]
 version = "0.9.1"
-postinstall = '''
-echo "[INFO] herdr postinstall"
-# herdr 直接按 XDG 解析，配置落在 ${XDG_CONFIG_HOME}/herdr
-mkdir -p "${XDG_CONFIG_HOME}/herdr"
-f="${XDG_DATA_HOME}/zsh/site-functions/_herdr"
-herdr completion zsh > "${f}.tmp" && mv "${f}.tmp" "${f}" \
-  || { rm -f "${f}.tmp"; echo '[WARNING] writing herdr completions fail.'; }
-'''
 
 [tools."aqua:micro-editor/micro"]
 version = "2.0.15"
-postinstall = '''
-echo "[INFO] micro postinstall"
-mkdir -p "${MICRO_CONFIG_HOME:-${XDG_CONFIG_HOME}/micro}"
-'''
 
 [tools."aqua:BurntSushi/ripgrep"]
 version = "15.2.0"
-postinstall = '''
-echo "[INFO] ripgrep postinstall"
-mkdir -p "${XDG_CONFIG_HOME}/ripgrep"
-[ -f "${XDG_CONFIG_HOME}/ripgrep/ripgreprc" ] || touch "${XDG_CONFIG_HOME}/ripgrep/ripgreprc"
-f="${XDG_DATA_HOME}/zsh/site-functions/_rg"
-rg --generate complete-zsh > "${f}.tmp" && mv "${f}.tmp" "${f}" \
-  || { rm -f "${f}.tmp"; echo '[WARNING] writing rg completions fail.'; }
-'''
 
 [tools."aqua:starship/starship"]
 version = "1.26.0"
-postinstall = '''
-echo "[INFO] starship postinstall"
-mkdir -p "${XDG_CONFIG_HOME}/starship" "${XDG_CACHE_HOME}/starship"
-f="${XDG_DATA_HOME}/zsh/site-functions/_starship"
-starship completions zsh > "${f}.tmp" && mv "${f}.tmp" "${f}" \
-  || { rm -f "${f}.tmp"; echo '[WARNING] writing starship completions fail.'; }
-# init="${XDG_DATA_HOME}/zsh/init.d/starship.zsh"
-# starship init zsh > "${init}.tmp" && mv "${init}.tmp" "${init}" \
-#   || { rm -f "${init}.tmp"; echo '[WARNING] writing starship init fail.'; }
-'''
 
 [tools."aqua:tmux/tmux-builds"]
 version = "3.6a"
@@ -240,5 +143,4 @@ version = "0.12.2"
 
 [tools."aqua:tree-sitter/tree-sitter"]
 version = "0.27.0"
-# 注意：taplo / lefthook / prettier 是仅开发环境需要的工具，
-# 放在仓库根目录的 mise.toml（项目级配置）中，不随本文件部署到生产机器。
+# 注意：taplo / lefthook / prettier 是仅开发本仓库时需要的工具，放在仓库根目录的 mise.dev.toml 中。
