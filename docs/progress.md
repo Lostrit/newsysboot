@@ -4,16 +4,20 @@
 
 ## 已完成
 
-- 阶段 0：初始化 git、CLAUDE.md、docs
-- 阅读并评审 `/root/dotconfig`（见 dotconfig-review.md）
-- 调研：mise bootstrap 的能力、get-docker.sh 的镜像参数、当前主机的网络情况（research.md）
-- 提出决策建议 D-001 ~ D-005
+- 阶段 0：git、CLAUDE.md、docs
+- 评审 dotconfig（dotconfig-review.md）
+- 调研：mise bootstrap、get-docker.sh、本机网络、各云 apt / docker-ce 镜像（research R-001 ~ R-005）
+- 用户确认：D-001（mise bootstrap）、D-002（合并 dotconfig）、D-004（用户与 SSH）、D-005（只在 Linux 装 Docker）、
+  D-006（选源）、D-007（GitHub + CNB）、D-009（两种入口）
+- 用 subtree 把 dotconfig 合并到 `dotfiles/`，保留了历史（提交 `cece9fd`）
+- 设计：工具的 shell 集成与 zshrc 解耦（design-zsh-tools.md，D-010）
 
-## 进行中 / 下一步
+## 下一步
 
-- 等待用户确认 plan.md 第 4 节的问题（主要是 D-001 和 D-002）
-- 确认后进入阶段 1：在 Debian 13 容器中做 mise bootstrap PoC
+- 等待用户提供 plan.md 第 4 节的信息（仓库名称、mihomo 配置）
+- 阶段 1 PoC：需要先在本机安装 Docker 才能做容器测试
 
-## 阻塞
+## 说明
 
-- 当前主机没有安装 Docker，阶段 1 的容器测试需要先装 Docker（正好用来测试阶段 3 的 Docker 安装流程），或者换一台测试机器
+- `/root/dotconfig` 原仓库未改动；以后以本仓库的 `dotfiles/` 为准。原仓库中被 gitignore 的
+  `.docker/secrets/authorized_keys` 没有被合并进来，这是预期行为。

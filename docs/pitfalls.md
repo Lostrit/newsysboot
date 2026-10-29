@@ -26,3 +26,21 @@
 
 - **预判**：`https://<proxy>/https://<token>@github.com/...` 这种写法会把 token 交给第三方代理。
 - **解决**：本仓库和 dotconfig 如果要经代理拉取，必须是公开仓库且不含任何密钥；或者托管到国内平台（CNB / Gitee）。
+
+## P-005 sshd 配置「先出现的值生效」，cloud-init 的 drop-in 会覆盖我们的设置
+
+- **预判**：sshd 对大部分选项采用第一次读到的值；Debian / Ubuntu 的 `sshd_config` 开头就 `Include /etc/ssh/sshd_config.d/*.conf`，
+  云镜像通常带有 `50-cloud-init.conf`（里面是 `PasswordAuthentication yes`）。
+- **解决**：文件命名为 `00-bootstrap.conf`，保证排在最前面；改完用 `sshd -T | grep -Ei 'permitrootlogin|passwordauthentication'` 确认实际生效的值。
+
+## P-006 mise postinstall 依赖调用方 shell 中的 XDG 变量
+
+- **现象（代码审查发现）**：dotfiles 的 `mise/config.toml` 中，postinstall 使用了 `${XDG_DATA_HOME}`，但 mise 的 `[env]` 并没有定义它。
+  新用户第一次执行时，如果没有加载 `~/.zshenv`，路径会变成 `/zsh/site-functions/...`。
+- **解决**：见 D-010，不再在 postinstall 中生成补全文件。
+
+## P-007 用 git subtree 合并本机上属主不同的仓库
+
+- **现象**：`git subtree add ... /root/dotconfig main` 报 `Could not read from remote repository`。
+- **原因**：`/root/dotconfig` 的属主是 501，git 的 safe.directory 检查拒绝访问。只把 `/root/dotconfig` 加入 safe.directory 还不够，fetch 本地路径时检查的是 `/root/dotconfig/.git`。
+- **解决**：`git config --global --add safe.directory /root/dotconfig/.git`。

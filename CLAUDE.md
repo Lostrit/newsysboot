@@ -18,14 +18,17 @@
 - **默认国内网络**：mihomo 生效前不能假定能访问 GitHub / Docker 官网。GitHub 下载一律经由测速选出的
   `GH_PROXY` 前缀，Docker 走腾讯云镜像（内网 `mirrors.tencentyun.com`，公网 `mirrors.cloud.tencent.com`）。
 - **SteamOS**：不得执行 `steamos-readonly disable`，不得用 pacman 改根分区；系统级改动只落在 `/etc`、`/var`、`/home`。
+- **Docker 只装在 Linux 主机上**（SteamOS / macOS / Windows 不装）。
 - **容器环境**：不装 mihomo、不装 Docker，使用宿主机代理（`host.docker.internal:7890`）；必须能在 Dockerfile 里无交互运行。
 - **幂等**：所有步骤可重复执行；交互输入（用户名等）都要有环境变量 / 参数的无交互等价方式。
-- **密钥不入库**：mihomo 订阅地址、token 等通过 `[bootstrap.secrets]` 或运行时输入提供，绝不提交。
+- **SSH 加固必须防止把自己锁在外面**：确认新用户能登录之后，才能删除 root 的公钥、禁止 root 登录（D-004）。
 - 经第三方 GitHub 代理下载的脚本/二进制必须校验 sha256（或依赖 mise/aqua 的签名校验）。
 
-## 相关仓库
+## 仓库内容
 
-- `/root/dotconfig`：dotfiles（目前仅 Debian 版本），由本仓库部署到 `~/.config`。修改它之前先确认意图，它有自己的 git 历史和 lefthook 钩子。
+- `dotfiles/`：原 `/root/dotconfig`（通过 git subtree 合并，保留了历史），以 link 方式部署到 `~/.config`。
+  `/root/dotconfig` 已不再维护，不要修改它。
+- 远程仓库：GitHub（公开）与 CNB 同时推送，因此**任何明文密钥都不能提交**；机密信息用 sops + age 加密后放在 `secrets/`。
 
 ## 约定
 
