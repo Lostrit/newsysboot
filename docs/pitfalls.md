@@ -44,3 +44,13 @@
 - **现象**：`git subtree add ... /root/dotconfig main` 报 `Could not read from remote repository`。
 - **原因**：`/root/dotconfig` 的属主是 501，git 的 safe.directory 检查拒绝访问。只把 `/root/dotconfig` 加入 safe.directory 还不够，fetch 本地路径时检查的是 `/root/dotconfig/.git`。
 - **解决**：`git config --global --add safe.directory /root/dotconfig/.git`。
+
+## P-008 开发环境中执行外部下载的脚本或二进制需要用户授权
+
+- **现象**：2026-10-29，执行 `sh vendor/get-docker.sh --help` 被 Claude Code 的权限规则拦截（Code from External）。
+- **影响**：安装 mise / fnox / Docker、在本机跑 PoC 都需要执行外部代码。
+- **解决**：由用户在 Claude Code 中添加允许规则，或者用户自己执行（`! <命令>`）；不要尝试绕过这个限制。
+
+## P-009 用户给出的文件路径有笔误
+
+- 用户说的 age 密钥文件是 `/root/age_keys_sope.txt`，实际文件是 `/root/age_keys_sops.txt`。只读取了其中的公钥，私钥不能进入仓库和日志。

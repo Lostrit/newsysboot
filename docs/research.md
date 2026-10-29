@@ -86,6 +86,34 @@
 - `[bootstrap.secrets]` 只从环境变量读取值；`--prompt-secrets` 可以交互输入；官方推荐用 fnox 注入，
   其他任何能设置环境变量的方式（如 `sops exec-env`）都可以。`secret()` 原样插入，不做转义。
 
+## R-006 fnox 与 sops 的对比（2026-10-29）
+
+来源：`jdx/fnox` 仓库文档（v1.44.0，2025-10 创建，MIT 协议，约 2.3k star）；sops v3.13.3。
+
+fnox 是 mise 作者开发的机密管理工具：在 `fnox.toml` 中声明机密，每个机密的值可以来自不同的 provider
+（age 加密存放在配置文件中，或 1Password、Bitwarden、macOS 钥匙串、各家云的 KMS/Secret Manager 等）；
+用 `fnox exec -- <命令>` 把解密后的值作为环境变量交给命令。mise bootstrap 的 secrets 文档直接以 `fnox exec -- mise bootstrap` 作为示例。
+
+| | fnox（age provider） | sops + age |
+| --- | --- | --- |
+| 成熟度 | 新（1 年），迭代快 | 成熟（CNCF 项目，2015 年起） |
+| 存储方式 | 每个机密一个条目，值是 base64 密文；键名可见 | 加密整份 YAML/JSON/ENV 文件，结构和键名可见，只加密值 |
+| 交给 mise bootstrap | `fnox exec --`，一个机密对应一个环境变量，直接对上 `[bootstrap.secrets]` | `sops exec-env` 只适合扁平的键；嵌套结构要先解密成文件 |
+| 输入私钥 | `FNOX_AGE_KEY`（直接放私钥内容） | `SOPS_AGE_KEY`（同样支持私钥内容） |
+| 编辑 | `fnox set NAME`（隐藏输入）/ `--from-file`；大段 YAML 不太方便 | `sops edit` 在编辑器中编辑明文，体验最好 |
+| 分环境 | profiles（`--profile server`），可继承 | 每个环境一个文件 |
+| 以后扩展 | 可以改为从钥匙串 / 密码管理器读取私钥，不用每次输入 | 只支持 age / PGP / KMS |
+| 安装 | `mise use fnox` | `aqua:getsops/sops` |
+
+**结论**：选 fnox。和 mise bootstrap 的对接最直接（一个机密对应一个环境变量），也是 mise 官方文档推荐的方式。
+主要风险是 fnox 和 mise bootstrap 都很新、出自同一作者，风险会叠加；但两者之间的接口只是环境变量，
+换成 sops 的成本很低。PoC 中如果 fnox 有问题，就改用 sops。
+
+## R-007 mihomo 策略组的排序（2026-10-29）
+
+来源：MetaCubeX/Meta-Docs `docs/config/proxy-groups/index.md`。`include-all-proxies` 引入的节点按名称排序，文档没有说明它们与显式写在
+`proxies` 中的项（如 `DIRECT`）谁先谁后。为了保证默认选中项确定，模板里用两层策略组，不把两者混在同一组中。
+
 ## 待调研
 
 - SteamOS 上 `/etc` overlay 在系统升级后能否保留；`/usr/local` 是否只读。

@@ -11,3 +11,8 @@ miserc.local.toml
 # 测试产物
 /tmp/
 /.cache/
+
+# 机密信息（私钥绝不入库）
+*age_key*
+*.agekey
+AGE-SECRET-KEY*

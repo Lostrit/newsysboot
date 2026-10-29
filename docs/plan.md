@@ -25,7 +25,7 @@ curl | sh → │ 1 检测环境：OS / 发行版 / 容器 / 现有代理       
             │ 4 如果是 root：创建用户、迁移 SSH、加固 → sudo -iu <user> 重新执行（D-004）           │
             │ 5 选择拉取来源 GitHub(加速) / CNB → clone 到 $XDG_DATA_HOME/bootstrap（D-007）        │
             │ 6 经 GH_PROXY 下载锁定版本的 mise 并校验 sha256 → ~/.local/bin/mise                  │
-            │ 7 输入口令 → 解出 age 私钥 → sops exec-env → mise bootstrap（分两次执行）            │
+            │ 7 输入 age 私钥 → FNOX_AGE_KEY → fnox exec -- mise bootstrap（分两次执行）           │
             └───────────────────────────────────────────────────────────────────────────────────┘
                                    │
             ┌──────── stage-1：mise bootstrap（本仓库的 mise.toml + mise.<模块>.toml） ────────┐
@@ -70,7 +70,7 @@ mise.toml                       # 共用部分（含 dotfiles 模块，D-009）
 mise.debian.toml  mise.steamos.toml  mise.macos.toml  mise.container.toml
 mise.mihomo.toml  mise.docker.toml
 files/                          # zshenv、mihomo/config.yaml.tera、systemd unit、daemon.json …
-secrets/                        # mihomo.sops.yaml、age-identity.age（口令加密）、.sops.yaml
+fnox.toml                       # 机密信息（age 加密后的密文，D-008）
 vendor/get-docker.sh            # 锁定 SCRIPT_COMMIT_SHA + sha256
 dotfiles/                       # 原 dotconfig（subtree，D-002）
 tests/                          # 容器中的回归测试
@@ -86,7 +86,7 @@ docs/
 - [ ] 最小的 `mise.toml`：apt 包、directories、`~/.zshenv`、login_shell、dotfiles link、tools
 - [ ] 验证 research R-001 中尚未解决的问题（同一次运行中链接过来的全局 config 的 tools 是否会被安装）
 - [ ] `MISE_URL_REPLACEMENTS` + GH_PROXY 下 aqua 的安装和签名校验
-- [ ] `sops exec-env` + `[bootstrap.secrets]` + `template = true` 渲染 mihomo 配置（使用测试密钥）
+- [ ] `fnox exec` + `[bootstrap.secrets]` + `template = true` 渲染 mihomo 配置（模板已用 `mihomo -t` 验证过）
 - 结果写入 research / decisions；不通过的话重新讨论 D-001
 
 ### 阶段 2：stage-0 + 容器基线
@@ -99,7 +99,7 @@ docs/
 
 ### 阶段 3：Linux 主机（需要 systemd）
 - [ ] root → 普通用户：密码、免密 sudo、SSH 公钥迁移、确认后再加固 sshd（D-004）
-- [ ] mihomo：二进制、Tera 模板、sops 机密、unit、geodata 镜像；服务器上只监听本机和 docker 网桥
+- [ ] mihomo：二进制、Tera 模板（✅ 已生成）、fnox 机密、unit、geodata 镜像；服务器上只监听本机和 docker 网桥
 - [ ] Docker：vendor 脚本 + DOWNLOAD_URL、daemon.json、dockerd 代理、加入 docker 组
 - [ ] 两次执行与代理切换
 - [ ] 测试：systemd 容器 + 一次性云服务器（腾讯云 / 阿里云 / 华为云各测一次内网源探测）
@@ -121,7 +121,6 @@ docs/
 
 ## 4. 需要用户提供 / 确认
 
-1. GitHub 和 CNB 上的仓库名称（用于 D-007 的地址和 git remote）。
-2. 各环境当前的 mihomo 配置（脱敏后的结构即可），用来划分公共模板和机密部分（D-008）。
-3. D-008：用「口令加密的 age 私钥」作为部署时输入的密钥，是否可以？还是希望直接粘贴 age 私钥？
-4. D-010：zsh 的清单 + 缓存方案是否接受？
+1. 授权在本机执行外部程序（pitfalls P-008）：安装 mise / fnox，执行 `vendor/get-docker.sh` 安装 Docker。
+2. 远程仓库创建后告知地址（D-011，不影响本地开发）。
+3. 各环境的 mihomo 配置以后再整理；目前的模板只覆盖「服务器」场景。

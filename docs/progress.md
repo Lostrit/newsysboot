@@ -12,10 +12,13 @@
 - 用 subtree 把 dotconfig 合并到 `dotfiles/`，保留了历史（提交 `cece9fd`）
 - 设计：工具的 shell 集成与 zshrc 解耦（design-zsh-tools.md，D-010）
 
+- `vendor/get-docker.sh`（锁定 SCRIPT_COMMIT_SHA `ada7a56`，sha256 `7f966774…`），**尚未执行**
+- mihomo 模板 `files/mihomo/config.yaml.tera`（由本机配置去掉机密后生成，已用 `mihomo -t` 验证）
+- 机密方案选定 fnox + age（D-008、research R-006）；zsh 清单 + 缓存方案已被接受（D-010）
+
 ## 下一步
 
-- 等待用户提供 plan.md 第 4 节的信息（仓库名称、mihomo 配置）
-- 阶段 1 PoC：需要先在本机安装 Docker 才能做容器测试
+- 等待用户授权执行外部程序（P-008），然后：安装 mise → fnox 加密 `mihomo_proxies` → 安装 Docker → 阶段 1 PoC
 
 ## 说明
 

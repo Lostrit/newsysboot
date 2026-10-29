@@ -1,0 +1,292 @@
+# mihomo 配置模板（mise bootstrap 以 Tera 渲染；由 files/mihomo/config.yaml.tera 生成，勿直接编辑 /etc/mihomo/config.yaml）
+# 节点（proxies）为机密，来自 secret "mihomo_proxies"；监听相关设置来自各模块的 [vars]
+# 分流规则移植自 ClashConnectRules/Clash (rules.ini)，规则集统一走 jsDelivr
+
+mixed-port: {{ vars.mihomo_mixed_port }}
+# 服务器：允许非本机连接，但只放行本机和 Docker 网段（其余来源直接断开）；桌面环境通常 allow-lan=false
+allow-lan: {{ vars.mihomo_allow_lan }}
+bind-address: "{{ vars.mihomo_bind_address }}"
+lan-allowed-ips:
+{%- for cidr in vars.mihomo_lan_allowed_ips %}
+  - {{ cidr }}
+{%- endfor %}
+mode: rule
+log-level: info
+ipv6: false
+unified-delay: true
+tcp-concurrent: true
+
+geodata-mode: false
+
+# ============ 节点（机密，fnox 解密后整体注入）============
+{{ secret(name="mihomo_proxies") }}
+
+# ============ 策略组 ============
+#   节点  —— 全部出站代理（按名称排序）
+#   PROXY —— 需要代理的流量；可切到 DIRECT 临时全部直连
+#   AD    —— 广告；服务器上一般用不到，默认 DIRECT（不拦截），想拦截改成 REJECT 放第一位
+proxy-groups:
+  # 「节点」自动引入全部出站代理，节点增减无需改模板
+  - name: 节点
+    type: select
+    include-all-proxies: true
+  - name: PROXY
+    type: select
+    proxies: [节点, DIRECT]
+  - name: AD
+    type: select
+    proxies: [DIRECT, REJECT]
+
+# ============ 规则集 ============
+# 公共参数：纯文本 classical 格式，每天更新一次
+x-classical: &classical
+  type: http
+  behavior: classical
+  format: text
+  interval: 86400
+
+rule-providers:
+  cn-ip:
+    type: http
+    behavior: ipcidr
+    format: mrs
+    interval: 86400
+    path: ./rules/geoip-cn.mrs
+    url: "https://cdn.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@meta/geo/geoip/cn.mrs"
+  # 基础
+  LocalAreaNetwork:
+    {
+      <<: *classical,
+      url: "https://cdn.jsdelivr.net/gh/ACL4SSR/ACL4SSR@master/Clash/LocalAreaNetwork.list",
+    }
+  UnBan:
+    {
+      <<: *classical,
+      url: "https://cdn.jsdelivr.net/gh/ACL4SSR/ACL4SSR@master/Clash/UnBan.list",
+    }
+  # 去广告
+  AdvertisingLite:
+    {
+      <<: *classical,
+      url: "https://cdn.jsdelivr.net/gh/blackmatrix7/ios_rule_script@master/rule/Clash/AdvertisingLite/AdvertisingLite.list",
+    }
+  # 原 AdGuardDNSFilter 路径已不存在，上游已改名为 AdGuardSDNSFilter；这里用纯域名版，体积更小、匹配更快
+  AdGuardSDNSFilter:
+    type: http
+    behavior: domain
+    format: text
+    interval: 86400
+    url: "https://cdn.jsdelivr.net/gh/blackmatrix7/ios_rule_script@master/rule/Clash/AdGuardSDNSFilter/AdGuardSDNSFilter_Domain_For_Clash.txt"
+  # 国内站点
+  GoogleCN:
+    {
+      <<: *classical,
+      url: "https://cdn.jsdelivr.net/gh/ACL4SSR/ACL4SSR@master/Clash/GoogleCN.list",
+    }
+  SteamCN:
+    {
+      <<: *classical,
+      url: "https://cdn.jsdelivr.net/gh/ACL4SSR/ACL4SSR@master/Clash/Ruleset/SteamCN.list",
+    }
+  ChinaDomain:
+    {
+      <<: *classical,
+      url: "https://cdn.jsdelivr.net/gh/ACL4SSR/ACL4SSR@master/Clash/ChinaDomain.list",
+    }
+  ChinaCompanyIp:
+    {
+      <<: *classical,
+      url: "https://cdn.jsdelivr.net/gh/ACL4SSR/ACL4SSR@master/Clash/ChinaCompanyIp.list",
+    }
+  Download:
+    {
+      <<: *classical,
+      url: "https://cdn.jsdelivr.net/gh/ACL4SSR/ACL4SSR@master/Clash/Download.list",
+    }
+  # 原 DivineEngine/Profiles 仓库已删除，替换为 blackmatrix7 的同类规则
+  China:
+    type: http
+    behavior: domain
+    format: text
+    interval: 86400
+    url: "https://cdn.jsdelivr.net/gh/blackmatrix7/ios_rule_script@master/rule/Clash/China/China_Domain_For_Clash.txt"
+  ChinaIPs:
+    type: http
+    behavior: ipcidr
+    format: text
+    interval: 86400
+    url: "https://cdn.jsdelivr.net/gh/blackmatrix7/ios_rule_script@master/rule/Clash/ChinaIPs/ChinaIPs_IP.txt"
+  # AI
+  OpenAI:
+    {
+      <<: *classical,
+      url: "https://cdn.jsdelivr.net/gh/blackmatrix7/ios_rule_script@master/rule/Clash/OpenAI/OpenAI.list",
+    }
+  Gemini:
+    {
+      <<: *classical,
+      url: "https://cdn.jsdelivr.net/gh/blackmatrix7/ios_rule_script@master/rule/Clash/Gemini/Gemini.list",
+    }
+  Claude:
+    {
+      <<: *classical,
+      url: "https://cdn.jsdelivr.net/gh/blackmatrix7/ios_rule_script@master/rule/Clash/Claude/Claude.list",
+    }
+  Anthropic:
+    {
+      <<: *classical,
+      url: "https://cdn.jsdelivr.net/gh/blackmatrix7/ios_rule_script@master/rule/Clash/Anthropic/Anthropic.list",
+    }
+  Copilot:
+    {
+      <<: *classical,
+      url: "https://cdn.jsdelivr.net/gh/blackmatrix7/ios_rule_script@master/rule/Clash/Copilot/Copilot.list",
+    }
+  # 服务
+  YouTube:
+    {
+      <<: *classical,
+      url: "https://cdn.jsdelivr.net/gh/blackmatrix7/ios_rule_script@master/rule/Clash/YouTube/YouTube.list",
+    }
+  Microsoft:
+    {
+      <<: *classical,
+      url: "https://cdn.jsdelivr.net/gh/blackmatrix7/ios_rule_script@master/rule/Clash/Microsoft/Microsoft.list",
+    }
+  OneDrive:
+    {
+      <<: *classical,
+      url: "https://cdn.jsdelivr.net/gh/ACL4SSR/ACL4SSR@master/Clash/OneDrive.list",
+    }
+  Google:
+    {
+      <<: *classical,
+      url: "https://cdn.jsdelivr.net/gh/blackmatrix7/ios_rule_script@master/rule/Clash/Google/Google.list",
+    }
+  GoogleFCM:
+    {
+      <<: *classical,
+      url: "https://cdn.jsdelivr.net/gh/ACL4SSR/ACL4SSR@master/Clash/Ruleset/GoogleFCM.list",
+    }
+  Apple:
+    {
+      <<: *classical,
+      url: "https://cdn.jsdelivr.net/gh/blackmatrix7/ios_rule_script@master/rule/Clash/Apple/Apple.list",
+    }
+  # 国外媒体
+  Netflix:
+    {
+      <<: *classical,
+      url: "https://cdn.jsdelivr.net/gh/blackmatrix7/ios_rule_script@master/rule/Clash/Netflix/Netflix.list",
+    }
+  TikTok:
+    {
+      <<: *classical,
+      url: "https://cdn.jsdelivr.net/gh/blackmatrix7/ios_rule_script@master/rule/Clash/TikTok/TikTok.list",
+    }
+  Instagram:
+    {
+      <<: *classical,
+      url: "https://cdn.jsdelivr.net/gh/blackmatrix7/ios_rule_script@master/rule/Clash/Instagram/Instagram.list",
+    }
+  Threads:
+    {
+      <<: *classical,
+      url: "https://cdn.jsdelivr.net/gh/blackmatrix7/ios_rule_script@master/rule/Clash/Threads/Threads.list",
+    }
+  ProxyMedia:
+    {
+      <<: *classical,
+      url: "https://cdn.jsdelivr.net/gh/ACL4SSR/ACL4SSR@master/Clash/ProxyMedia.list",
+    }
+  # 国内媒体
+  BiliBili:
+    {
+      <<: *classical,
+      url: "https://cdn.jsdelivr.net/gh/blackmatrix7/ios_rule_script@master/rule/Clash/BiliBili/BiliBili.list",
+    }
+  ChinaMedia:
+    {
+      <<: *classical,
+      url: "https://cdn.jsdelivr.net/gh/ACL4SSR/ACL4SSR@master/Clash/ChinaMedia.list",
+    }
+  NetEaseMusic:
+    {
+      <<: *classical,
+      url: "https://cdn.jsdelivr.net/gh/ACL4SSR/ACL4SSR@master/Clash/Ruleset/NetEaseMusic.list",
+    }
+  # 其他
+  Telegram:
+    {
+      <<: *classical,
+      url: "https://cdn.jsdelivr.net/gh/blackmatrix7/ios_rule_script@master/rule/Clash/Telegram/Telegram.list",
+    }
+  WeChat:
+    {
+      <<: *classical,
+      url: "https://cdn.jsdelivr.net/gh/blackmatrix7/ios_rule_script@master/rule/Clash/WeChat/WeChat.list",
+    }
+  Speedtest:
+    {
+      <<: *classical,
+      url: "https://cdn.jsdelivr.net/gh/blackmatrix7/ios_rule_script@master/rule/Clash/Speedtest/Speedtest.list",
+    }
+  ProxyGFWlist:
+    {
+      <<: *classical,
+      url: "https://cdn.jsdelivr.net/gh/ACL4SSR/ACL4SSR@master/Clash/ProxyGFWlist.list",
+    }
+
+# ============ 规则（顺序与 rules.ini 一致）============
+rules:
+  # 腾讯云内网 / 镜像源：放在最前面，不受后面任何规则（包括广告规则）影响
+  - DOMAIN-SUFFIX,tencentyun.com,DIRECT
+  - DOMAIN,mirrors.tencent.com,DIRECT
+  # github 加速源
+  - DOMAIN-SUFFIX,gh-proxy.org,DIRECT
+  - DOMAIN-SUFFIX,gh-proxy.com,DIRECT
+  - DOMAIN,gh.qninq.cn,DIRECT
+  - DOMAIN,github.cnxiaobai.com,DIRECT
+  - DOMAIN-SUFFIX,tvv.tw,DIRECT
+
+  - IP-CIDR,169.254.0.0/16,DIRECT,no-resolve # 腾讯云元数据、内网 DNS 等链路本地地址
+  - RULE-SET,LocalAreaNetwork,DIRECT
+  - RULE-SET,UnBan,DIRECT
+  - RULE-SET,AdvertisingLite,AD
+  - RULE-SET,AdGuardSDNSFilter,AD
+  # 国内
+  - RULE-SET,GoogleCN,DIRECT
+  - RULE-SET,SteamCN,DIRECT
+  - RULE-SET,ChinaDomain,DIRECT
+  - RULE-SET,ChinaCompanyIp,DIRECT
+  - RULE-SET,Download,DIRECT
+  - RULE-SET,China,DIRECT
+  - RULE-SET,ChinaIPs,DIRECT,no-resolve
+  # 海外服务
+  - RULE-SET,OpenAI,PROXY
+  - RULE-SET,Gemini,PROXY
+  - RULE-SET,Claude,PROXY
+  - RULE-SET,Anthropic,PROXY
+  - RULE-SET,Copilot,PROXY
+  - RULE-SET,YouTube,PROXY
+  - RULE-SET,Microsoft,DIRECT
+  - RULE-SET,OneDrive,DIRECT
+  - RULE-SET,Google,PROXY
+  - RULE-SET,GoogleFCM,PROXY
+  - RULE-SET,Apple,DIRECT
+  - RULE-SET,Netflix,PROXY
+  - RULE-SET,TikTok,PROXY
+  - RULE-SET,Instagram,PROXY
+  - RULE-SET,Threads,PROXY
+  - RULE-SET,ProxyMedia,PROXY
+  # 国内媒体
+  - RULE-SET,BiliBili,DIRECT
+  - RULE-SET,ChinaMedia,DIRECT
+  - RULE-SET,NetEaseMusic,DIRECT
+  # 其他
+  - RULE-SET,Telegram,PROXY
+  - RULE-SET,WeChat,DIRECT
+  - RULE-SET,Speedtest,PROXY
+  - RULE-SET,ProxyGFWlist,PROXY
+  - RULE-SET,cn-ip,DIRECT
+  - MATCH,PROXY

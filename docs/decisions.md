@@ -111,30 +111,23 @@ GitHub 加速代理的测速逻辑相同（参见 research R-002），并额外�
 
 ---
 
-## D-008 mihomo 配置：sops + age 加密，Tera 模板分环境 🟡
+## D-008 机密信息：fnox + age（备选 sops），mihomo 用 Tera 模板分环境 🟡
 
-**日期**：2026-10-29
+**日期**：2026-10-29（用户确认：部署时直接输入 age 私钥；工具选择采纳建议后改为 ✅）
 
 **决策**：
 
-- 机密信息（订阅地址、手写节点、`secret`、认证信息）放在 `secrets/mihomo.sops.yaml`，用 sops + age 加密。
-  文件中只有值被加密，键名保留，diff 能看出改了哪一项。
-- 非机密的公共部分（DNS、规则、规则集、监听）写成一个 Tera 模板 `files/mihomo/config.yaml.tera`，
-  用 `{% if %}` 根据模块的 `[vars]`（`mihomo_profile = "server" | "desktop" | "steamos"`、是否开 TUN、监听地址等）区分环境。
-  由 `[bootstrap.files."/etc/mihomo/config.yaml"]`（`template = true`、`mode = "0600"`）渲染，机密信息通过 `secret()` 读取。
-- **解密密钥的输入**：age 私钥本身也用口令加密后放进仓库（`secrets/age-identity.age`，用 `age -p` 生成）。
-  部署时只需输入一个能记住的口令：`age -d` 解出私钥到临时文件（0600）→
-  `SOPS_AGE_KEY_FILE=<临时文件> sops exec-env secrets/mihomo.sops.yaml 'mise bootstrap …'` → 删除临时文件。
-  默认不在机器上保存私钥，以后重新部署时再输入一次口令。
-- sops / age 本身由 mise 安装（`aqua:getsops/sops`、`aqua:FiloSottile/age`，走 GH_PROXY），在 mihomo 之前安装。
+- 用 fnox 的 age provider，在仓库根目录的 `fnox.toml` 中保存密文（每个机密一个条目，可以安全提交）；
+  recipient 使用用户提供的公钥 `age17ft09zwqg3kd3yvclzp6l3wejln9c8lzc5t68g39ydgv8a79tfdsyshnxq`。
+- 部署时 stage-0 从 `/dev/tty` 读取 age 私钥（不回显），以 `FNOX_AGE_KEY` 传给 `fnox exec -- mise bootstrap …`，
+  不写入磁盘；无人值守时直接设置 `FNOX_AGE_KEY` 环境变量。
+- mise 一侧只声明 `[bootstrap.secrets] mihomo_proxies = "MIHOMO_PROXIES"`，模板中用 `{{ secret(name="mihomo_proxies") }}` 读取。
+  **加密工具对 mise 来说只是「提供环境变量」**，以后换成 sops，只需要改 stage-0 里的一行命令。
+- mihomo 模板 `files/mihomo/config.yaml.tera`：由当前主机的配置生成。机密的 `proxies:` 段整体作为一个机密，
+  放在模板第 0 列插入（避免多行内容的缩进问题）；监听相关设置改为 `[vars]`；策略组改为
+  「节点（`include-all-proxies`）→ PROXY [节点, DIRECT]」，模板不再依赖具体节点名。已用 `mihomo -t` 验证渲染结果。
 
-**待验证**：`sops exec-env` 对嵌套 YAML 的处理（必要时 sops 文件只用扁平的键）；`secret()` 原样插入多行内容时
-YAML 缩进会出问题 → 多行的节点列表改为整体解密成单独的 proxy-provider 文件。
-
-**备选**：fnox（mise 作者开发，`fnox exec -- mise bootstrap`，支持 age），和 mise 搭配最自然，但同样很新，作为 PoC 的对照方案。
-dotenv 加密（dotenvx）不适合结构化的 YAML 配置。
-
-**需要用户提供**：各环境当前的 mihomo 配置（脱敏后的结构），才能确定公共部分和差异部分。
+**和 sops 的对比**：见 research R-006。
 
 ---
 
@@ -151,7 +144,7 @@ dotenv 加密（dotenvx）不适合结构化的 YAML 配置。
 
 ---
 
-## D-010 工具的 shell 集成：目录交给 bootstrap，补全 / init 由 zsh 按清单缓存生成 🟡
+## D-010 工具的 shell 集成：目录交给 bootstrap，补全 / init 由 zsh 按清单缓存生成 ✅
 
 详见 [design-zsh-tools.md](design-zsh-tools.md)。要点：
 
@@ -159,3 +152,13 @@ dotenv 加密（dotenvx）不适合结构化的 YAML 配置。
 - 目录由 `[bootstrap.directories]` 声明。
 - `.zshrc` 中的 `(( $+commands[x] )) && …` 改为一份 `tools.zsh` 清单；补全和 init 脚本在启动时生成并缓存，
   以工具的真实路径作为缓存键，工具升级后自动重新生成。
+
+---
+
+## D-011 本地开发不依赖远程仓库 ✅
+
+**日期**：2026-10-29
+
+仓库名称只在两个地方用到：`curl | sh` 一行命令中的下载地址，以及 stage-0 中 `git clone` 的地址。
+这两处都做成变量（`BOOTSTRAP_REPO_GITHUB`、`BOOTSTRAP_REPO_CNB`，附带默认值）；本地测试时用 `BOOTSTRAP_REPO=file:///…`
+或把工作区挂载进容器。远程仓库创建后再填默认值、配置 git remote。

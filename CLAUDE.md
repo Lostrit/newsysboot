@@ -28,7 +28,7 @@
 
 - `dotfiles/`：原 `/root/dotconfig`（通过 git subtree 合并，保留了历史），以 link 方式部署到 `~/.config`。
   `/root/dotconfig` 已不再维护，不要修改它。
-- 远程仓库：GitHub（公开）与 CNB 同时推送，因此**任何明文密钥都不能提交**；机密信息用 sops + age 加密后放在 `secrets/`。
+- 远程仓库：GitHub（公开）与 CNB 同时推送，因此**任何明文密钥都不能提交**；机密信息用 fnox（age）加密后放在 `fnox.toml`。age 私钥（如 `/root/age_keys_sops.txt`）绝不能读出、提交或写进日志，只能使用其中的公钥。
 
 ## 约定
 
