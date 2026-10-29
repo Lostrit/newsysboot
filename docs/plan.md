@@ -24,7 +24,7 @@ curl | sh → │ 1 检测环境：OS / 发行版 / 容器 / 现有代理       
             │ 3 换源，apt update，安装 curl ca-certificates git sudo                              │
             │ 4 如果是 root：创建用户、迁移 SSH、加固 → sudo -iu <user> 重新执行（D-004）           │
             │ 5 选择拉取来源 GitHub(加速) / CNB → clone 到 $XDG_DATA_HOME/bootstrap（D-007）        │
-            │ 6 经 GH_PROXY 下载锁定版本的 mise 并校验 sha256 → ~/.local/bin/mise                  │
+            │ 6 用 vendor/mise-install.sh 安装锁定版本的 mise（只走 CDN，D-012）                   │
             │ 7 输入 age 私钥 → FNOX_AGE_KEY → fnox exec -- mise bootstrap（分两次执行）           │
             └───────────────────────────────────────────────────────────────────────────────────┘
                                    │
@@ -90,9 +90,10 @@ docs/
 - 结果写入 research / decisions；不通过的话重新讨论 D-001
 
 ### 阶段 2：stage-0 + 容器基线
-- [ ] `lib/detect.sh`、`lib/mirrors.sh`（内网探测 → 公网测速 → 缓存；GitHub 代理测速 + sha256 校验）
+- [x] `lib/detect.sh`（含容器规则）
+- [ ] `lib/mirrors.sh`（内网探测 → 公网测速 → 缓存；GitHub 代理测速 + sha256 校验）
 - [ ] apt 换源（deb822 / sources.list，先备份）
-- [ ] 安装 mise（锁版本、校验）
+- [ ] 安装 mise（`vendor/mise-install.sh` + `MISE_VERSION`）
 - [ ] 拉取来源选择（GitHub / CNB）
 - [ ] container 模块 + dotfiles 模块；`bin/apply`
 - [ ] `tests/`：在 `debian:12`、`debian:13`、`ubuntu:22.04`、`ubuntu:24.04` 中无交互执行两遍，第二遍应该没有任何变更
@@ -100,7 +101,7 @@ docs/
 ### 阶段 3：Linux 主机（需要 systemd）
 - [ ] root → 普通用户：密码、免密 sudo、SSH 公钥迁移、确认后再加固 sshd（D-004）
 - [ ] mihomo：二进制、Tera 模板（✅ 已生成）、fnox 机密、unit、geodata 镜像；服务器上只监听本机和 docker 网桥
-- [ ] Docker：vendor 脚本 + DOWNLOAD_URL、daemon.json、dockerd 代理、加入 docker 组
+- [ ] Docker：vendor 脚本 + DOWNLOAD_URL、daemon.json（Docker Hub 镜像，模板草稿 ✅）、dockerd 代理、加入 docker 组
 - [ ] 两次执行与代理切换
 - [ ] 测试：systemd 容器 + 一次性云服务器（腾讯云 / 阿里云 / 华为云各测一次内网源探测）
 
@@ -121,6 +122,5 @@ docs/
 
 ## 4. 需要用户提供 / 确认
 
-1. 授权在本机执行外部程序（pitfalls P-008）：安装 mise / fnox，执行 `vendor/get-docker.sh` 安装 Docker。
-2. 远程仓库创建后告知地址（D-011，不影响本地开发）。
-3. 各环境的 mihomo 配置以后再整理；目前的模板只覆盖「服务器」场景。
+1. 远程仓库创建后告知地址（D-011，不影响本地开发）。
+2. 各环境的 mihomo 配置以后再整理；目前的模板只覆盖「服务器」场景。

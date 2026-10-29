@@ -1,0 +1,11 @@
+# fnox.toml — 机密信息（age 加密后的密文，可以安全提交；D-008）
+#
+# 解密：部署时把 age 私钥放进 FNOX_AGE_KEY 环境变量，用 `fnox exec -- <命令>` 注入
+# 新增 / 修改：`fnox set <KEY> --from-file <文件>`，或从管道读入
+
+[providers.age]
+type = "age"
+recipients = ["age17ft09zwqg3kd3yvclzp6l3wejln9c8lzc5t68g39ydgv8a79tfdsyshnxq"]
+
+[secrets]
+MIHOMO_PROXIES= { provider = "age", value = "YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSBzVFA0S3dZRE8wVVBLanBYcDdFMVNUS0ZZamJBWWJVbUlPY25RbDlpWXh3CmU4VW5SVk9CSTZ3TEZiaDlJWjZwVERLSEtFTUUyMVNvYllRQ1IyOStUaWcKLT4gMFAuLS1ncmVhc2UgNFMgVC1CYVxRLiAycVY4SiEKN0thaEVTdklUZllRZU9HbUxpKzhacTBhUUd5NzRaUjJlY0I1Z3p6cnI1UjJoTllKek5oZ1oySEZwQ252OEhvYQo3MFRuWFVoQThQcVdGT0FQVVR6c3hCcWd1eUYyZzVoNjRIdzdvRk82YkVTZjdjY0pXY1IyOCtXRmJoM3JpaG5PCnBBCi0tLSBZSGFlZG92QWlma2JhbFN6S0wvbHNJbTVyeXE2V1JmY2pYZnJjQlg3M2NFCnsGbJGlAxKBiwgS1ym+FIN0V+Vf6VTTfkljUsoUU65iwEhwZw/RnqKzVXC56YWgv1T3kUj1SSjiUAAroHIoKHhEPewRxPUIIDfTETPbOBEECjN3l2lRV+MH6tilNy8IbHphZTEBRjUJbCH0Ywzr80GFeZbPsyAevIJBjtjreHzBshZLJfjnE/VA6OalJiGfVzDx/ansNrA6BSuwOk8Pe6tQMHAyhR7xm6ZUz3I/GHCuOaMTdfKVg37S8om+irfbNuUZoqCe1YhoK/KK4QHFV6mKgFpCJoeInTWUF5aLUg9p7cplVi6Sk+Ldj/YfbwekufWeTKsYblye4UuuzzHWEbvkh3pwvTaKPInL7bndk+zUXG2256zzaGPEXSDZJADcwiHcYktNZ4Rf493eVnBKcT7oJK5q3NzU6ZryzwnK3gU2/uIxD/rvUeMFInVRJN9/ES1GtmxfVw0e5hodjFMEWEyD3KjUzAntUNoZdH7FWEkBPe7mpSXH07SWvv7Uu10TaWYVrdjx31p5AZFgz6u3JkePc2Nkm30iGgy/RSLcyQFSg1Zy7w==", description = "mihomo 节点（完整的 proxies: 段，插入模板第 0 列）" }

@@ -69,15 +69,22 @@ SteamOS 不能声明 `pacman:` 包。
 
 ---
 
-## D-005 Docker：仅 Linux 主机，使用锁定版本的 get-docker.sh + `DOWNLOAD_URL` ✅
+## D-005 Docker：仅 Linux 主机（非容器），get-docker.sh + 镜像源 + Docker Hub 镜像 ✅
 
-**日期**：2026-10-29（用户确认：SteamOS / macOS / Windows 暂时不装 Docker）
+**日期**：2026-10-29（用户确认：SteamOS / macOS / Windows 不装；容器中不装，不做 Docker in Docker）
 
-- 只在 Debian / Ubuntu 主机（本地或远程，非容器）安装。
-- 把 `get.docker.com` 的脚本按 `SCRIPT_COMMIT_SHA` 锁定后放进 `vendor/`，同时记录 sha256；
-  执行时设置 `DOWNLOAD_URL=<D-006 选出的 docker-ce 源>`。已安装时跳过。
-- 把普通用户加入 `docker` 组用 `usermod -aG`（追加，不覆盖其他附加组）。
-- `daemon.json`（镜像加速）和 dockerd 的代理 drop-in 用 `[bootstrap.files]` 管理，通过 `notify` 重启 docker。
+- **何时安装**：只在 Debian / Ubuntu **主机**上安装。`lib/detect.sh` 检测到容器（`/.dockerenv`、`/run/.containerenv`、
+  `systemd-detect-virt -c`、cgroup）时，模块中不包含 `docker` 和 `mihomo`。已在 debian:13 / ubuntu:24.04 容器中验证。
+- **安装**：`vendor/get-docker.sh`（锁定 SCRIPT_COMMIT_SHA，校验 sha256），执行时设置 `DOWNLOAD_URL=<D-006 选出的 docker-ce 源>`。
+  已安装时跳过。用户已在本机用 `DOWNLOAD_URL=https://mirrors.tencentyun.com/docker-ce` 安装成功（Docker 29.9.2）。
+- **Docker Hub 镜像加速**：`[bootstrap.files."/etc/docker/daemon.json"]` 由 `files/docker/daemon.json.tera` 渲染，`notify = ["docker"]`。
+  镜像地址 `vars.docker_registry_mirrors` 的选择方式：
+  1. 内网：腾讯云 `https://mirror.ccs.tencentyun.com`（探测 `/v2/` 返回 200 即可用）；
+  2. 阿里云、华为云的镜像加速器地址是每个账号专属的，无法自动探测 → 通过 `BOOTSTRAP_DOCKER_REGISTRY_MIRRORS` 手动指定；
+  3. 都没有时，对公网第三方镜像测速（research R-009），只作为辅助手段，不保证长期可用。
+- **回源兜底**：启用 mihomo 模块时，额外写入 `/etc/systemd/system/docker.service.d/http-proxy.conf`
+  （`files/docker/http-proxy.conf.tera`），镜像不可用时 dockerd 经本机 mihomo 访问 Docker Hub；镜像域名加入 `NO_PROXY`。
+- **docker 组**：用 `usermod -aG docker <user>` 追加，不覆盖其他附加组。
 
 ---
 
@@ -111,9 +118,9 @@ GitHub 加速代理的测速逻辑相同（参见 research R-002），并额外�
 
 ---
 
-## D-008 机密信息：fnox + age（备选 sops），mihomo 用 Tera 模板分环境 🟡
+## D-008 机密信息：fnox + age（备选 sops），mihomo 用 Tera 模板分环境 ✅
 
-**日期**：2026-10-29（用户确认：部署时直接输入 age 私钥；工具选择采纳建议后改为 ✅）
+**日期**：2026-10-29（用户确认：部署时直接输入 age 私钥；fnox 已实测可以加密和解密）
 
 **决策**：
 
@@ -162,3 +169,27 @@ GitHub 加速代理的测速逻辑相同（参见 research R-002），并额外�
 仓库名称只在两个地方用到：`curl | sh` 一行命令中的下载地址，以及 stage-0 中 `git clone` 的地址。
 这两处都做成变量（`BOOTSTRAP_REPO_GITHUB`、`BOOTSTRAP_REPO_CNB`，附带默认值）；本地测试时用 `BOOTSTRAP_REPO=file:///…`
 或把工作区挂载进容器。远程仓库创建后再填默认值、配置 git remote。
+
+---
+
+## D-012 用锁定版本的 mise.run 安装脚本安装 mise ✅
+
+**日期**：2026-10-29
+
+**决策**：把 `https://mise.run` 的脚本放进 `vendor/mise-install.sh`（记录 sha256），执行时设置
+`MISE_VERSION=<脚本内置的版本>`（当前为 2026.10.22）。
+
+**原因**（research R-008）：脚本从 CDN `mise.jdx.dev` 下载安装包，但**只有脚本内置的那个版本使用内嵌的校验值**；
+指定其他版本时，校验值要从 GitHub Releases 下载，在国内可能失败。把脚本锁定后，版本和校验值都固定下来，
+整个安装过程都不需要访问 GitHub。升级 mise = 更新 vendor 中的脚本 + 修改版本号，并在容器中回归测试。
+
+已经装好 mise 的机器（例如当前主机上的 2026.10.21）不受影响；stage-0 只在 `mise` 不存在，或版本低于要求时才安装。
+
+---
+
+## D-013 仓库根目录 `mise.toml` 中固定 fnox / age 的版本 ✅
+
+**日期**：2026-10-29
+
+`fnox = "1.43.0"`、`age = "1.3.2"`。fnox 部署时就需要；age CLI 只用来生成和查看密钥。
+mise 默认不选择刚发布不久的版本（1.44.0 因此被跳过），这正符合「锁定版本」的原则。

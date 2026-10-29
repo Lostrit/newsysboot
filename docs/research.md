@@ -114,6 +114,32 @@ fnox 是 mise 作者开发的机密管理工具：在 `fnox.toml` 中声明机�
 来源：MetaCubeX/Meta-Docs `docs/config/proxy-groups/index.md`。`include-all-proxies` 引入的节点按名称排序，文档没有说明它们与显式写在
 `proxies` 中的项（如 `DIRECT`）谁先谁后。为了保证默认选中项确定，模板里用两层策略组，不把两者混在同一组中。
 
+## R-008 mise.run 安装脚本（2026-10-29）
+
+来源：`https://mise.run` 当前内容（内置版本 v2026.10.22，482 行，已放入 `vendor/mise-install.sh`）。
+
+- 支持固定版本：`MISE_VERSION=2026.10.22`。不指定时，从 `https://mise.jdx.dev/releases.tsv` 中选择发布满
+  `MISE_MINIMUM_RELEASE_AGE`（默认 24h）的最新版本；已安装的版本更新时保留现有的（除非指定了 `MISE_VERSION`）。
+- 下载顺序：先 CDN `https://mise.jdx.dev/v<版本>/<文件>`，失败时退回 GitHub Releases；`MISE_INSTALL_FROM_GITHUB=1` 强制使用 GitHub。
+- **校验值**：脚本内置版本使用内嵌的 sha256；**其他版本从 GitHub Releases 获取校验值**（CDN 上虽然也有 `SHASUMS256.txt`，但脚本故意不用它）。
+  因此，要在国内固定一个「非内置」版本，校验这一步就要访问 GitHub → 改为锁定脚本本身（D-012）。
+- 其他变量：`MISE_INSTALL_PATH`（默认 `~/.local/bin/mise`）、`MISE_INSTALL_SKIP_IF_EXISTS=1`、`MISE_INSTALL_MUSL`、`MISE_QUIET`。
+
+## R-009 Docker Hub 镜像加速（2026-10-29，在腾讯云内网主机上，`--noproxy`，请求 `/v2/`）
+
+| 地址 | 结果 | 说明 |
+| --- | --- | --- |
+| https://mirror.ccs.tencentyun.com | 200，0.02s | 腾讯云内网，**已在本机配置**；拉取 debian:13 + ubuntu:24.04 共 97s |
+| https://docker.1ms.run | 401，0.18s | 第三方公网镜像（401 是正常的 registry 认证质询） |
+| https://docker.m.daocloud.io | 401，0.12s | DaoCloud 公网镜像 |
+| https://dockerproxy.net | 200，1.46s | 第三方 |
+| https://hub.rat.dev | 302 | 第三方 |
+| https://docker.xuanyuan.me | 401，2.6s | 第三方 |
+
+- 判断可用：`/v2/` 返回 200 或 401 都说明 registry 在线；测速时应该实际拉取一个小镜像的 manifest，而不是只看 `/v2/`。
+- 阿里云（`https://<id>.mirror.aliyuncs.com`）、华为云的加速器地址都和账号绑定，只能手动配置。
+- 第三方公网镜像经常失效（2024 年起大量公共镜像关闭），只作为辅助手段；主要依靠 mihomo 代理回源。
+
 ## 待调研
 
 - SteamOS 上 `/etc` overlay 在系统升级后能否保留；`/usr/local` 是否只读。

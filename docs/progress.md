@@ -15,10 +15,17 @@
 - `vendor/get-docker.sh`（锁定 SCRIPT_COMMIT_SHA `ada7a56`，sha256 `7f966774…`），**尚未执行**
 - mihomo 模板 `files/mihomo/config.yaml.tera`（由本机配置去掉机密后生成，已用 `mihomo -t` 验证）
 - 机密方案选定 fnox + age（D-008、research R-006）；zsh 清单 + 缓存方案已被接受（D-010）
+- 本机：用户安装了 mise 2026.10.21 和 Docker 29.9.2；已配置 Docker Hub 内网镜像（P-011）
+- 根目录 `mise.toml`（fnox 1.43.0、age 1.3.2）；`fnox.toml` 中已加密 `MIHOMO_PROXIES`，加密后解密的结果与原文一致
+- `vendor/mise-install.sh`（锁定 mise 2026.10.22，D-012）
+- `lib/detect.sh`：环境检测 + 「容器中不装 Docker / mihomo」规则，已在主机、debian:13、ubuntu:24.04 中验证
+- `files/docker/{daemon.json,http-proxy.conf}.tera`（草稿，未经 mise 渲染验证）
 
 ## 下一步
 
-- 等待用户授权执行外部程序（P-008），然后：安装 mise → fnox 加密 `mihomo_proxies` → 安装 Docker → 阶段 1 PoC
+- 阶段 1 PoC：在 debian:13 / ubuntu:24.04 容器中运行最小的 mise bootstrap（container 模块），验证 research R-001 中的问题
+  以及 Tera 模板的渲染（`json_encode`、数组循环、`secret()`）
+- 阶段 2：`lib/mirrors.sh`（apt / docker-ce / Docker Hub / GitHub 加速代理选源）、`bootstrap.sh`
 
 ## 说明
 

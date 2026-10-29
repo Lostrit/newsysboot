@@ -54,3 +54,22 @@
 ## P-009 用户给出的文件路径有笔误
 
 - 用户说的 age 密钥文件是 `/root/age_keys_sope.txt`，实际文件是 `/root/age_keys_sops.txt`。只读取了其中的公钥，私钥不能进入仓库和日志。
+
+## P-010 mise.run 指定非内置版本时，校验值来自 GitHub
+
+- **现象**：用户用 `curl https://mise.run | sh` 安装得到 2026.10.21，而脚本内置的是 2026.10.22（默认只选发布满 24h 的版本）。
+  2026.10.21 的校验值是从 GitHub Releases 获取的，在本机能成功只是因为有代理。
+- **解决**：D-012，锁定脚本版本，并让 `MISE_VERSION` 等于内置版本。
+
+## P-011 Docker 安装后没有配置 Docker Hub 镜像
+
+- **现象**：get-docker.sh 只配置了 docker-ce 的 apt 源，`/etc/docker/daemon.json` 不存在，国内拉取 Docker Hub 镜像可能失败。
+- **解决**：已在本机写入 `{"registry-mirrors": ["https://mirror.ccs.tencentyun.com"]}` 并重启 docker（当时没有运行中的容器）；
+  项目中由 `files/docker/daemon.json.tera` 管理（D-005）。
+- **注意**：dockerd 不会读取 shell 中的 `http_proxy`，要让它走代理只能用 systemd drop-in。
+
+## P-012 fnox 缺少私钥时只警告，不报错
+
+- **现象**：没有 `FNOX_AGE_KEY` 时，`fnox exec -- true` 只输出 WARN（`Age identity file not found`），命令照常执行。
+- **影响**：这是需要的行为。mise bootstrap 只解析选中模板实际用到的机密，容器模式不需要 mihomo 节点，不应该因此失败；
+  真正需要时，mise 会因为缺少值在任何改动之前报错退出。
