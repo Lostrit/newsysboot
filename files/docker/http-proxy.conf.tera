@@ -1,5 +1,8 @@
-# dockerd 代理（仅在启用 mihomo 模块时写入）：registry-mirrors 不可用或缺镜像时，经本机 mihomo 回源 Docker Hub
+{%- set port = vars.mihomo_mixed_port | default(value="") -%}
+{%- if port -%}
+# dockerd 代理（由 bootstrap 生成）：registry-mirrors 不可用或缺镜像时，经本机 mihomo 回源 Docker Hub
 [Service]
-Environment="HTTP_PROXY=http://127.0.0.1:{{ vars.mihomo_mixed_port }}"
-Environment="HTTPS_PROXY=http://127.0.0.1:{{ vars.mihomo_mixed_port }}"
-Environment="NO_PROXY=localhost,127.0.0.0/8,::1{% for m in vars.docker_registry_mirrors %},{{ m | replace(from="https://", to="") | split(pat="/") | first }}{% endfor %}"
+Environment="HTTP_PROXY=http://127.0.0.1:{{ port }}"
+Environment="HTTPS_PROXY=http://127.0.0.1:{{ port }}"
+Environment="NO_PROXY=localhost,127.0.0.0/8,::1{% for m in vars.docker_registry_mirrors | split(pat=",") %}{% if m %},{{ m | replace(from="https://", to="") | replace(from="http://", to="") | split(pat="/") | first }}{% endif %}{% endfor %}"
+{% endif -%}

@@ -1,0 +1,38 @@
+# mise.mihomo.toml — mihomo 系统服务（Linux 主机；容器中不启用）
+#
+# 二进制：scripts/install-mihomo.sh（锁定版本 + sha256，经 GH_PROXY 下载）
+# 配置：files/mihomo/config.yaml.tera，机密节点来自 fnox 注入的 MIHOMO_PROXIES（D-008）
+# 下面的 [vars] 是「服务器」场景的默认值；桌面等其他场景在各自模块中覆盖。
+
+[vars]
+mihomo_mixed_port = 7890
+# 服务器：允许 Docker 容器通过网桥访问，只放行本机与 Docker 网段
+mihomo_allow_lan = true
+mihomo_bind_address = "*"
+mihomo_lan_allowed_ips = "127.0.0.0/8,172.16.0.0/12"
+
+[bootstrap.secrets.mihomo_proxies]
+env = "MIHOMO_PROXIES"
+description = "mihomo 节点（fnox 解密；部署时输入 age 私钥）"
+
+[bootstrap.hooks.post-packages]
+description = "安装 mihomo"
+run = "sh {{ config_root }}/scripts/install-mihomo.sh"
+
+[bootstrap.directories."/etc/mihomo"]
+owner = "root"
+group = "root"
+mode = "0755"
+
+[bootstrap.files."/etc/mihomo/config.yaml"]
+source = "files/mihomo/config.yaml.tera"
+template = true
+owner = "root"
+group = "root"
+mode = "0600"
+notify = ["mihomo"]
+
+[bootstrap.services.mihomo]
+state = "running"
+enabled = true
+on_change = "restart"

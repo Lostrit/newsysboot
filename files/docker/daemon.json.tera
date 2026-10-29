@@ -1,3 +1,3 @@
 {
-  "registry-mirrors": {{ vars.docker_registry_mirrors | json_encode() }}
+  "registry-mirrors": {% if vars.docker_registry_mirrors %}{{ vars.docker_registry_mirrors | split(pat=",") | json_encode() }}{% else %}[]{% endif %}
 }

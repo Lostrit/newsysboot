@@ -1,0 +1,44 @@
+# mise.docker.toml — Docker（仅 Linux 主机，容器中不启用，D-005）
+#
+# 安装：scripts/install-docker.sh（vendor/get-docker.sh + DOWNLOAD_URL 镜像，并加入 docker 组）
+# Docker Hub 镜像：files/docker/daemon.json.tera；启用 mihomo 模块时 dockerd 经本机 mihomo 回源
+
+[vars]
+docker_registry_mirrors = "{{ env.BOOTSTRAP_DOCKER_REGISTRY_MIRRORS | default(value='') }}"
+
+[bootstrap.hooks.post-packages]
+description = "安装 Docker（get-docker.sh + 镜像源）"
+run = "sh {{ config_root }}/scripts/install-docker.sh"
+
+[bootstrap.directories."/etc/docker"]
+owner = "root"
+group = "root"
+mode = "0755"
+
+[bootstrap.files."/etc/docker/daemon.json"]
+source = "files/docker/daemon.json.tera"
+template = true
+owner = "root"
+group = "root"
+mode = "0644"
+notify = ["docker"]
+
+[bootstrap.directories."/etc/systemd/system/docker.service.d"]
+owner = "root"
+group = "root"
+mode = "0755"
+
+# 只有同时启用 mihomo 模块（定义了 mihomo_mixed_port）时才写入；否则模板为空，文件被删除
+[bootstrap.files."/etc/systemd/system/docker.service.d/http-proxy.conf"]
+source = "files/docker/http-proxy.conf.tera"
+template = true
+remove_empty = true
+owner = "root"
+group = "root"
+mode = "0644"
+notify = ["docker"]
+
+[bootstrap.services.docker]
+state = "running"
+enabled = true
+on_change = "restart"

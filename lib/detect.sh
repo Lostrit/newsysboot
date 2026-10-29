@@ -50,6 +50,8 @@ bootstrap_detect() {
         BOOTSTRAP_VERSION=
       fi
       bootstrap_is_container && BOOTSTRAP_CONTAINER=1
+      # 仅供测试：在带 systemd 的容器中按「主机」处理（tests/run-host.sh）
+      [ "${BOOTSTRAP_ASSUME_HOST:-}" = 1 ] && BOOTSTRAP_CONTAINER=0
       [ -d /run/systemd/system ] && BOOTSTRAP_SYSTEMD=1
       ;;
     *)

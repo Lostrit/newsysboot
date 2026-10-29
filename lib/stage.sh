@@ -71,19 +71,49 @@ bs_stage_root() {
 
   bs_log "切换到用户 $BOOTSTRAP_USER 继续"
   # 新用户需要能读取当前检出（管道模式下位于 /tmp/bootstrap.*，已设为 755）
-  exec sudo -u "$BOOTSTRAP_USER" -H env \
-    BOOTSTRAP_SOURCE="$BOOTSTRAP_SOURCE" BOOTSTRAP_ENV="$BOOTSTRAP_ENV" \
-    BOOTSTRAP_REPO="${BOOTSTRAP_REPO:-}" BOOTSTRAP_DIR="${BOOTSTRAP_DIR:-}" \
+  # age 私钥既不能出现在命令行（/proc/*/cmdline），也不能经 sudo 传递环境变量（sudo 会把 ENV= 写进系统日志，P-017）：
+  # 写入 tmpfs 中只有新用户可读的临时文件，只传路径；user 阶段读取后立即删除
+  BOOTSTRAP_AGE_KEY_FILE=
+  if [ -n "${FNOX_AGE_KEY:-}" ]; then
+    _kd=/dev/shm
+    [ -d "$_kd" ] && [ -w "$_kd" ] || _kd=${TMPDIR:-/tmp}
+    BOOTSTRAP_AGE_KEY_FILE=$(mktemp "$_kd/bootstrap-key.XXXXXX")
+    chmod 600 "$BOOTSTRAP_AGE_KEY_FILE"
+    printf '%s\n' "$FNOX_AGE_KEY" >"$BOOTSTRAP_AGE_KEY_FILE"
+    chown "$BOOTSTRAP_USER" "$BOOTSTRAP_AGE_KEY_FILE"
+    unset FNOX_AGE_KEY
+  fi
+  export BOOTSTRAP_SOURCE BOOTSTRAP_ENV BOOTSTRAP_REPO="${BOOTSTRAP_REPO:-}" BOOTSTRAP_DIR="${BOOTSTRAP_DIR:-}" \
     BOOTSTRAP_SKIP="$BS_SKIP" BOOTSTRAP_NONINTERACTIVE="${BOOTSTRAP_NONINTERACTIVE:-}" \
-    FNOX_AGE_KEY="${FNOX_AGE_KEY:-}" \
-    http_proxy="${http_proxy:-}" https_proxy="${https_proxy:-}" no_proxy="${no_proxy:-}" all_proxy="${all_proxy:-}" \
+    BOOTSTRAP_ASSUME_HOST="${BOOTSTRAP_ASSUME_HOST:-}" BOOTSTRAP_AGE_KEY_FILE
+  exec sudo -u "$BOOTSTRAP_USER" -H \
+    --preserve-env=BOOTSTRAP_SOURCE,BOOTSTRAP_ENV,BOOTSTRAP_REPO,BOOTSTRAP_DIR,BOOTSTRAP_SKIP,BOOTSTRAP_NONINTERACTIVE,BOOTSTRAP_ASSUME_HOST,BOOTSTRAP_AGE_KEY_FILE,http_proxy,https_proxy,no_proxy,all_proxy \
     sh "$BS_SRC/bootstrap.sh" --stage user ${BS_DRY_RUN:+--dry-run}
+}
+
+# bs_mise <envs> <mise 参数…>：有 age 私钥时经 fnox 注入机密（D-008）
+bs_mise() {
+  _e=$1
+  shift
+  if [ -n "${FNOX_AGE_KEY:-}" ]; then
+    mise install -q fnox
+    mise exec fnox -- fnox exec -- mise ${_e:+-E "$_e"} "$@"
+  else
+    mise ${_e:+-E "$_e"} "$@"
+  fi
 }
 
 # ---------------------------------------------------------------------------
 # user 阶段
 # ---------------------------------------------------------------------------
 bs_stage_user() {
+  # root 阶段转交的 age 私钥（见 bs_stage_root）：读入后立即删除文件
+  if [ -n "${BOOTSTRAP_AGE_KEY_FILE:-}" ] && [ -r "$BOOTSTRAP_AGE_KEY_FILE" ]; then
+    FNOX_AGE_KEY=$(cat "$BOOTSTRAP_AGE_KEY_FILE")
+    export FNOX_AGE_KEY
+    rm -f "$BOOTSTRAP_AGE_KEY_FILE"
+  fi
+  unset BOOTSTRAP_AGE_KEY_FILE
   # 选源结果：root 阶段已传入，或在此重新读取缓存
   bs_select_mirrors
   bs_export_mirrors
@@ -145,22 +175,51 @@ bs_ensure_mise() {
   bs_have mise || bs_die "mise 安装失败"
 }
 
-# 写入 ~/.local/state/bootstrap/env.sh：~/.zshenv 会读取它（GH_PROXY 等），本脚本也用它驱动 mise
+# 写入 ~/.local/state/bootstrap/env.sh：~/.zshenv 会读取它（GH_PROXY、代理等），本脚本也用它驱动 mise
+# BS_PROXY_URL 非空时（本机 mihomo 已可用）写入代理变量，GitHub 改为经代理直连，不再需要 GH_PROXY
 bs_write_env() {
   mkdir -p "$BS_STATE_DIR"
+  _gh=$GH_PROXY
+  [ -n "${BS_PROXY_URL:-}" ] && _gh=
   {
     echo "# 由 bootstrap 生成（lib/stage.sh），~/.zshenv 读取；重新运行 bootstrap.sh 会覆盖"
     bs_env_line BOOTSTRAP_DIR "$BOOTSTRAP_DIR"
     bs_env_line BOOTSTRAP_MODULES "$BOOTSTRAP_MODULES"
-    bs_env_line GH_PROXY "$GH_PROXY"
-    if [ -n "$GH_PROXY" ]; then
-      # mise 的所有 GitHub 下载经加速代理（research R-001）；aqua 的签名校验不受影响
-      bs_env_line MISE_URL_REPLACEMENTS "{\"https://github.com/\":\"${GH_PROXY}https://github.com/\",\"https://raw.githubusercontent.com/\":\"${GH_PROXY}https://raw.githubusercontent.com/\"}"
+    bs_env_line GH_PROXY "$_gh"
+    if [ -n "$_gh" ]; then
+      # mise 的所有 GitHub 下载经加速代理（research R-010）；aqua 的签名校验不受影响
+      bs_env_line MISE_URL_REPLACEMENTS "{\"https://github.com/\":\"${_gh}https://github.com/\",\"https://raw.githubusercontent.com/\":\"${_gh}https://raw.githubusercontent.com/\"}"
+    else
+      echo "unset MISE_URL_REPLACEMENTS"
+    fi
+    if [ -n "${BS_PROXY_URL:-}" ]; then
+      bs_env_line http_proxy "$BS_PROXY_URL"
+      bs_env_line https_proxy "$BS_PROXY_URL"
+      bs_env_line all_proxy "socks5://${BS_PROXY_URL#http://}"
+      bs_env_line no_proxy "$(bs_no_proxy)"
+      echo 'export HTTP_PROXY="$http_proxy" HTTPS_PROXY="$https_proxy" NO_PROXY="$no_proxy"'
     fi
     # node 从国内镜像下载
     bs_env_line MISE_NODE_MIRROR_URL "${MISE_NODE_MIRROR_URL:-https://mirrors.cloud.tencent.com/nodejs-release/}"
   } >"$BS_STATE_DIR/env.sh"
   . "$BS_STATE_DIR/env.sh"
+}
+
+# 不走代理的地址：本机、各家云内网镜像、选中的 apt / docker 镜像
+bs_no_proxy() {
+  _np="localhost,127.0.0.1,::1,.tencentyun.com,.aliyuncs.com,.myhuaweicloud.com,.ivolces.com"
+  for _u in "${BOOTSTRAP_APT_MIRROR:-}" "${BOOTSTRAP_DOCKER_MIRROR:-}"; do
+    [ -n "$_u" ] || continue
+    _h=${_u#*://}
+    _h=${_h%%/*}
+    case ",$_np," in *,"$_h",*) ;; *) _np="$_np,$_h" ;; esac
+  done
+  printf '%s\n' "$_np"
+}
+
+# 本机 mihomo 是否可用：经代理访问 GitHub
+bs_proxy_ok() {
+  curl -s -x "$1" --connect-timeout 3 -m 10 -o /dev/null -w '%{http_code}' https://github.com 2>/dev/null | grep -q '^[23]'
 }
 
 bs_run_mise() {
@@ -193,12 +252,27 @@ bs_run_mise() {
   fi
   export FNOX_AGE_KEY="${FNOX_AGE_KEY:-}"
 
-  bs_log "mise ${_envs:+-E $_envs }$*"
-  if [ -n "$FNOX_AGE_KEY" ]; then
-    mise install -q fnox
-    mise exec fnox -- fnox exec -- mise ${_envs:+-E "$_envs"} "$@"
-  else
-    mise ${_envs:+-E "$_envs"} "$@"
+  # 有 mihomo 模块时分两次执行（plan.md）：先装好代理（只依赖国内镜像与 GH_PROXY），确认可用后切到代理再跑完整流程
+  if bs_has_module mihomo && [ "$BS_MODE" != dotfiles ] && [ -z "$BS_DRY_RUN" ]; then
+    bs_log "第一次：mise -E $_envs bootstrap --only accounts,files,packages,services"
+    bs_mise "$_envs" bootstrap --yes --only accounts,files,packages,services
+    _px="http://127.0.0.1:${BOOTSTRAP_MIHOMO_PORT:-7890}"
+    _i=0
+    while [ "$_i" -lt 10 ] && ! bs_proxy_ok "$_px"; do
+      sleep 2
+      _i=$((_i + 1))
+    done
+    if bs_proxy_ok "$_px"; then
+      bs_log "mihomo 可用（$_px），之后经代理访问 GitHub"
+      BS_PROXY_URL=$_px
+      bs_write_env
+      export http_proxy https_proxy all_proxy no_proxy HTTP_PROXY HTTPS_PROXY NO_PROXY
+    else
+      bs_warn "mihomo 未能经代理访问 GitHub，继续使用 GH_PROXY=${GH_PROXY:-<直连>}"
+    fi
   fi
+
+  bs_log "mise ${_envs:+-E $_envs }$*"
+  bs_mise "$_envs" "$@"
   bs_log "完成。新开一个终端（或执行 exec zsh -l）使配置生效。"
 }

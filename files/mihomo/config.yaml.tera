@@ -7,7 +7,7 @@ mixed-port: {{ vars.mihomo_mixed_port }}
 allow-lan: {{ vars.mihomo_allow_lan }}
 bind-address: "{{ vars.mihomo_bind_address }}"
 lan-allowed-ips:
-{%- for cidr in vars.mihomo_lan_allowed_ips %}
+{%- for cidr in vars.mihomo_lan_allowed_ips | split(pat=",") %}
   - {{ cidr }}
 {%- endfor %}
 mode: rule
