@@ -1,9 +1,55 @@
-# mise.toml — bootstrap 项目主配置（所有环境共用）
+# mise.toml — bootstrap 项目主配置（所有环境共用，且不需要 root）
 #
 # 各环境模块在 mise.<name>.toml 中声明，由 stage-0 通过 `mise -E <name>,...` 选择（见 docs/plan.md）。
+# 本文件只包含用户目录内的内容，保证 `bootstrap.sh --dotfiles`（D-009）不需要 root 也能运行。
+# 选源结果等由 stage-0 以 BOOTSTRAP_* 环境变量传入 [vars]。
 
 [tools]
 # 机密管理：stage-0 以 `fnox exec -- mise bootstrap` 注入机密（D-008）
 fnox = "1.43.0"
 # age CLI：仅用于生成 / 查看密钥（fnox 自带 age 加解密，部署时不依赖它）
 age = "1.3.2"
+
+[vars]
+# [vars] 不支持数组：列表一律用逗号分隔的字符串，模板中 split(pat=",")
+bootstrap_user = "{{ env.USER | default(value='') }}"
+
+# ---------------------------------------------------------------------------
+# 目录（D-010：目录由 bootstrap 声明，不再放在工具的 postinstall 中）
+# ---------------------------------------------------------------------------
+[bootstrap.directories."~/.config"]
+[bootstrap.directories."~/.local/bin"]
+[bootstrap.directories."~/.local/share/zsh/site-functions"]
+[bootstrap.directories."~/.local/share/zsh/plugins"]
+[bootstrap.directories."~/.local/state/zsh"]
+[bootstrap.directories."~/.cache/zsh"]
+
+# ---------------------------------------------------------------------------
+# dotfiles（D-002：整目录链接，在 ~/.config 中修改就是修改仓库工作区）
+# ---------------------------------------------------------------------------
+[dotfiles]
+"~/.zshenv" = "dotfiles/.zshenv"
+"~/.config/.themes" = "dotfiles/.config/.themes"
+"~/.config/.bunfig.toml" = "dotfiles/.config/.bunfig.toml"
+"~/.config/atuin" = "dotfiles/.config/atuin"
+"~/.config/bat" = "dotfiles/.config/bat"
+"~/.config/eza" = "dotfiles/.config/eza"
+"~/.config/fd" = "dotfiles/.config/fd"
+"~/.config/fzf" = "dotfiles/.config/fzf"
+"~/.config/git" = "dotfiles/.config/git"
+"~/.config/herdr" = "dotfiles/.config/herdr"
+"~/.config/lazygit" = "dotfiles/.config/lazygit"
+"~/.config/micro" = "dotfiles/.config/micro"
+"~/.config/mise" = "dotfiles/.config/mise"
+"~/.config/npm" = "dotfiles/.config/npm"
+"~/.config/nvim" = "dotfiles/.config/nvim"
+"~/.config/ripgrep" = "dotfiles/.config/ripgrep"
+"~/.config/starship" = "dotfiles/.config/starship"
+"~/.config/tmux" = "dotfiles/.config/tmux"
+"~/.config/zsh" = "dotfiles/.config/zsh"
+
+# ---------------------------------------------------------------------------
+# 登录 shell
+# ---------------------------------------------------------------------------
+[bootstrap.user]
+login_shell = "zsh"

@@ -1,0 +1,20 @@
+# mise.debian.toml — Debian / Ubuntu（主机与容器共用）
+#
+# apt 源由 stage-0 在运行 mise 之前切换（lib/apt.sh），这里只声明包。
+
+[bootstrap.packages]
+"apt:zsh" = "latest"
+"apt:git" = "latest"
+"apt:curl" = "latest"
+"apt:ca-certificates" = "latest"
+"apt:sudo" = "latest"
+"apt:less" = "latest"
+"apt:file" = "latest"
+"apt:unzip" = "latest"
+"apt:xz-utils" = "latest"
+"apt:zstd" = "latest"
+"apt:openssh-client" = "latest"
+# nvim-treesitter 编译语法解析器需要 C 编译器（dotfiles/.config/nvim/README.md）
+"apt:gcc" = "latest"
+"apt:libc6-dev" = "latest"
+"apt:make" = "latest"
