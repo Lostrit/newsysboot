@@ -21,7 +21,7 @@ services:
       all_proxy: "socks5://host.docker.internal:7890"
       no_proxy: "localhost, 127.0.0.1, ::1, mirrors.tencentyun.com, .tencentyun.com"
     volumes:
-      - ../.config:/home/miniview/.config
+      - ../../dotfiles/.config:/home/miniview/.config
       - workspace:/workspace
 
 volumes:

@@ -1,6 +1,6 @@
 # lefthook.yml — pre-commit：自动格式化并校验各配置文件
 #
-# 钩子随 `mise install` 自动安装（见 mise/config.toml 的 [hooks] postinstall），
+# 钩子随 `MISE_ENV=dev mise install` 自动安装（见 mise.dev.toml 的 [hooks] postinstall），
 # 也可以手动执行：`lefthook install`；临时跳过：`LEFTHOOK=0 git commit`
 
 min_version: 1.10.10
@@ -35,16 +35,26 @@ pre-commit:
     #       zsh / ripgrep / bat 均无可靠的命令行格式化器，故只 lint 不 format） ----
     shell-syntax:
       glob:
-        - "zsh/.zshrc"
-        - "zsh/**/*.zsh"
-        - "fzf/fzfrc"
-        - "ripgrep/ripgreprc"
-        - "bat/config"
+        - "dotfiles/.zshenv"
+        - "dotfiles/.config/zsh/.zshrc"
+        - "dotfiles/.config/zsh/**/*.zsh"
+        - "dotfiles/.config/fzf/fzfrc"
+        - "dotfiles/.config/ripgrep/ripgreprc"
+        - "dotfiles/.config/bat/config"
       run: for f in {staged_files}; do zsh -n "$f" || exit 1; done
 
     # ---- gitconfig：用 git 官方解析器校验语法 ----
     gitconfig-syntax:
       glob:
-        - "git/config"
-        - "delta/**/*.gitconfig"
+        - "dotfiles/.config/git/config"
+        - "dotfiles/.config/.themes/delta/*.gitconfig"
       run: for f in {staged_files}; do git config --file "$f" --list >/dev/null || exit 1; done
+
+    # ---- 本项目的 POSIX sh 脚本：sh -n 语法检查（stage-0 必须能在 dash / macOS sh 中运行） ----
+    posix-sh-syntax:
+      glob:
+        - "bootstrap.sh"
+        - "lib/*.sh"
+        - "scripts/*.sh"
+        - "tests/*.sh"
+      run: for f in {staged_files}; do sh -n "$f" || exit 1; done

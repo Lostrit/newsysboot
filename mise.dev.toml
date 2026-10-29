@@ -1,0 +1,27 @@
+# mise.dev.toml — 仅开发本仓库时使用的工具（格式化 / 提交钩子），部署的机器不会加载
+#
+# 首次使用：在仓库根目录执行 `MISE_ENV=dev mise install`
+# （postinstall 会在包含 lefthook.yml 的 git 仓库中自动执行 lefthook install）
+# 补全文件由 zsh 的 tools.zsh 统一生成（D-010），不在这里生成。
+
+[hooks]
+# mise install 完成后：在包含 lefthook.yml 的 git 仓库中自动安装提交钩子
+postinstall = '''
+if git rev-parse --git-dir >/dev/null 2>&1 \
+   && [ -f "$(git rev-parse --show-toplevel)/lefthook.yml" ]; then
+  lefthook install
+fi
+'''
+
+# ---------------------------------------------------------------------------
+# 开发工具：格式化 / 提交钩子（生产环境不需要）
+# ---------------------------------------------------------------------------
+
+[tools."aqua:tamasfe/taplo"]
+version = "0.10.0"
+
+[tools."aqua:evilmartians/lefthook"]
+version = "2.1.12"
+
+[tools.prettier]
+version = "3.9.6"
