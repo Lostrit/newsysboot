@@ -32,8 +32,9 @@
    herdr 0.9.1 在 dev 上实测会展开 `~`，面板使用登录 shell。
 ⏳ 6. **nvim 引用了不存在的脚本**：`README.md`、`mason.lua`、`mason-tools.lua`、`bootstrap.lua` 都提到
    `scripts/bootstrap.sh` / `scripts/bootstrap.lua`，但 `.config/nvim/scripts/` 不存在。→ 补上这个脚本，或者删掉相关说明。
-⏳ 7. **`.themes/` 把主题仓库整个复制进来了**（7 个仓库，约 5MB，包括 tests、assets、`.github`、CI 配置）。
+✅ 7. **`.themes/` 把主题仓库整个复制进来了**（7 个仓库，约 5MB，包括 tests、assets、`.github`、CI 配置）。
    → 二选一：只保留实际用到的主题文件；或者改用 `[bootstrap.repos]` 按 tag 克隆到 `$XDG_DATA_HOME/themes`。
+   → 已处理（2026-11-02）：只保留 Mocha 配色中实际使用的文件与 LICENSE（4.9MB → 约 290KB），来源见 `.themes/README.md`。
 ✅ 8. **版本锁定不一致**：其他工具都锁了具体版本，但 `claude = "latest"`、`bun = "1.4"` 没有锁；eza 补全从 `main` 分支下载。
    → 统一锁版本（eza 补全改用 `v0.23.5` tag），升级时走 dotconfig 的提交流程。
 ✅ 9. **mise `[env]` 只在交互式 shell 中生效**：只有 `.zshrc` 执行了 `mise activate`，所以 `EDITOR`、`*_CONFIG_PATH` 等变量
