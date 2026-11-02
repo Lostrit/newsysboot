@@ -35,7 +35,8 @@
 ### 方式二：预先安装（镜像构建 / 离线使用）
 
 ```bash
-bash ~/.config/nvim/scripts/bootstrap.sh
+sh ~/.config/nvim/scripts/bootstrap.sh
+# 或在新机器初始化时一并执行：bootstrap.sh --nvim
 ```
 
 与方式一的安装结果完全相同，区别在于：一次性同步完成，逐项校验版本，失败时以非零状态码退出。适合写进 Dockerfile，让容器运行时不再需要联网。详见 [docs/03-容器镜像构建.md](docs/03-容器镜像构建.md)。

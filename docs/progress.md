@@ -52,7 +52,8 @@
    - ⏳ 阿里云 / 华为云（验证内网源探测，以及华为云、火山引擎的内网域名）
 4. SteamOS / macOS / Windows 真机测试
 5. 整理各环境的 mihomo 配置（目前只有 server 场景的模板）
-6. dotconfig 评审中剩余的 ⏳ 项：herdr 配置、nvim 的 scripts/bootstrap.sh、.themes 精简、tmux 路径
+6. ✅ dotconfig 评审剩余 5 项已全部处理（2026-11-02）：herdr 配置、nvim 预装脚本（`--nvim`，D-026）、.themes 精简、
+   非交互式 shell 的 mise 工具与 EDITOR、tmux 路径
 
 ## 说明
 

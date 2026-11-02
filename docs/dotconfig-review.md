@@ -1,6 +1,6 @@
 # dotconfig 评审（2026-10-29，提交 `803608f`）
 
-> **处理状态（2026-10-29 更新）**：✅ 已处理 / ⏳ 未处理。dotconfig 已合并到 `dotfiles/`，下文的路径以原仓库为准。
+> **处理状态（2026-11-02 更新：15 项全部处理）**：✅ 已处理 / ⏳ 未处理。dotconfig 已合并到 `dotfiles/`，下文的路径以原仓库为准。
 
 以下只是建议，**没有修改** `/root/dotconfig`。优先级：🔴 会导致某个环境装不上 / 用不了，🟠 会影响多环境复用，🟢 小问题。
 
@@ -30,8 +30,10 @@
    `worktrees.directory = "/workspace/worktrees"`。→ 用模板渲染，或者 herdr 支持的话改成读环境变量。
    → 已处理（2026-11-02）：删除 `default_shell`（herdr 使用 `$SHELL`），`worktrees.directory = "~/worktrees"`；
    herdr 0.9.1 在 dev 上实测会展开 `~`，面板使用登录 shell。
-⏳ 6. **nvim 引用了不存在的脚本**：`README.md`、`mason.lua`、`mason-tools.lua`、`bootstrap.lua` 都提到
+✅ 6. **nvim 引用了不存在的脚本**：`README.md`、`mason.lua`、`mason-tools.lua`、`bootstrap.lua` 都提到
    `scripts/bootstrap.sh` / `scripts/bootstrap.lua`，但 `.config/nvim/scripts/` 不存在。→ 补上这个脚本，或者删掉相关说明。
+   → 已补写（2026-11-02）：`nvim/scripts/bootstrap.sh`（重试 3 次）+ `bootstrap.lua`（插件、语法解析器、Mason、blink 逐项校验）；
+   `bootstrap.sh --nvim` 可在部署时一并执行。dev 主机从零安装约 2 分钟，之后 vtsls 与 treesitter 正常工作。
 ✅ 7. **`.themes/` 把主题仓库整个复制进来了**（7 个仓库，约 5MB，包括 tests、assets、`.github`、CI 配置）。
    → 二选一：只保留实际用到的主题文件；或者改用 `[bootstrap.repos]` 按 tag 克隆到 `$XDG_DATA_HOME/themes`。
    → 已处理（2026-11-02）：只保留 Mocha 配色中实际使用的文件与 LICENSE（4.9MB → 约 290KB），来源见 `.themes/README.md`。

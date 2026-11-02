@@ -306,3 +306,13 @@ Linux 主机为 server（`allow-lan: true`，只放行本机和 Docker 网段）
 - **原因**：用户要求（2026-11-02）。这类主机虽然 root 通常没有公钥，但 `PermitRootLogin` 仍为 yes，加固后行为与 root 场景一致。
 - **防锁死**：条件与 root 场景相同（D-004）：当前用户必须已有 `authorized_keys`；交互模式需要确认；无人值守需要 `BOOTSTRAP_HARDEN_SSH=1`。
 - **测试**：`TEST_SUDO_USER=1 tests/run-host.sh`（预先创建免密 sudo 的用户，全程以该用户运行）。
+
+## D-026 nvim 预装作为可选步骤（`--nvim`） ✅
+
+**日期**：2026-11-02
+
+- **决策**：补写 dotfiles 中 nvim 引用的 `scripts/bootstrap.sh` / `bootstrap.lua`（dotconfig 评审第 6 项）；bootstrap 增加 `--nvim`
+  （`BOOTSTRAP_NVIM=1`），部署完成后执行。默认不执行。
+- **原因**：首次打开 nvim 时，插件、语法解析器、Mason 工具都直接从 GitHub 下载，国内无代理时会失败；镜像构建也需要一次装好、离线可用。
+  但它约需 2 分钟、依赖 GitHub 网络，失败会让整个部署失败，因此不默认开启。
+- **备选方案**：删除相关引用，只保留首次启动自动安装（用户选择补写）；放进 `[tasks.bootstrap]` 每次执行（太慢，且每次都依赖网络）。

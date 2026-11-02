@@ -128,7 +128,7 @@ bs_stage_root() {
   # 不用 exec：user 阶段没能启动（或中途失败）时，由这里兜底删除私钥文件（P-027）
   _rc=0
   sudo -u "$BOOTSTRAP_USER" -H \
-    --preserve-env=BOOTSTRAP_SOURCE,BOOTSTRAP_ENV,BOOTSTRAP_REPO,BOOTSTRAP_DIR,BOOTSTRAP_SKIP,BOOTSTRAP_NONINTERACTIVE,BOOTSTRAP_ASSUME_HOST,BOOTSTRAP_AGE_KEY_FILE,http_proxy,https_proxy,no_proxy,all_proxy \
+    --preserve-env=BOOTSTRAP_SOURCE,BOOTSTRAP_ENV,BOOTSTRAP_REPO,BOOTSTRAP_DIR,BOOTSTRAP_SKIP,BOOTSTRAP_NONINTERACTIVE,BOOTSTRAP_ASSUME_HOST,BOOTSTRAP_AGE_KEY_FILE,BOOTSTRAP_NVIM,http_proxy,https_proxy,no_proxy,all_proxy \
     sh "$BS_SRC/bootstrap.sh" --stage user ${BS_DRY_RUN:+--dry-run} || _rc=$?
   [ -z "$BOOTSTRAP_AGE_KEY_FILE" ] || rm -f "$BOOTSTRAP_AGE_KEY_FILE"
   [ -z "${_copy:-}" ] || rm -rf "$_copy"
@@ -378,5 +378,10 @@ bs_run_mise() {
 
   bs_log "mise ${_envs:+-E $_envs }$*"
   bs_mise_retry "$_envs" "$@" || bs_die "mise bootstrap 失败"
+  # 可选：预装 nvim 插件、treesitter 语法解析器、Mason 工具（dotfiles 中的 nvim/scripts/bootstrap.sh，dotconfig 评审第 6 项）
+  if [ "${BOOTSTRAP_NVIM:-}" = 1 ] && [ -z "$BS_DRY_RUN" ]; then
+    bs_log "预装 nvim 插件与工具（nvim/scripts/bootstrap.sh）"
+    mise exec -- sh "$BS_SRC/dotfiles/.config/nvim/scripts/bootstrap.sh" || bs_die "nvim 预装失败"
+  fi
   bs_log "完成。新开一个终端（或执行 exec zsh -l）使配置生效。"
 }
