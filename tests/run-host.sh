@@ -66,6 +66,12 @@ while [ "$n" -le "$runs" ]; do
   n=$((n + 1))
 done
 
+# 日常重新应用：经 zsh（~/.zshenv 会读取 env.sh，继承上次生成的 GH_PROXY / 代理变量）运行 --dotfiles，
+# 之后的 env.sh 检查验证代理设置没有丢失（P-028）
+echo "######## --dotfiles via zsh"
+docker exec -u tester -w /home/tester "$name" zsh -c 'sh ~/.local/share/bootstrap/bootstrap.sh --dotfiles' |
+  grep -E '==>|ERROR' || true
+
 echo "######## checks"
 docker exec -e TEST_REAL_SECRETS="${TEST_REAL_SECRETS:-}" "$name" sh -c '
   fail=0

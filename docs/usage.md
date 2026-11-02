@@ -60,6 +60,20 @@ RUN BOOTSTRAP_USER=$BOOTSTRAP_USER BOOTSTRAP_NONINTERACTIVE=1 sh /path/to/bootst
 ```
 
 容器中自动只启用 `debian,container` 模块：不装 mihomo 和 Docker，使用宿主机代理（由编排注入 `http_proxy`）。
+注入的代理能访问 GitHub 时直接使用（并写入 `env.sh`），不可用时回退到 `GH_PROXY`（P-028）。例如：
+
+```sh
+docker run --add-host host.docker.internal:host-gateway \
+  -e http_proxy=http://host.docker.internal:7890 -e https_proxy=http://host.docker.internal:7890 ...
+```
+
+宿主机的 mihomo 需要允许 Docker 网段（server 场景默认放行 `172.16.0.0/12`）。
+
+## 重新运行与机密
+
+- 主机上完整重新运行（`bootstrap.sh`）需要再次提供 age 私钥：缺少机密时 mise 会拒绝渲染 mihomo 配置并中止，
+  不会用空节点覆盖现有配置。
+- 只更新 dotfiles / 工具时用 `--dotfiles`，不需要私钥；它会沿用环境中（或本机 mihomo 的）代理。
 
 ## 测试
 

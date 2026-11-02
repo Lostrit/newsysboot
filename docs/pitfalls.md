@@ -166,3 +166,30 @@
   - `tests/run-pipe.sh` 改为在 `umask 077` 下运行（旧代码可复现失败，新代码通过）。
 - **另外**：systemd-logind 的 `RemoveIPC=yes` 会在普通用户最后一个登录会话结束时删除其在 `/dev/shm` 中的文件，
   因此需要预先放置私钥文件时，应以 root 身份写入。
+
+## P-028 重新运行时丢失代理设置；容器中注入的宿主机代理没有被使用
+
+- **现象**：
+  - dev 主机完整部署后（`env.sh` 已切换为代理变量，`GH_PROXY=''`），以普通用户运行 `bootstrap.sh --dotfiles`，
+    重新生成的 `env.sh` 里既没有代理变量，`GH_PROXY` 也是空，之后 GitHub 下载都会直连（国内不可用）。
+  - dev 上的容器由编排注入了 `http_proxy=http://host.docker.internal:7890`，但 bootstrap 仍然使用 `GH_PROXY`，`env.sh` 也没有记录代理。
+- **原因**：
+  - `~/.zshenv` 读取 `env.sh`，于是之后的每个 shell 都继承了 `GH_PROXY=''`，选源逻辑把它当作「用户指定直连」。
+  - 只有 mihomo 两次执行的流程会设置 `BS_PROXY_URL`；`--dotfiles` 与容器流程不经过这一步，环境中已有的代理被忽略。
+- **解决**：
+  - `env.sh` 额外写入 `BOOTSTRAP_GENERATED_GH_PROXY`；继承来的 `GH_PROXY` 与它相同时视为生成值，重新按缓存 / 测速选择。
+  - 新增 `bs_detect_proxy`（user 阶段）：环境中的代理（或有 mihomo 模块时本机的 mihomo 端口）能访问 GitHub 就直接使用并写入 `env.sh`；
+    不可用则清掉代理变量，回退到 `GH_PROXY`。
+  - `tests/run-host.sh` 最后经 zsh 运行一次 `--dotfiles`，再检查 `env.sh`。
+- **注意**：已经受影响的机器（`env.sh` 中 `GH_PROXY=''` 且没有标记）需要重新完整运行一次，或先 `unset GH_PROXY` 再运行。
+
+## P-029 第三方 GitHub 加速代理临时限流（429）或测速全部超时
+
+- **现象**：
+  - 本地主机测试中，测速选中的 `ghfast.top` 在安装工具中途开始返回 `429 Too Many Requests`，3 个工具安装失败。
+  - 另一次测试在多个测试并行下载时，所有代理的测速（1MiB、10 秒超时、两次取最慢）都失败，结果退回直连，在国内必然失败。
+- **原因**：公共加速代理有频率限制、稳定性不可控；测速只代表那一刻的状态。
+- **解决**：
+  - `bs_run_mise` 的完整执行失败且正在使用 `GH_PROXY` 时，排除当前代理重新测速，换一个代理重试一次，并更新 `mirrors.env` 与 `env.sh`。
+  - `bs_select_gh_proxy` 全部失败时，放宽到 30 秒超时、只测一次再试。
+  - 用一个不可用的 `GH_PROXY=https://127.0.0.1:9/` 验证：第一次失败后自动改用 `gh.qninq.cn` 完成。

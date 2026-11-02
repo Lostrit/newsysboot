@@ -88,7 +88,11 @@ if [ ! -f "$(bs_self_dir)/lib/common.sh" ]; then
   # 之后切换到新用户时仍需读取：不受当前 umask（如 077）影响（P-027）
   chmod -R a+rX "$_tmp/repo"
   export BOOTSTRAP_REPO
-  exec sh "$_tmp/repo/bootstrap.sh" "$@"
+  # 不用 exec：结束后删除临时检出（之后以 ~/.local/share/bootstrap 中的检出为准）
+  _rc=0
+  sh "$_tmp/repo/bootstrap.sh" "$@" || _rc=$?
+  rm -rf "$_tmp"
+  exit "$_rc"
 fi
 
 # ---------------------------------------------------------------------------

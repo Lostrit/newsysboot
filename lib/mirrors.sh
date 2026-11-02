@@ -34,7 +34,7 @@ bs_fetch_ok() {
 # bs_speed <url> <bytes> [sha256]：下载前 <bytes> 字节，输出速度（B/s，整数）；失败不输出
 bs_speed() {
   _tmp=$(mktemp)
-  _out=$(curl -sL --noproxy '*' --connect-timeout 3 -m 10 -r "0-$(($2 - 1))" -o "$_tmp" \
+  _out=$(curl -sL --noproxy '*' --connect-timeout 3 -m "${BS_PROBE_MAX_TIME:-10}" -r "0-$(($2 - 1))" -o "$_tmp" \
     -w '%{http_code} %{size_download} %{speed_download}' "$1" 2>/dev/null) || _out="000 0 0"
   set -- "$1" "$2" "${3:-}" $_out
   if [ "$4" = 206 ] || [ "$4" = 200 ]; then
@@ -136,7 +136,10 @@ bs_select_registry_mirrors() {
 
 # GitHub：直连与各代理一起测速，直连最快时 GH_PROXY 为空
 bs_select_gh_proxy() {
-  _best=$(bs_pick_fastest "$BS_GH_PROBE_URL" 1048576 "$BS_GH_PROBE_SHA256" $BS_GH_PROXIES) || return 1
+  # 全部失败时放宽超时、只测一次再试（网络繁忙时 10 秒可能不够，P-029）
+  _best=$(bs_pick_fastest "$BS_GH_PROBE_URL" 1048576 "$BS_GH_PROBE_SHA256" $BS_GH_PROXIES) ||
+    _best=$(BS_PROBE_MAX_TIME=30 BS_SAMPLES=1 bs_pick_fastest "$BS_GH_PROBE_URL" 1048576 "$BS_GH_PROBE_SHA256" $BS_GH_PROXIES) ||
+    return 1
   [ "$_best" = direct ] && _best=
   printf '%s\n' "$_best"
 }
@@ -145,6 +148,10 @@ bs_select_gh_proxy() {
 bs_select_mirrors() {
   _cache="$BS_STATE_DIR/mirrors.env"
   _key="$BOOTSTRAP_DISTRO-$BOOTSTRAP_CODENAME-$BOOTSTRAP_ARCH"
+  # 从 env.sh 继承来的 GH_PROXY 是上次生成的结果，不是用户指定（P-028）
+  if [ -n "${BOOTSTRAP_GENERATED_GH_PROXY+x}" ] && [ "${GH_PROXY-}" = "$BOOTSTRAP_GENERATED_GH_PROXY" ]; then
+    unset GH_PROXY
+  fi
   if [ -z "${BOOTSTRAP_REPROBE:-}" ] && [ -r "$_cache" ]; then
     _ts=$(sed -n "s/^export BS_MIRRORS_TS='\(.*\)'$/\1/p" "$_cache")
     _ck=$(sed -n "s/^export BS_MIRRORS_KEY='\(.*\)'$/\1/p" "$_cache")

@@ -39,7 +39,13 @@
 2. ✅ 用真实节点验证代理切换（2026-11-02，用户执行 `TEST_REAL_SECRETS=1 FNOX_AGE_KEY=… tests/run-host.sh`）：
    真实 `fnox.toml` 解密 → mihomo 连通 → `env.sh` 切换为代理变量并清空 `GH_PROXY` → 第二次 bootstrap 经代理安装工具；
    18 项检查两次运行全部通过，第二次运行无改动，日志与临时目录中无私钥
-3. 在真实的腾讯云 / 阿里云 / 华为云新机器上各跑一次（验证内网源探测，以及华为云、火山引擎的内网域名）
+3. 真实云主机测试：
+   - ✅ 腾讯云 Debian 13（root，2026-11-02，dev 主机）：从 CNB 一键安装 → 内网源探测、建用户、SSH 加固、mihomo（真实节点）
+     代理切换、Docker（内网镜像 + Docker Hub 镜像）、20 个工具；22 项检查通过，日志中无私钥。
+     主机上的容器：debian:13（注入宿主机代理）与 ubuntu:24.04（无代理）从 GitHub 一键安装，各执行两次通过。
+     过程中发现并修复 P-027、P-028、P-029。
+   - ⏳ 腾讯云 Ubuntu + 已有 sudo 普通用户（用户稍后重置 dev 主机）
+   - ⏳ 阿里云 / 华为云（验证内网源探测，以及华为云、火山引擎的内网域名）
 4. SteamOS / macOS / Windows 真机测试
 5. 整理各环境的 mihomo 配置（目前只有 server 场景的模板）
 6. dotconfig 评审中剩余的 ⏳ 项：herdr 配置、nvim 的 scripts/bootstrap.sh、.themes 精简、tmux 路径

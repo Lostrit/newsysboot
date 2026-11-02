@@ -89,6 +89,7 @@ bs_stage_root() {
   bs_log "切换到用户 $BOOTSTRAP_USER 继续"
   # 新用户需要能读取当前检出：管道模式的临时检出已放开权限；从 /root 等新用户读不到的位置运行时，
   # 复制一份到临时目录（P-027）
+  _copy=
   if ! sudo -u "$BOOTSTRAP_USER" test -r "$BS_SRC/bootstrap.sh"; then
     _copy=$(mktemp -d "${TMPDIR:-/tmp}/bootstrap.XXXXXX")
     cp -R "$BS_SRC/." "$_copy/"
@@ -116,6 +117,7 @@ bs_stage_root() {
     --preserve-env=BOOTSTRAP_SOURCE,BOOTSTRAP_ENV,BOOTSTRAP_REPO,BOOTSTRAP_DIR,BOOTSTRAP_SKIP,BOOTSTRAP_NONINTERACTIVE,BOOTSTRAP_ASSUME_HOST,BOOTSTRAP_AGE_KEY_FILE,http_proxy,https_proxy,no_proxy,all_proxy \
     sh "$BS_SRC/bootstrap.sh" --stage user ${BS_DRY_RUN:+--dry-run} || _rc=$?
   [ -z "$BOOTSTRAP_AGE_KEY_FILE" ] || rm -f "$BOOTSTRAP_AGE_KEY_FILE"
+  [ -z "${_copy:-}" ] || rm -rf "$_copy"
   exit "$_rc"
 }
 
@@ -145,6 +147,7 @@ bs_stage_user() {
   # 选源结果：root 阶段已传入，或在此重新读取缓存
   bs_select_mirrors
   bs_export_mirrors
+  bs_detect_proxy
 
   bs_ensure_checkout
   bs_ensure_mise
@@ -215,6 +218,8 @@ bs_write_env() {
     bs_env_line BOOTSTRAP_DIR "$BOOTSTRAP_DIR"
     bs_env_line BOOTSTRAP_MODULES "$BOOTSTRAP_MODULES"
     bs_env_line GH_PROXY "$_gh"
+    # 标记这是生成的值：之后重新运行时不把它当作用户指定（P-028）
+    bs_env_line BOOTSTRAP_GENERATED_GH_PROXY "$_gh"
     if [ -n "$_gh" ]; then
       # mise 的所有 GitHub 下载经加速代理（research R-010）；aqua 的签名校验不受影响
       bs_env_line MISE_URL_REPLACEMENTS "{\"https://github.com/\":\"${_gh}https://github.com/\",\"https://raw.githubusercontent.com/\":\"${_gh}https://raw.githubusercontent.com/\"}"
@@ -256,7 +261,26 @@ bs_no_proxy() {
   printf '%s\n' "$_np"
 }
 
-# 本机 mihomo 是否可用：经代理访问 GitHub
+# 环境中已有代理（容器由编排注入的宿主机代理，或之前运行写进 env.sh 的本机 mihomo）时：
+# 可用就直接经它访问 GitHub（不再需要 GH_PROXY）；不可用就清掉代理变量，改用 GH_PROXY（P-028）
+bs_detect_proxy() {
+  _px=${https_proxy:-${HTTPS_PROXY:-${http_proxy:-${HTTP_PROXY:-}}}}
+  # 环境中没有代理、但本机应有 mihomo 时（如 --dotfiles 重新运行），也试一下本机端口
+  if [ -z "$_px" ] && bs_wants_mihomo; then
+    _px="http://127.0.0.1:${BOOTSTRAP_MIHOMO_PORT:-7890}"
+    bs_proxy_ok "$_px" || return 0
+  fi
+  [ -n "$_px" ] || return 0
+  if bs_proxy_ok "$_px"; then
+    bs_log "使用环境中的代理：$_px"
+    BS_PROXY_URL=$_px
+  else
+    bs_warn "环境中的代理不可用（$_px），改用 GH_PROXY=${GH_PROXY:-<直连>}"
+    unset http_proxy https_proxy all_proxy HTTP_PROXY HTTPS_PROXY ALL_PROXY
+  fi
+}
+
+# 代理是否可用：经代理访问 GitHub
 bs_proxy_ok() {
   curl -s -x "$1" --connect-timeout 3 -m 10 -o /dev/null -w '%{http_code}' https://github.com 2>/dev/null | grep -q '^[23]'
 }
@@ -315,6 +339,22 @@ bs_run_mise() {
   fi
 
   bs_log "mise ${_envs:+-E $_envs }$*"
-  bs_mise "$_envs" "$@"
+  if ! bs_mise "$_envs" "$@"; then
+    # 第三方 GitHub 加速代理可能临时限流（429）或失效：换一个代理再试一次（P-029）
+    [ -z "${BS_PROXY_URL:-}" ] && [ -n "${GH_PROXY:-}" ] || bs_die "mise bootstrap 失败"
+    _bad=$GH_PROXY
+    _rest=
+    for _p in $BS_GH_PROXIES; do [ "$_p" = "$_bad" ] || _rest="$_rest $_p"; done
+    GH_PROXY=$(BS_GH_PROXIES=$_rest bs_select_gh_proxy) || bs_die "mise bootstrap 失败，且没有其他可用的 GitHub 加速代理"
+    bs_warn "mise bootstrap 失败，GitHub 加速代理 $_bad 可能限流，改用 ${GH_PROXY:-<直连>} 重试"
+    # 更新选源缓存与 env.sh，之后的运行和 shell 也使用新的代理
+    if [ -w "$BS_STATE_DIR/mirrors.env" ]; then
+      _np=$(grep -v '^export GH_PROXY=' "$BS_STATE_DIR/mirrors.env")
+      { printf '%s\n' "$_np"; bs_env_line GH_PROXY "$GH_PROXY"; } >"$BS_STATE_DIR/mirrors.env"
+    fi
+    export GH_PROXY
+    bs_write_env
+    bs_mise "$_envs" "$@" || bs_die "mise bootstrap 重试后仍然失败"
+  fi
   bs_log "完成。新开一个终端（或执行 exec zsh -l）使配置生效。"
 }
