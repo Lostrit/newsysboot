@@ -108,6 +108,11 @@ function plugin-compile {
 # ------------------------------------------------------------
 # 2. mise —— 必须最先，后面所有 $+commands 判断都依赖它注入的 PATH
 # ------------------------------------------------------------
+# mise 的 hook-env 在当前目录有带补全的项目工具（如 bootstrap 仓库的 fnox）、且 compdef 还不存在时，
+# 会自行执行不带 -d 的 compinit，dump 写到 $ZDOTDIR/.zcompdump（即仓库中）。先放一个只记录调用的 compdef，
+# 第 5 步 compinit 定义真正的 compdef 之后重放（P-032）
+typeset -ga _zrc_deferred_compdefs
+compdef() { _zrc_deferred_compdefs+=("${(j: :)${(q)@}}") }
 (( $+commands[mise] )) && eval "$(mise activate zsh)"
 
 # ------------------------------------------------------------
@@ -183,6 +188,9 @@ zstyle ':completion:*' menu no
   [[ -f "$zcd" && ( ! -f "$zcd.zwc" || "$zcd" -nt "$zcd.zwc" ) ]] \
     && zcompile -R -- "$zcd.zwc" "$zcd" 2>/dev/null
 }
+# 重放 compinit 之前记录的 compdef 调用（见第 2 步）
+for _c in $_zrc_deferred_compdefs; do eval "compdef $_c"; done
+unset _c _zrc_deferred_compdefs
 
 # ------------------------------------------------------------
 # 7. 外部工具初始化（注册 widget / 补全，必须在 fzf-tab 之前）

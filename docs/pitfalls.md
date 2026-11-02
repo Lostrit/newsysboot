@@ -229,3 +229,6 @@
 - **追加**：只改 `~/.zshenv` 还不够。继承了 `ZDOTDIR` 环境变量的嵌套 zsh（tmux 面板、zsh 中再启动 zsh、`script` 等）
   读取的是 `$ZDOTDIR/.zshenv`，不读 `~/.zshenv`，而 `skip_global_compinit` 没有导出、不会被继承。
   新增 `dotfiles/.config/zsh/.zshenv`，转而读取 `~/.zshenv`。
+- **再追加**：在仓库目录中启动 zsh（收尾任务、tmux 面板等）时仍会生成：mise 的 hook-env 在当前目录有带补全的项目工具
+  （仓库 `mise.toml` 中的 fnox）且 `compdef` 尚不存在时，会自行执行不带 `-d` 的 `compinit -i`。
+  `.zshrc` 在 `mise activate` 之前定义一个只记录调用的 `compdef`，自己的 compinit 之后重放（mise 2026.10.22 的行为）。
