@@ -1,7 +1,7 @@
 # bootstrap.ps1 — Windows 入口（⚠️ 未在真机测试，docs/progress.md）
 #
 # 用法（PowerShell）：
-#   irm <地址>/bootstrap.ps1 | iex
+#   irm https://gh-proxy.com/https://raw.githubusercontent.com/lostrit/newsysboot/main/bootstrap.ps1 | iex
 #   或：powershell -ExecutionPolicy Bypass -File bootstrap.ps1 [-Source github|cnb] [-Dir <检出目录>]
 #
 # 范围（阶段 7 的第一版）：
@@ -15,8 +15,8 @@ param(
 )
 $ErrorActionPreference = 'Stop'
 
-$RepoGithub = if ($env:BOOTSTRAP_REPO_GITHUB) { $env:BOOTSTRAP_REPO_GITHUB } else { 'https://github.com/CHANGE_ME/bootstrap.git' }
-$RepoCnb = if ($env:BOOTSTRAP_REPO_CNB) { $env:BOOTSTRAP_REPO_CNB } else { 'https://cnb.cool/CHANGE_ME/bootstrap.git' }
+$RepoGithub = if ($env:BOOTSTRAP_REPO_GITHUB) { $env:BOOTSTRAP_REPO_GITHUB } else { 'https://github.com/lostrit/newsysboot.git' }
+$RepoCnb = if ($env:BOOTSTRAP_REPO_CNB) { $env:BOOTSTRAP_REPO_CNB } else { 'https://cnb.cool/xfengjing/lostrit/NewSysBoot.git' }
 $GhProxies = @('', 'https://gh-proxy.com/', 'https://ghfast.top/', 'https://gh.qninq.cn/', 'https://github.cnxiaobai.com/', 'https://tvv.tw/')
 $ProbeUrl = 'https://github.com/FiloSottile/age/releases/download/v1.2.1/age-v1.2.1-linux-amd64.tar.gz'
 $ProbeSha256 = '75c2d0d2265769452a72f14e9b956b6cc3968d0abd5a19904cb79a9267a117b1'

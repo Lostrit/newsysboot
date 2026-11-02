@@ -33,7 +33,8 @@
 
 ## 下一步（需要用户参与）
 
-1. 创建 GitHub / CNB 仓库，把地址填入 `bootstrap.sh` 与 `bootstrap.ps1` 中的 `CHANGE_ME`（D-011），配置 git remote 并推送
+1. ✅ 仓库已创建并推送（2026-11-02，GitHub `lostrit/newsysboot` 公开、匿名可 clone；地址已填入 `bootstrap.sh` / `bootstrap.ps1`）。
+   ⏳ CNB `xfengjing/lostrit/NewSysBoot` 匿名访问返回 404（私有仓库），新机器无法用 `--source cnb` 拉取：需要公开仓库，或支持带令牌 clone
 2. 用真实节点验证代理切换：`TEST_REAL_SECRETS=1 FNOX_AGE_KEY=… tests/run-host.sh`（P-018）
 3. 在真实的腾讯云 / 阿里云 / 华为云新机器上各跑一次（验证内网源探测，以及华为云、火山引擎的内网域名）
 4. SteamOS / macOS / Windows 真机测试
