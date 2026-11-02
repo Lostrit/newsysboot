@@ -226,3 +226,6 @@
 - **原因**：Ubuntu 的 `/etc/zsh/zshrc` 在 `/etc/os-release` 为 ubuntu 时先执行一次 `compinit`，dump 写到默认位置
   `$ZDOTDIR/.zcompdump`，而 `ZDOTDIR`（`~/.config/zsh`）链接到仓库。Debian 的全局 zshrc 没有这一段。每次启动还会多做一次 compinit。
 - **解决**：`dotfiles/.zshenv` 设置 `skip_global_compinit=1`（该文件注释中给出的方式）；`.gitignore` 增加 `.zcompdump*` 兜底。
+- **追加**：只改 `~/.zshenv` 还不够。继承了 `ZDOTDIR` 环境变量的嵌套 zsh（tmux 面板、zsh 中再启动 zsh、`script` 等）
+  读取的是 `$ZDOTDIR/.zshenv`，不读 `~/.zshenv`，而 `skip_global_compinit` 没有导出、不会被继承。
+  新增 `dotfiles/.config/zsh/.zshenv`，转而读取 `~/.zshenv`。
