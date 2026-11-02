@@ -44,7 +44,11 @@
      代理切换、Docker（内网镜像 + Docker Hub 镜像）、20 个工具；22 项检查通过，日志中无私钥。
      主机上的容器：debian:13（注入宿主机代理）与 ubuntu:24.04（无代理）从 GitHub 一键安装，各执行两次通过。
      过程中发现并修复 P-027、P-028、P-029、P-030（用户的 zsh 目录属于 root，从其他机器登录时报错）。
-   - ⏳ 腾讯云 Ubuntu + 已有 sudo 普通用户（用户稍后重置 dev 主机）
+   - ✅ 腾讯云 Ubuntu 24.04 + 已有免密 sudo 用户 `ubuntu`（2026-11-02，dev 主机）：以 `ubuntu` 从 GitHub 一键安装 →
+     不新建用户、对 `ubuntu` 执行 SSH 加固（D-025）、mihomo 真实节点代理切换、Docker、20 个工具；22 项检查通过；
+     `--dotfiles` 重新运行无改动、检出保持干净。主机上的容器 debian:13（注入宿主机代理）与 ubuntu:24.04（无代理）各执行两次通过。
+     过程中发现并修复 P-031（chsh 要求密码）、P-032（Ubuntu 上补全缓存写进仓库）。
+     本地对应测试：`TEST_SUDO_USER=1 tests/run-host.sh`。
    - ⏳ 阿里云 / 华为云（验证内网源探测，以及华为云、火山引擎的内网域名）
 4. SteamOS / macOS / Windows 真机测试
 5. 整理各环境的 mihomo 配置（目前只有 server 场景的模板）
