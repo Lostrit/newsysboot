@@ -85,6 +85,8 @@ if [ ! -f "$(bs_self_dir)/lib/common.sh" ]; then
     done
     [ -d "$_tmp/repo" ] || _die "无法从 GitHub 拉取仓库，可改用 --source cnb"
   fi
+  # 之后切换到新用户时仍需读取：不受当前 umask（如 077）影响（P-027）
+  chmod -R a+rX "$_tmp/repo"
   export BOOTSTRAP_REPO
   exec sh "$_tmp/repo/bootstrap.sh" "$@"
 fi

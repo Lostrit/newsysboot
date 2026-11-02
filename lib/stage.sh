@@ -87,7 +87,14 @@ bs_stage_root() {
   install -m 644 -o "$BOOTSTRAP_USER" -g "$(id -gn "$BOOTSTRAP_USER")" "$BS_STATE_DIR/mirrors.env" "$_ustate/mirrors.env"
 
   bs_log "切换到用户 $BOOTSTRAP_USER 继续"
-  # 新用户需要能读取当前检出（管道模式下位于 /tmp/bootstrap.*，已设为 755）
+  # 新用户需要能读取当前检出：管道模式的临时检出已放开权限；从 /root 等新用户读不到的位置运行时，
+  # 复制一份到临时目录（P-027）
+  if ! sudo -u "$BOOTSTRAP_USER" test -r "$BS_SRC/bootstrap.sh"; then
+    _copy=$(mktemp -d "${TMPDIR:-/tmp}/bootstrap.XXXXXX")
+    cp -R "$BS_SRC/." "$_copy/"
+    chmod -R a+rX "$_copy"
+    BS_SRC=$_copy
+  fi
   # age 私钥既不能出现在命令行（/proc/*/cmdline），也不能经 sudo 传递环境变量（sudo 会把 ENV= 写进系统日志，P-017）：
   # 写入 tmpfs 中只有新用户可读的临时文件，只传路径；user 阶段读取后立即删除
   BOOTSTRAP_AGE_KEY_FILE=
@@ -103,9 +110,13 @@ bs_stage_root() {
   export BOOTSTRAP_SOURCE BOOTSTRAP_ENV BOOTSTRAP_REPO="${BOOTSTRAP_REPO:-}" BOOTSTRAP_DIR="${BOOTSTRAP_DIR:-}" \
     BOOTSTRAP_SKIP="$BS_SKIP" BOOTSTRAP_NONINTERACTIVE="${BOOTSTRAP_NONINTERACTIVE:-}" \
     BOOTSTRAP_ASSUME_HOST="${BOOTSTRAP_ASSUME_HOST:-}" BOOTSTRAP_AGE_KEY_FILE
-  exec sudo -u "$BOOTSTRAP_USER" -H \
+  # 不用 exec：user 阶段没能启动（或中途失败）时，由这里兜底删除私钥文件（P-027）
+  _rc=0
+  sudo -u "$BOOTSTRAP_USER" -H \
     --preserve-env=BOOTSTRAP_SOURCE,BOOTSTRAP_ENV,BOOTSTRAP_REPO,BOOTSTRAP_DIR,BOOTSTRAP_SKIP,BOOTSTRAP_NONINTERACTIVE,BOOTSTRAP_ASSUME_HOST,BOOTSTRAP_AGE_KEY_FILE,http_proxy,https_proxy,no_proxy,all_proxy \
-    sh "$BS_SRC/bootstrap.sh" --stage user ${BS_DRY_RUN:+--dry-run}
+    sh "$BS_SRC/bootstrap.sh" --stage user ${BS_DRY_RUN:+--dry-run} || _rc=$?
+  [ -z "$BOOTSTRAP_AGE_KEY_FILE" ] || rm -f "$BOOTSTRAP_AGE_KEY_FILE"
+  exit "$_rc"
 }
 
 # bs_mise <envs> <mise 参数…>：有 age 私钥时经 fnox 注入机密（D-008）

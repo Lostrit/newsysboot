@@ -151,3 +151,18 @@
 - **现象**：管道模式在没有终端的容器中运行时，没有任何输出，退出码为 2（之前的测试都设置了 `BOOTSTRAP_NONINTERACTIVE=1`，所以没有发现）。
 - **原因**：`:` 是 POSIX 规定的「特殊内建命令」，它的重定向失败时，非交互 shell 会直接退出（dash 如此）。
 - **解决**：改为在子 shell 中尝试：`(exec </dev/tty) 2>/dev/null`（bootstrap.sh、lib/common.sh）。新增 `tests/run-pipe.sh`，不设置 NONINTERACTIVE，覆盖这个场景。
+
+## P-027 root 的 umask 为 077 时，新用户读不到临时检出；私钥转交文件残留
+
+- **现象**：在 dev 主机（腾讯云 Debian 13）上真实部署，切换到新用户时报
+  `sh: 0: cannot open /tmp/bootstrap.*/repo/bootstrap.sh: Permission denied`，退出码 2；
+  root 阶段写入 `/dev/shm/bootstrap-key.*` 的私钥文件没有被 user 阶段读取删除。
+- **原因**：管道模式只把临时目录设为 755，`git clone` 出来的文件仍按当前 umask 创建（077 时为 700/600）。
+  root 阶段用 `exec sudo` 切换，user 阶段没能启动时就没有人删除私钥文件。
+  （本次 umask 077 来自测试启动脚本，但收紧 root umask 的主机同样会遇到；之前的测试容器 umask 都是 022。）
+- **解决**：
+  - 管道模式 clone 后 `chmod -R a+rX`；root 阶段切换前用 `sudo -u <用户> test -r` 检查，读不到时（如从 `/root` 下的检出运行）复制到临时目录。
+  - 不再 `exec sudo`：user 阶段结束（无论成败）后由 root 阶段兜底删除私钥文件。
+  - `tests/run-pipe.sh` 改为在 `umask 077` 下运行（旧代码可复现失败，新代码通过）。
+- **另外**：systemd-logind 的 `RemoveIPC=yes` 会在普通用户最后一个登录会话结束时删除其在 `/dev/shm` 中的文件，
+  因此需要预先放置私钥文件时，应以 root 身份写入。

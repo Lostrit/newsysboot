@@ -19,6 +19,7 @@ for h in github.com api.github.com raw.githubusercontent.com objects.githubuserc
   release-assets.githubusercontent.com codeload.github.com; do
   block="$block --add-host $h:0.0.0.0"
 done
+# umask 077：root 的 umask 收紧时，新用户仍需能读取临时检出（P-027）
 # shellcheck disable=SC2086
 docker run --rm $block -v "$snap:/src:ro" -e BOOTSTRAP_REPO=/src -e BOOTSTRAP_USER=tester -e BOOTSTRAP_PASSWORD=tester \
-  "$img" sh -c 'cat /src/bootstrap.sh | sh -s -- "$@" && su tester -c "set -x; readlink ~/.zshenv; getent passwd tester | cut -d: -f7"' sh "$@"
+  "$img" sh -c 'umask 077; cat /src/bootstrap.sh | sh -s -- "$@" && su tester -c "set -x; readlink ~/.zshenv; getent passwd tester | cut -d: -f7"' sh "$@"
