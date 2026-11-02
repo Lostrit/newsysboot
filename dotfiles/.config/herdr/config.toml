@@ -1,6 +1,5 @@
 onboarding = false
-[terminal]
-default_shell = "/bin/zsh"
+# [terminal] default_shell 不再写死（原为 /bin/zsh）：herdr 使用 $SHELL，即 bootstrap 设置的登录 shell
 [theme]
 # name = "catppuccin_mocha"
 name = "catppuccin"
@@ -8,6 +7,7 @@ auto_switch = false
 [session]
 resume_agents_on_restore = true
 [worktrees]
-directory = "/workspace/worktrees"
+# 原为容器内路径 /workspace/worktrees；herdr 会展开 ~（dev 主机实测，评审第 5 项）
+directory = "~/worktrees"
 [ui]
 agent_panel_sort = "spaces"

@@ -26,8 +26,10 @@
    - `.gitignore` 中的 `/herdr/**`、`!/herdr/config.toml`、`/zsh/.zshrc.zwc` 已经匹配不到任何文件。
    - `lefthook.yml` 的 `zsh/.zshrc`、`fzf/fzfrc`、`ripgrep/ripgreprc`、`bat/config`、`git/config`、`delta/**` 等 glob
      应该都匹配不到了（lefthook 按仓库根目录的相对路径匹配），所以 shell 语法检查和 gitconfig 检查很可能一直没有执行。→ 前面加上 `.config/`。
-⏳ 5. **`herdr/config.toml` 只适用于容器**：`default_shell = "/bin/zsh"`（SteamOS 和 Homebrew 的 zsh 路径不一样）、
+✅ 5. **`herdr/config.toml` 只适用于容器**：`default_shell = "/bin/zsh"`（SteamOS 和 Homebrew 的 zsh 路径不一样）、
    `worktrees.directory = "/workspace/worktrees"`。→ 用模板渲染，或者 herdr 支持的话改成读环境变量。
+   → 已处理（2026-11-02）：删除 `default_shell`（herdr 使用 `$SHELL`），`worktrees.directory = "~/worktrees"`；
+   herdr 0.9.1 在 dev 上实测会展开 `~`，面板使用登录 shell。
 ⏳ 6. **nvim 引用了不存在的脚本**：`README.md`、`mason.lua`、`mason-tools.lua`、`bootstrap.lua` 都提到
    `scripts/bootstrap.sh` / `scripts/bootstrap.lua`，但 `.config/nvim/scripts/` 不存在。→ 补上这个脚本，或者删掉相关说明。
 ⏳ 7. **`.themes/` 把主题仓库整个复制进来了**（7 个仓库，约 5MB，包括 tests、assets、`.github`、CI 配置）。
