@@ -2,8 +2,8 @@
 # bootstrap.sh — stage-0 入口（POSIX sh；docs/plan.md）
 #
 # 用法：
-#   curl -fsSL https://gh-proxy.com/https://raw.githubusercontent.com/lostrit/newsysboot/main/bootstrap.sh | sh                  # 全新机器：完整初始化
-#   curl -fsSL https://gh-proxy.com/https://raw.githubusercontent.com/lostrit/newsysboot/main/bootstrap.sh | sh -s -- --dotfiles # 只部署 dotfiles 与工具（不需要 root，D-009）
+#   curl -fsSL https://gh-proxy.com/https://raw.githubusercontent.com/Lostrit/newsysboot/main/bootstrap.sh | sh                  # 全新机器：完整初始化
+#   curl -fsSL https://gh-proxy.com/https://raw.githubusercontent.com/Lostrit/newsysboot/main/bootstrap.sh | sh -s -- --dotfiles # 只部署 dotfiles 与工具（不需要 root，D-009）
 #   sh bootstrap.sh [选项]                               # 在仓库检出目录中执行
 #
 # 选项：
@@ -22,7 +22,7 @@
 set -eu
 
 # 远程仓库地址（创建远程仓库后填入默认值，D-011）
-: "${BOOTSTRAP_REPO_GITHUB:=https://github.com/lostrit/newsysboot.git}"
+: "${BOOTSTRAP_REPO_GITHUB:=https://github.com/Lostrit/newsysboot.git}"
 : "${BOOTSTRAP_REPO_CNB:=https://cnb.cool/xfengjing/lostrit/NewSysBoot.git}"
 
 # ---------------------------------------------------------------------------

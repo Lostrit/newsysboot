@@ -4,12 +4,12 @@
 
 ```sh
 # GitHub（经加速代理，D-011）
-curl -fsSL https://gh-proxy.com/https://raw.githubusercontent.com/lostrit/newsysboot/main/bootstrap.sh | sh
+curl -fsSL https://gh-proxy.com/https://raw.githubusercontent.com/Lostrit/newsysboot/main/bootstrap.sh | sh
 # CNB（⚠️ 仓库目前未公开，匿名访问返回 404，见 progress.md）
 curl -fsSL https://cnb.cool/xfengjing/lostrit/NewSysBoot/-/git/raw/main/bootstrap.sh | sh
 ```
 
-仓库：GitHub `https://github.com/lostrit/newsysboot`、CNB `https://cnb.cool/xfengjing/lostrit/NewSysBoot`。
+仓库：GitHub `https://github.com/Lostrit/newsysboot`、CNB `https://cnb.cool/xfengjing/lostrit/NewSysBoot`。
 
 流程：检测环境 → 选源测速 → apt 换源与基础包 → （root 时）创建普通用户、SSH 加固 → 以普通用户检出仓库到
 `~/.local/share/bootstrap` → 安装 mise → `mise bootstrap`（包、文件、服务、dotfiles、登录 shell、工具）。
@@ -17,7 +17,7 @@ curl -fsSL https://cnb.cool/xfengjing/lostrit/NewSysBoot/-/git/raw/main/bootstra
 ## 已初始化的环境：只部署 dotfiles
 
 ```sh
-curl -fsSL https://gh-proxy.com/https://raw.githubusercontent.com/lostrit/newsysboot/main/bootstrap.sh | sh -s -- --dotfiles
+curl -fsSL https://gh-proxy.com/https://raw.githubusercontent.com/Lostrit/newsysboot/main/bootstrap.sh | sh -s -- --dotfiles
 # 或在已有的检出中
 sh ~/.local/share/bootstrap/bootstrap.sh --dotfiles
 ```

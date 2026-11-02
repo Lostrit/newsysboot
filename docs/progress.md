@@ -33,8 +33,9 @@
 
 ## 下一步（需要用户参与）
 
-1. ✅ 仓库已创建并推送（2026-11-02，GitHub `lostrit/newsysboot` 公开、匿名可 clone；地址已填入 `bootstrap.sh` / `bootstrap.ps1`）。
-   ⏳ CNB `xfengjing/lostrit/NewSysBoot` 匿名访问返回 404（私有仓库），新机器无法用 `--source cnb` 拉取：需要公开仓库，或支持带令牌 clone
+1. ✅ 仓库已创建并推送（2026-11-02，GitHub `Lostrit/newsysboot` 公开、匿名可 clone；地址已填入 `bootstrap.sh` / `bootstrap.ps1`）。
+   ✅ CNB `xfengjing/lostrit/NewSysBoot` 已设为公开（2026-11-02），匿名 clone 与 raw 地址均可访问。
+   推送由 Claude 负责；本机推送 CNB 需要 HTTPS 访问令牌（cnb.cool 的 SSH 22 端口在本机连不上）
 2. ✅ 用真实节点验证代理切换（2026-11-02，用户执行 `TEST_REAL_SECRETS=1 FNOX_AGE_KEY=… tests/run-host.sh`）：
    真实 `fnox.toml` 解密 → mihomo 连通 → `env.sh` 切换为代理变量并清空 `GH_PROXY` → 第二次 bootstrap 经代理安装工具；
    18 项检查两次运行全部通过，第二次运行无改动，日志与临时目录中无私钥
