@@ -181,7 +181,9 @@
   - 新增 `bs_detect_proxy`（user 阶段）：环境中的代理（或有 mihomo 模块时本机的 mihomo 端口）能访问 GitHub 就直接使用并写入 `env.sh`；
     不可用则清掉代理变量，回退到 `GH_PROXY`。
   - `tests/run-host.sh` 最后经 zsh 运行一次 `--dotfiles`，再检查 `env.sh`。
-- **注意**：已经受影响的机器（`env.sh` 中 `GH_PROXY=''` 且没有标记）需要重新完整运行一次，或先 `unset GH_PROXY` 再运行。
+- **注意**：已经受影响的机器（`env.sh` 中 `GH_PROXY=''` 且没有标记）：更新代码后运行一次 `--dotfiles`，
+  会检测到本机 mihomo 并恢复代理设置（dev 主机已验证）。
+- 代理检测在 dev 上实测偶尔有一次请求失败（正常约 2 秒），因此 `bs_detect_proxy` 最多试 3 次。
 
 ## P-029 第三方 GitHub 加速代理临时限流（429）或测速全部超时
 

@@ -268,10 +268,10 @@ bs_detect_proxy() {
   # 环境中没有代理、但本机应有 mihomo 时（如 --dotfiles 重新运行），也试一下本机端口
   if [ -z "$_px" ] && bs_wants_mihomo; then
     _px="http://127.0.0.1:${BOOTSTRAP_MIHOMO_PORT:-7890}"
-    bs_proxy_ok "$_px" || return 0
+    bs_proxy_ok_retry "$_px" || return 0
   fi
   [ -n "$_px" ] || return 0
-  if bs_proxy_ok "$_px"; then
+  if bs_proxy_ok_retry "$_px"; then
     bs_log "使用环境中的代理：$_px"
     BS_PROXY_URL=$_px
   else
@@ -283,6 +283,11 @@ bs_detect_proxy() {
 # 代理是否可用：经代理访问 GitHub
 bs_proxy_ok() {
   curl -s -x "$1" --connect-timeout 3 -m 10 -o /dev/null -w '%{http_code}' https://github.com 2>/dev/null | grep -q '^[23]'
+}
+
+# 节点偶尔会有一次请求失败（dev 主机实测），最多试 3 次
+bs_proxy_ok_retry() {
+  bs_proxy_ok "$1" || bs_proxy_ok "$1" || bs_proxy_ok "$1"
 }
 
 bs_run_mise() {
