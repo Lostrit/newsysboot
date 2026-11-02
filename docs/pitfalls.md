@@ -192,6 +192,19 @@
   - 另一次测试在多个测试并行下载时，所有代理的测速（1MiB、10 秒超时、两次取最慢）都失败，结果退回直连，在国内必然失败。
 - **原因**：公共加速代理有频率限制、稳定性不可控；测速只代表那一刻的状态。
 - **解决**：
-  - `bs_run_mise` 的完整执行失败且正在使用 `GH_PROXY` 时，排除当前代理重新测速，换一个代理重试一次，并更新 `mirrors.env` 与 `env.sh`。
+  - 所有 mise 调用（含两次执行中的第一次和 fnox 安装）经 `bs_mise_retry`：失败且正在使用 `GH_PROXY` 时，排除当前代理重新测速，
+    换一个代理重试一次，并更新 `mirrors.env` 与 `env.sh`（最初只覆盖最后一次执行，之后 fnox 安装也遇到了 429）。
   - `bs_select_gh_proxy` 全部失败时，放宽到 30 秒超时、只测一次再试。
   - 用一个不可用的 `GH_PROXY=https://127.0.0.1:9/` 验证：第一次失败后自动改用 `gh.qninq.cn` 完成。
+
+## P-030 主机部署后用户家目录中的 zsh 目录属于 root
+
+- **现象**：dev 主机部署后，用户从其他机器 SSH 登录时 zsh 报大量 `Permission denied`：
+  `~/.local/share/zsh`、`~/.cache/zsh`、`~/.local/state/zsh`、`~/.local/state/node` 属于 root，补全缓存和插件都无法生成。
+- **原因**：有 `/etc/mihomo` 等系统文件时，mise 以 `sudo mise … __apply-system-plan` 执行整个 files 阶段，
+  `mise.toml` 中没写 owner 的用户目录也由 root 创建（最小配置已复现；`owner` 不支持模板）。
+  容器测试没有系统文件，所以没有出现；主机测试中预热 zsh 的任务丢弃了所有输出，也没有发现。
+- **解决**：用户目录改由 `[tasks.bootstrap]` 以当前用户创建（D-024）；root 阶段修复家目录中属于 root 的文件；
+  `tests/run-host.sh` 新增「家目录中没有 root 的文件」「zsh 启动没有报错输出」两项检查。
+- **另外**：没有终端时启动交互式 zsh，fzf / atuin 的 init 会报 `can't change option: zle`，真实登录不会；
+  因此 zsh 启动检查用 `script` 提供伪终端（`tests/zsh-startup-check.sh`）。

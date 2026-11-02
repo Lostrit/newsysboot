@@ -20,9 +20,10 @@
 
 一句话：**mise 只负责安装工具；目录由 bootstrap 声明；shell 集成由 zsh 在启动时按一份清单生成并缓存，工具升级时自动失效重新生成。**
 
-### 2.1 目录 → `[bootstrap.directories]`
+### 2.1 目录 → `[tasks.bootstrap]`
 
-XDG 根目录和 `zsh/{site-functions,plugins}`、`$XDG_CACHE_HOME/zsh`、`$XDG_STATE_HOME/zsh` 在本仓库的 `mise.toml` 中声明。
+XDG 根目录和 `zsh/{site-functions,plugins}`、`$XDG_CACHE_HOME/zsh`、`$XDG_STATE_HOME/zsh` 由本仓库 `mise.toml` 的收尾任务以当前用户创建
+（最初写在 `[bootstrap.directories]`，主机上会被 sudo 创建成 root 所有，见 P-030、D-024）。
 工具各自的数据目录（bat cache、npm prefix 等）大多会由工具自己按需创建，不再预先创建；个别不会自己创建的，单独声明。
 
 ### 2.2 补全与 init 脚本 → 声明式清单 + 启动时缓存

@@ -99,6 +99,8 @@ docker exec -e TEST_REAL_SECRETS="${TEST_REAL_SECRETS:-}" "$name" sh -c '
   check "sshd PermitRootLogin no"        "sshd -T | grep -qx \"permitrootlogin no\""
   check "sshd PasswordAuthentication no" "sshd -T | grep -qx \"passwordauthentication no\""
   check "docker pull via mirror"         "docker pull -q hello-world"
+  check "no root-owned files in home"    "[ -z \"\$(find /home/tester -xdev -user 0 | head -1)\" ]"
+  check "zsh startup without errors"     "sh /src/tests/zsh-startup-check.sh tester"
   check "no age key in state/logs/tmp"   "! grep -rqs AGE-SECRET-KEY $st /var/log /tmp /dev/shm"
   exit $fail
 '

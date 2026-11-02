@@ -44,7 +44,7 @@ SteamOS 不能声明 `pacman:` 包。
 ## D-003 XDG 变量写在 `~/.zshenv` ✅
 
 `~/.zshenv` 只做引导：导出 `XDG_*`、`ZDOTDIR=$XDG_CONFIG_HOME/zsh`、`ZSH_COMPDUMP`，读取 `GH_PROXY` 缓存。
-每个用户一份，不需要 root，各平台通用。目录由 `[bootstrap.directories]` 创建。
+每个用户一份，不需要 root，各平台通用。目录由 `[tasks.bootstrap]` 创建（原为 `[bootstrap.directories]`，见 D-024）。
 
 ---
 
@@ -156,7 +156,7 @@ GitHub 加速代理的测速逻辑相同（参见 research R-002），并额外�
 详见 [design-zsh-tools.md](design-zsh-tools.md)。要点：
 
 - mise 只负责安装工具；去掉每个工具 postinstall 中重复的 mkdir 和补全生成代码。
-- 目录由 `[bootstrap.directories]` 声明。
+- 目录由 bootstrap 声明（现为 `[tasks.bootstrap]`，见 D-024）。
 - `.zshrc` 中的 `(( $+commands[x] )) && …` 改为一份 `tools.zsh` 清单；补全和 init 脚本在启动时生成并缓存，
   以工具的真实路径作为缓存键，工具升级后自动重新生成。
 
@@ -284,3 +284,15 @@ dotfiles 的 mise 全局配置中有些工具（如 tmux）没有 Windows 版本
 `mise.mihomo.toml` 的 `[vars]` 从环境变量取值（`BOOTSTRAP_MIHOMO_PORT / _ALLOW_LAN / _BIND / _LAN_IPS`），由 stage-0 的 `bs_mihomo_profile` 设置：
 Linux 主机为 server（`allow-lan: true`，只放行本机和 Docker 网段），SteamOS / macOS 为 desktop（只监听 127.0.0.1）。
 用环境变量而不是在多个模块里重复定义 `[vars]`，避免依赖 mise 多个环境文件之间的优先级。
+
+## D-024 用户目录改由收尾任务创建 ✅
+
+**日期**：2026-11-02
+
+- **决策**：`~/.config`、`~/.local/bin`、zsh 与 node 的目录不再写在 `[bootstrap.directories]`，改为 `[tasks.bootstrap]` 第一步以当前用户 `mkdir -p`；
+  root 阶段切换用户前，把用户家目录中属于 root 的文件改回用户所有。
+- **原因**：有系统模块时 mise 以 sudo 执行整个 files 阶段，没写 owner 的目录归 root 所有（P-030）；
+  `owner` / `group` 不支持模板，而用户名因机器而异，不能写死。
+- **备选方案**：
+  - stage-0 生成一份带 owner 的本地 mise 配置：多一层生成逻辑，`mise bootstrap` 单独使用时又会缺失。
+  - 在 stage-0 的 shell 中创建：只在经 `bootstrap.sh` 运行时生效；收尾任务对任何 `mise bootstrap` 都生效。

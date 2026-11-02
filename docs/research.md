@@ -21,6 +21,8 @@
 - `[bootstrap.users]` / `[bootstrap.groups]`：只支持 Linux，需要 root（自动 sudo）。
 - `[bootstrap.files]` / `[bootstrap.directories]`：内容、属主、权限、`template = true`、
   `notify = ["服务名"]`；只支持 Unix，Windows 上会直接失败 → 要加 `os = "unix"`。
+  只要有一项需要 root，整个 files 阶段都以 sudo 执行，没写 `owner` 的项归 root；`owner` / `group` 不支持模板
+  （2026-11-02 用 mise 2026.10.21 实测，P-030）。
 - `[bootstrap.services.<name>]`：系统服务（systemd，仅 Linux）和用户服务（systemd user /
   LaunchAgent / 计划任务）。同一次运行中写入的 unit 文件，配合 `notify` 可以被识别。
 - `[bootstrap.user] login_shell = "zsh"`：自动解析路径、写 `/etc/shells`、执行 chsh。

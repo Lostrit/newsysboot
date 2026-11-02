@@ -81,6 +81,8 @@ bs_stage_root() {
 
   # 把选源结果交给新用户，避免重复测速
   _uhome=$(getent passwd "$BOOTSTRAP_USER" | cut -d: -f6)
+  # 用户家目录中不应有属于 root 的文件（修复旧版本以 root 创建的目录，P-030）
+  find "$_uhome" -xdev -user 0 -exec chown -h "$BOOTSTRAP_USER:$(id -gn "$BOOTSTRAP_USER")" {} + 2>/dev/null || true
   _ustate="$_uhome/.local/state/bootstrap"
   install -d -m 755 -o "$BOOTSTRAP_USER" -g "$(id -gn "$BOOTSTRAP_USER")" \
     "$_uhome/.local" "$_uhome/.local/state" "$_ustate"
@@ -131,6 +133,25 @@ bs_mise() {
   else
     mise ${_e:+-E "$_e"} "$@"
   fi
+}
+
+# bs_mise_retry <envs> <mise 参数…>：失败且正在使用 GH_PROXY 时，第三方加速代理可能临时限流（429）或失效，
+# 换一个代理再试一次，并更新选源缓存与 env.sh（P-029）
+bs_mise_retry() {
+  bs_mise "$@" && return 0
+  [ -z "${BS_PROXY_URL:-}" ] && [ -n "${GH_PROXY:-}" ] || return 1
+  _bad=$GH_PROXY
+  _rest=
+  for _p in $BS_GH_PROXIES; do [ "$_p" = "$_bad" ] || _rest="$_rest $_p"; done
+  GH_PROXY=$(BS_GH_PROXIES=$_rest bs_select_gh_proxy) || return 1
+  bs_warn "mise 执行失败，GitHub 加速代理 $_bad 可能限流，改用 ${GH_PROXY:-<直连>} 重试"
+  if [ -w "$BS_STATE_DIR/mirrors.env" ]; then
+    _np=$(grep -v '^export GH_PROXY=' "$BS_STATE_DIR/mirrors.env")
+    { printf '%s\n' "$_np"; bs_env_line GH_PROXY "$GH_PROXY"; } >"$BS_STATE_DIR/mirrors.env"
+  fi
+  export GH_PROXY
+  bs_write_env
+  bs_mise "$@"
 }
 
 # ---------------------------------------------------------------------------
@@ -326,7 +347,7 @@ bs_run_mise() {
     _first=accounts,files,packages,services
     [ "$BOOTSTRAP_OS" = macos ] && _first=files,packages,dotfiles,macos-launchd-agents
     bs_log "第一次：mise -E $_envs bootstrap --only $_first"
-    bs_mise "$_envs" bootstrap --yes --only "$_first"
+    bs_mise_retry "$_envs" bootstrap --yes --only "$_first" || bs_die "mise bootstrap（第一次）失败"
     _px="http://127.0.0.1:$BOOTSTRAP_MIHOMO_PORT"
     _i=0
     while [ "$_i" -lt 10 ] && ! bs_proxy_ok "$_px"; do
@@ -344,22 +365,6 @@ bs_run_mise() {
   fi
 
   bs_log "mise ${_envs:+-E $_envs }$*"
-  if ! bs_mise "$_envs" "$@"; then
-    # 第三方 GitHub 加速代理可能临时限流（429）或失效：换一个代理再试一次（P-029）
-    [ -z "${BS_PROXY_URL:-}" ] && [ -n "${GH_PROXY:-}" ] || bs_die "mise bootstrap 失败"
-    _bad=$GH_PROXY
-    _rest=
-    for _p in $BS_GH_PROXIES; do [ "$_p" = "$_bad" ] || _rest="$_rest $_p"; done
-    GH_PROXY=$(BS_GH_PROXIES=$_rest bs_select_gh_proxy) || bs_die "mise bootstrap 失败，且没有其他可用的 GitHub 加速代理"
-    bs_warn "mise bootstrap 失败，GitHub 加速代理 $_bad 可能限流，改用 ${GH_PROXY:-<直连>} 重试"
-    # 更新选源缓存与 env.sh，之后的运行和 shell 也使用新的代理
-    if [ -w "$BS_STATE_DIR/mirrors.env" ]; then
-      _np=$(grep -v '^export GH_PROXY=' "$BS_STATE_DIR/mirrors.env")
-      { printf '%s\n' "$_np"; bs_env_line GH_PROXY "$GH_PROXY"; } >"$BS_STATE_DIR/mirrors.env"
-    fi
-    export GH_PROXY
-    bs_write_env
-    bs_mise "$_envs" "$@" || bs_die "mise bootstrap 重试后仍然失败"
-  fi
+  bs_mise_retry "$_envs" "$@" || bs_die "mise bootstrap 失败"
   bs_log "完成。新开一个终端（或执行 exec zsh -l）使配置生效。"
 }
