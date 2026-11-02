@@ -232,3 +232,10 @@
 - **再追加**：在仓库目录中启动 zsh（收尾任务、tmux 面板等）时仍会生成：mise 的 hook-env 在当前目录有带补全的项目工具
   （仓库 `mise.toml` 中的 fnox）且 `compdef` 尚不存在时，会自行执行不带 `-d` 的 `compinit -i`。
   `.zshrc` 在 `mise activate` 之前定义一个只记录调用的 `compdef`，自己的 compinit 之后重放（mise 2026.10.22 的行为）。
+
+## P-033 腾讯云 npm 镜像的根路径返回 404
+
+- **现象**：nvim 预装的网络检测在 dev 主机上总是不通过，而实际预装可以成功。
+- **原因**：检测请求的是 `NPM_CONFIG_REGISTRY` 的根路径，`https://mirrors.tencentyun.com/npm/` 根路径返回 404；
+  该镜像也不支持 Range（取 1KB 会返回整个 1MB 的元数据）。
+- **解决**：改为对一个包的元数据发 HEAD 请求（`${NPM_CONFIG_REGISTRY}prettier`）。

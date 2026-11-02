@@ -307,12 +307,15 @@ Linux 主机为 server（`allow-lan: true`，只放行本机和 Docker 网段）
 - **防锁死**：条件与 root 场景相同（D-004）：当前用户必须已有 `authorized_keys`；交互模式需要确认；无人值守需要 `BOOTSTRAP_HARDEN_SSH=1`。
 - **测试**：`TEST_SUDO_USER=1 tests/run-host.sh`（预先创建免密 sudo 的用户，全程以该用户运行）。
 
-## D-026 nvim 预装作为可选步骤（`--nvim`） ✅
+## D-026 nvim 预装：网络可用时默认执行 ✅
 
 **日期**：2026-11-02
 
-- **决策**：补写 dotfiles 中 nvim 引用的 `scripts/bootstrap.sh` / `bootstrap.lua`（dotconfig 评审第 6 项）；bootstrap 增加 `--nvim`
-  （`BOOTSTRAP_NVIM=1`），部署完成后执行。默认不执行。
-- **原因**：首次打开 nvim 时，插件、语法解析器、Mason 工具都直接从 GitHub 下载，国内无代理时会失败；镜像构建也需要一次装好、离线可用。
-  但它约需 2 分钟、依赖 GitHub 网络，失败会让整个部署失败，因此不默认开启。
-- **备选方案**：删除相关引用，只保留首次启动自动安装（用户选择补写）；放进 `[tasks.bootstrap]` 每次执行（太慢，且每次都依赖网络）。
+- **决策**：补写 dotfiles 中 nvim 引用的 `scripts/bootstrap.sh` / `bootstrap.lua`（dotconfig 评审第 6 项）。按用户规则（2026-11-02）：
+  - 默认在部署最后检测预装所需的网络（有 mihomo 时即在安装并切换代理之后；没有 mihomo 时直接检测），通过则预装；
+  - 网络检测不通过时不执行预装脚本，输出 WARNING，部署照常成功；预装中途失败同样只给出 WARNING；
+  - `--no-nvim`（`BOOTSTRAP_NVIM=0`）不预装；`--nvim`（`BOOTSTRAP_NVIM=1`）不检测、强制预装，失败则部署失败。
+- **网络检测**：git 的 HTTP 接口（插件克隆）、GitHub Releases 下载（语法解析器、Mason 工具、blink.cmp 库）、npm 镜像中一个包的元数据（HEAD）；
+  都经当前环境的代理，不经 `GH_PROXY`（lazy.nvim / Mason 不使用它）。
+- **原因**：首次打开 nvim 时，插件、语法解析器、Mason 工具都直接从 GitHub 下载，国内无代理时会失败；预装后离线可用，也适合镜像构建。
+- **备选方案**：删除相关引用，只保留首次启动自动安装（用户选择补写）；默认不执行、只在 `--nvim` 时执行（第一版，用户改为默认执行）。

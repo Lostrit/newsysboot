@@ -14,7 +14,8 @@
 #   --harden-ssh      执行（或重新执行）SSH 加固
 #   --reprobe         忽略缓存，重新测速选源
 #   --skip <parts>    传给 mise bootstrap 的 --skip（如 tools）
-#   --nvim            完成后预装 nvim 插件、语法解析器、Mason 工具（约 2 分钟，需要能访问 GitHub）；环境变量 BOOTSTRAP_NVIM=1
+#   --no-nvim         不预装 nvim 插件与工具（默认：网络检测通过时预装，否则给出 WARNING 跳过）；BOOTSTRAP_NVIM=0
+#   --nvim            不检测网络、强制预装，失败则退出非零（适合 Dockerfile）；BOOTSTRAP_NVIM=1
 #   --dry-run         mise bootstrap 只预览
 #   -h, --help
 #
@@ -123,6 +124,7 @@ while [ $# -gt 0 ]; do
     --harden-ssh) BS_HARDEN_ONLY=1 ;;
     --reprobe) BOOTSTRAP_REPROBE=1 ;;
     --nvim) BOOTSTRAP_NVIM=1 ;;
+    --no-nvim) BOOTSTRAP_NVIM=0 ;;
     --skip) BS_SKIP=$2; shift ;;
     --dry-run) BS_DRY_RUN=1 ;;
     --stage) BS_STAGE=$2; shift ;; # 内部使用：root 阶段结束后以新用户身份进入 user 阶段

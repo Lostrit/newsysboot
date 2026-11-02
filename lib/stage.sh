@@ -294,6 +294,39 @@ bs_no_proxy() {
   printf '%s\n' "$_np"
 }
 
+# nvim 预装所需的网络：插件经 git 直接从 GitHub 克隆，语法解析器 / Mason 工具 / blink.cmp 库从 GitHub Releases 下载
+# （都不经 GH_PROXY，只能经代理或直连），npm 类工具走 NPM_CONFIG_REGISTRY。三项都经当前环境的代理检测；
+# npm 镜像的根路径可能返回 404（腾讯云），且不支持 Range，因此对一个包的元数据发 HEAD 请求
+bs_nvim_net_ok() {
+  curl -fsS -m 15 -o /dev/null "https://github.com/folke/lazy.nvim.git/info/refs?service=git-upload-pack" 2>/dev/null &&
+    curl -fsSL -m 20 -r 0-1023 -o /dev/null "$BS_GH_PROBE_URL" 2>/dev/null &&
+    curl -fsS -I -m 15 -o /dev/null "${NPM_CONFIG_REGISTRY:-https://registry.npmjs.org/}prettier" 2>/dev/null
+}
+
+# 预装 nvim 插件、treesitter 语法解析器、Mason 工具、blink.cmp 库（dotfiles 中的 nvim/scripts/bootstrap.sh，D-026）：
+#   默认：在最后（有 mihomo 时已切换到代理）检测网络，通过才预装；不通过或预装失败只给出 WARNING，不影响部署结果
+#   BOOTSTRAP_NVIM=0（--no-nvim）：不预装
+#   BOOTSTRAP_NVIM=1（--nvim）：不检测网络，强制预装，失败则部署失败（适合 Dockerfile）
+bs_nvim_preinstall() {
+  _ns="$BS_SRC/dotfiles/.config/nvim/scripts/bootstrap.sh"
+  case "${BOOTSTRAP_NVIM:-}" in
+    0) return 0 ;;
+    1)
+      bs_log "预装 nvim 插件与工具（--nvim）"
+      mise exec -- sh "$_ns" || bs_die "nvim 预装失败"
+      return 0
+      ;;
+  esac
+  bs_have nvim || mise which nvim >/dev/null 2>&1 || return 0
+  if ! bs_nvim_net_ok; then
+    bs_warn "WARNING: nvim 预装所需的网络检测未通过（需要能直接访问 GitHub 与 npm 镜像），跳过预装；首次打开 nvim 时会自动安装，或网络可用后执行：sh ~/.config/nvim/scripts/bootstrap.sh"
+    return 0
+  fi
+  bs_log "预装 nvim 插件与工具（网络检测通过；--no-nvim 可跳过）"
+  mise exec -- sh "$_ns" ||
+    bs_warn "WARNING: nvim 预装未全部完成，之后可重新执行：sh ~/.config/nvim/scripts/bootstrap.sh"
+}
+
 # 环境中已有代理（容器由编排注入的宿主机代理，或之前运行写进 env.sh 的本机 mihomo）时：
 # 可用就直接经它访问 GitHub（不再需要 GH_PROXY）；不可用就清掉代理变量，改用 GH_PROXY（P-028）
 bs_detect_proxy() {
@@ -378,10 +411,6 @@ bs_run_mise() {
 
   bs_log "mise ${_envs:+-E $_envs }$*"
   bs_mise_retry "$_envs" "$@" || bs_die "mise bootstrap 失败"
-  # 可选：预装 nvim 插件、treesitter 语法解析器、Mason 工具（dotfiles 中的 nvim/scripts/bootstrap.sh，dotconfig 评审第 6 项）
-  if [ "${BOOTSTRAP_NVIM:-}" = 1 ] && [ -z "$BS_DRY_RUN" ]; then
-    bs_log "预装 nvim 插件与工具（nvim/scripts/bootstrap.sh）"
-    mise exec -- sh "$BS_SRC/dotfiles/.config/nvim/scripts/bootstrap.sh" || bs_die "nvim 预装失败"
-  fi
+  [ -n "$BS_DRY_RUN" ] || bs_nvim_preinstall
   bs_log "完成。新开一个终端（或执行 exec zsh -l）使配置生效。"
 }

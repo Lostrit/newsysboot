@@ -45,7 +45,9 @@ sh ~/.local/share/bootstrap/bootstrap.sh --dotfiles
 | `--skip <parts>` / `BOOTSTRAP_SKIP` | 传给 `mise bootstrap --skip`，如 `tools` |
 | `--dry-run` | `mise bootstrap` 只预览 |
 | `--reprobe` / `BOOTSTRAP_REPROBE=1` | 忽略选源缓存（默认有效期 7 天） |
-| `--nvim` / `BOOTSTRAP_NVIM=1` | 完成后预装 nvim 插件、treesitter 语法解析器、Mason 工具与 blink.cmp 库（按固定版本，约 2 分钟；需要能访问 GitHub：主机的 mihomo 或容器注入的代理） |
+| （默认） | 最后检测 nvim 预装所需的网络（GitHub git / Releases、npm 镜像，经当前代理；有 mihomo 时在切换代理之后）：通过则预装插件、treesitter 语法解析器、Mason 工具与 blink.cmp 库（按固定版本，首次约 2 分钟）；不通过则输出 WARNING 并跳过，不影响部署结果 |
+| `--no-nvim` / `BOOTSTRAP_NVIM=0` | 不预装 nvim |
+| `--nvim` / `BOOTSTRAP_NVIM=1` | 不检测网络，强制预装；失败则部署失败（适合 Dockerfile） |
 | `--harden-ssh` | 单独执行 SSH 加固 |
 | `BOOTSTRAP_USER` | root 运行时要创建的用户；无终端时必填（D-015） |
 | `BOOTSTRAP_PASSWORD` / `BOOTSTRAP_PASSWORD_HASH` | 新用户密码（明文经 chpasswd 处理 / 已哈希）；都没有且无终端时锁定密码 |
