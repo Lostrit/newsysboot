@@ -43,8 +43,9 @@
 
 ## 🟢 小问题
 
-⏳ 11. `tmux.conf` 里 `run ~/.config/.themes/...` 和 `source-file ~/.config/tmux/tmux.conf` 写死了 `~/.config`，
+✅ 11. `tmux.conf` 里 `run ~/.config/.themes/...` 和 `source-file ~/.config/tmux/tmux.conf` 写死了 `~/.config`，
     没有用 `$XDG_CONFIG_HOME`（tmux 3.6 的配置文件里可以展开环境变量）。
+    → 已改为 `#{d:current_file}`（相对 tmux.conf 自身）与解析时记录的 `@bootstrap_tmux_conf`，tmux 3.6a 实测（2026-11-02）。
 ✅ 12. bat 自定义主题需要执行 `bat cache --build` 才会生效，但 bat 的 postinstall 里没有这一步；而且 postinstall 可能在 dotfiles 部署之前执行。
     → 放到 bootstrap 最后统一执行（Catppuccin 是否已是 bat 内置主题，需要验证）。
 ✅ 13. `git/config` 里没有 `user.name` / `user.email`，也没有本机覆盖的入口。→ 加上 `[include] path = config.local`（并 gitignore 它）。
