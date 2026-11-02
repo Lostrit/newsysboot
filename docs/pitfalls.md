@@ -218,3 +218,11 @@
 - **解决**：以普通用户运行时，root 阶段末尾经 sudo 执行 `chsh -s <zsh> <当前用户>`；mise 随后判断已设置而跳过。
 - **另外**：这次失败也触发了「换 GitHub 代理重试」（P-029），重试对非网络错误无害，但提示信息会误导；
   提示改为「mise 执行失败，可能是…」，不再断定原因。
+
+## P-032 Ubuntu 上 zsh 的补全缓存写进了仓库
+
+- **现象**：dev 主机（Ubuntu 24.04）部署后，仓库检出中多出 `dotfiles/.config/zsh/.zcompdump`；
+  之后重新运行时提示「有未提交的修改，跳过更新」（本地 sudo 用户模式测试中也出现过）。
+- **原因**：Ubuntu 的 `/etc/zsh/zshrc` 在 `/etc/os-release` 为 ubuntu 时先执行一次 `compinit`，dump 写到默认位置
+  `$ZDOTDIR/.zcompdump`，而 `ZDOTDIR`（`~/.config/zsh`）链接到仓库。Debian 的全局 zshrc 没有这一段。每次启动还会多做一次 compinit。
+- **解决**：`dotfiles/.zshenv` 设置 `skip_global_compinit=1`（该文件注释中给出的方式）；`.gitignore` 增加 `.zcompdump*` 兜底。

@@ -23,6 +23,7 @@ AGE-SECRET-KEY*
 !/dotfiles/.config/herdr/config.toml
 # zsh 编译产物
 *.zwc
+.zcompdump*
 # micro 运行时数据
 /dotfiles/.config/micro/backups/
 /dotfiles/.config/micro/buffers/

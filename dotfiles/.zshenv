@@ -10,6 +10,9 @@ export XDG_CACHE_HOME="${XDG_CACHE_HOME:-$HOME/.cache}"
 
 export ZDOTDIR="$XDG_CONFIG_HOME/zsh"
 export ZSH_COMPDUMP="$XDG_CACHE_HOME/zsh/zcompdump-$ZSH_VERSION"
+# Ubuntu 的 /etc/zsh/zshrc 会先执行一次 compinit（dump 写到 $ZDOTDIR/.zcompdump，即仓库中）；
+# compinit 由 .zshrc 负责，这里跳过全局的那次（P-032）
+skip_global_compinit=1
 
 typeset -U path fpath
 path=("$HOME/.local/bin" $path)
