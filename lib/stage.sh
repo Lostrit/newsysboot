@@ -64,6 +64,18 @@ bs_stage_root() {
   fi
 
   if [ "$(id -u)" != 0 ]; then
+    # 已有 sudo 的普通用户：不新建用户，对当前用户执行 SSH 加固（经 sudo，条件与 root 时相同，D-025）
+    if [ "$BOOTSTRAP_CONTAINER" != 1 ] && [ "$BOOTSTRAP_OS" = linux ]; then
+      bs_root env BOOTSTRAP_USER="$(id -un)" BOOTSTRAP_HARDEN_SSH="${BOOTSTRAP_HARDEN_SSH:-}" \
+        BOOTSTRAP_NONINTERACTIVE="${BOOTSTRAP_NONINTERACTIVE:-}" sh "$BS_SRC/bootstrap.sh" --harden-ssh
+    fi
+    # 登录 shell 经 sudo 设置：普通用户执行 chsh 需要输入自己的密码，云主机的默认用户通常没有密码（P-031）；
+    # 设置好之后 mise 的 [bootstrap.user] login_shell 会判断为已设置而跳过
+    if [ "$BOOTSTRAP_OS" = linux ] && bs_have zsh; then
+      _zsh=$(command -v zsh)
+      _cur=$(getent passwd "$(id -un)" | cut -d: -f7)
+      [ "$_cur" = "$_zsh" ] || bs_root chsh -s "$_zsh" "$(id -un)"
+    fi
     bs_stage_user
     return
   fi
@@ -144,7 +156,7 @@ bs_mise_retry() {
   _rest=
   for _p in $BS_GH_PROXIES; do [ "$_p" = "$_bad" ] || _rest="$_rest $_p"; done
   GH_PROXY=$(BS_GH_PROXIES=$_rest bs_select_gh_proxy) || return 1
-  bs_warn "mise 执行失败，GitHub 加速代理 $_bad 可能限流，改用 ${GH_PROXY:-<直连>} 重试"
+  bs_warn "mise 执行失败（如果是 GitHub 加速代理 $_bad 限流或失效），改用 ${GH_PROXY:-<直连>} 重试一次"
   if [ -w "$BS_STATE_DIR/mirrors.env" ]; then
     _np=$(grep -v '^export GH_PROXY=' "$BS_STATE_DIR/mirrors.env")
     { printf '%s\n' "$_np"; bs_env_line GH_PROXY "$GH_PROXY"; } >"$BS_STATE_DIR/mirrors.env"

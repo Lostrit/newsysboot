@@ -208,3 +208,13 @@
   `tests/run-host.sh` 新增「家目录中没有 root 的文件」「zsh 启动没有报错输出」两项检查。
 - **另外**：没有终端时启动交互式 zsh，fzf / atuin 的 init 会报 `can't change option: zle`，真实登录不会；
   因此 zsh 启动检查用 `script` 提供伪终端（`tests/zsh-startup-check.sh`）。
+
+## P-031 以已有普通用户运行时 chsh 要求输入密码
+
+- **现象**：`TEST_SUDO_USER=1 tests/run-host.sh` 中，mise 的 `login shell` 步骤执行 `chsh -s /usr/bin/zsh` 报
+  `Password: chsh: PAM: Authentication failure`。
+- **原因**：普通用户修改自己的登录 shell 需要通过 PAM 验证自己的密码；云主机的默认用户（如 `ubuntu`）通常没有密码（只用公钥登录）。
+  以 root 运行时新用户由 `useradd -s zsh` 创建，不会走到 chsh，所以之前没有发现。
+- **解决**：以普通用户运行时，root 阶段末尾经 sudo 执行 `chsh -s <zsh> <当前用户>`；mise 随后判断已设置而跳过。
+- **另外**：这次失败也触发了「换 GitHub 代理重试」（P-029），重试对非网络错误无害，但提示信息会误导；
+  提示改为「mise 执行失败，可能是…」，不再断定原因。

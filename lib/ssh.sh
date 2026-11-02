@@ -1,8 +1,9 @@
 #!/bin/sh
 # lib/ssh.sh — SSH 加固（D-004）：禁止 root 登录与密码登录，删除 root 的公钥
 #
-# 只在有 sshd 的 Linux 主机上执行（容器跳过）。为防止把自己锁在外面：
-#   1. 新用户必须已有 authorized_keys；
+# 只在有 sshd 的 Linux 主机上执行（容器跳过）；以 root 运行时针对新建的用户，以普通用户运行时针对当前用户（D-025）。
+# 为防止把自己锁在外面：
+#   1. 该用户必须已有 authorized_keys；
 #   2. 交互模式下要求用户新开终端验证新用户能登录并 sudo，输入 yes 才继续；
 #      无人值守时必须显式设置 BOOTSTRAP_HARDEN_SSH=1。
 # drop-in 命名为 00- 开头：sshd 对同一选项取第一次读到的值，要排在 cloud-init 的 50-cloud-init.conf 之前（P-005）。
@@ -31,7 +32,7 @@ bs_harden_ssh() {
       return 0
     fi
     printf '\n请保持当前会话不要断开，新开一个终端执行：\n  ssh %s@<本机地址> sudo true\n确认能登录且 sudo 不需要密码后再继续。\n' "$_u" >/dev/tty
-    bs_confirm "新用户 $_u 已验证可以登录并 sudo？" || {
+    bs_confirm "用户 $_u 已验证可以登录并 sudo？" || {
       bs_warn "未确认，跳过 SSH 加固；之后可执行 bootstrap.sh --harden-ssh 重新进行"
       return 0
     }

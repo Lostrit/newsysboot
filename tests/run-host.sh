@@ -5,7 +5,10 @@
 # 假节点无法代理，因此测试的是「mihomo 不可用 → 继续使用 GH_PROXY」的分支。
 # 要用真实节点测试代理切换：TEST_REAL_SECRETS=1，并由调用者自己在环境中提供 FNOX_AGE_KEY。
 #
-# 用法：tests/run-host.sh [bootstrap.sh 参数…]    （TEST_RUNS=2  TEST_KEEP=1）
+# TEST_SUDO_USER=1：模拟「已有 sudo 普通用户」的云主机（如腾讯云 Ubuntu 的 ubuntu 用户）：预先创建免密 sudo 的
+# tester 并复制 root 的公钥，全程以 tester 运行（不新建用户，对 tester 执行 SSH 加固，D-025）。
+#
+# 用法：tests/run-host.sh [bootstrap.sh 参数…]    （TEST_RUNS=2  TEST_KEEP=1  TEST_SUDO_USER=1）
 set -eu
 repo=$(cd "$(dirname "$0")/.." && pwd)
 runs=${TEST_RUNS:-2}
@@ -53,10 +56,26 @@ done
 
 # FNOX_AGE_KEY 只通过 -e（不带值，取自当前环境）传入，不出现在命令行
 envs="-e BOOTSTRAP_USER=tester -e BOOTSTRAP_PASSWORD=tester -e BOOTSTRAP_NONINTERACTIVE=1 -e BOOTSTRAP_ASSUME_HOST=1 -e BOOTSTRAP_HARDEN_SSH=1 -e FNOX_AGE_KEY"
+if [ "${TEST_SUDO_USER:-}" = 1 ]; then
+  docker exec "$name" sh -c '
+    # 云主机镜像自带 sudo；测试镜像没有，临时经国内镜像安装（之后恢复默认源，与真实环境一致）
+    f=/etc/apt/sources.list.d/debian.sources
+    sed -i "s#http://deb.debian.org#http://mirrors.cloud.tencent.com#g" $f
+    apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -y -qq sudo >/dev/null
+    sed -i "s#http://mirrors.cloud.tencent.com#http://deb.debian.org#g" $f
+    useradd -m -s /bin/bash -G sudo tester
+    echo "tester ALL=(ALL) NOPASSWD:ALL" >/etc/sudoers.d/90-cloud-init-users && chmod 440 /etc/sudoers.d/90-cloud-init-users
+    install -d -m 700 -o tester -g tester /home/tester/.ssh
+    install -m 600 -o tester -g tester /root/.ssh/authorized_keys /home/tester/.ssh/authorized_keys'
+fi
+
 n=1
 while [ "$n" -le "$runs" ]; do
   echo "######## run $n"
-  if [ "$n" = 1 ]; then
+  if [ "${TEST_SUDO_USER:-}" = 1 ]; then
+    # shellcheck disable=SC2086
+    docker exec $envs -u tester -w /home/tester "$name" sh /src/bootstrap.sh "$@"
+  elif [ "$n" = 1 ]; then
     # shellcheck disable=SC2086
     docker exec $envs "$name" sh /src/bootstrap.sh "$@"
   else

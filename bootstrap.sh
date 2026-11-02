@@ -138,7 +138,9 @@ bs_export_xdg
 bootstrap_detect
 
 if [ -n "$BS_HARDEN_ONLY" ]; then
-  [ "$(id -u)" = 0 ] || exec sudo sh "$0" --harden-ssh
+  # 普通用户运行时默认加固当前用户
+  [ "$(id -u)" = 0 ] || exec sudo env BOOTSTRAP_USER="${BOOTSTRAP_USER:-$(id -un)}" \
+    BOOTSTRAP_HARDEN_SSH="${BOOTSTRAP_HARDEN_SSH:-}" sh "$0" --harden-ssh
   [ -n "${BOOTSTRAP_USER:-}" ] || bs_ask BOOTSTRAP_USER "SSH 加固后用于登录的普通用户名: "
   bs_harden_ssh "$BOOTSTRAP_USER"
   exit 0

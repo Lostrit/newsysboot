@@ -14,6 +14,10 @@ curl -fsSL https://cnb.cool/xfengjing/lostrit/NewSysBoot/-/git/raw/main/bootstra
 流程：检测环境 → 选源测速 → apt 换源与基础包 → （root 时）创建普通用户、SSH 加固 → 以普通用户检出仓库到
 `~/.local/share/bootstrap` → 安装 mise → `mise bootstrap`（包、文件、服务、dotfiles、登录 shell、工具）。
 
+以 root 运行时新建普通用户（`BOOTSTRAP_USER`）并切换过去；以已有的 sudo 普通用户运行时（如腾讯云 Ubuntu 的 `ubuntu`）
+不新建用户，需要 root 的步骤经 sudo 执行。两种情况都会对登录用户做 SSH 加固（D-004、D-025）：
+交互模式下需要确认，无人值守时设置 `BOOTSTRAP_HARDEN_SSH=1`。
+
 ## 已初始化的环境：只部署 dotfiles
 
 ```sh
@@ -83,4 +87,5 @@ tests/run.sh ubuntu:24.04 --skip tools
 tests/run-dotfiles.sh debian:13      # --dotfiles 模式（无 sudo 用户）
 tests/run-pipe.sh ubuntu:24.04       # 管道模式（curl | sh 入口，没有 git、没有终端）
 tests/run-host.sh                    # 主机流程（systemd 特权容器：mihomo、docker、SSH 加固；测试密钥 + 假节点）
+TEST_SUDO_USER=1 tests/run-host.sh   # 同上，以已有的免密 sudo 普通用户运行（D-025）
 ```

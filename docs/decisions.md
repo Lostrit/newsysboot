@@ -296,3 +296,13 @@ Linux 主机为 server（`allow-lan: true`，只放行本机和 Docker 网段）
 - **备选方案**：
   - stage-0 生成一份带 owner 的本地 mise 配置：多一层生成逻辑，`mise bootstrap` 单独使用时又会缺失。
   - 在 stage-0 的 shell 中创建：只在经 `bootstrap.sh` 运行时生效；收尾任务对任何 `mise bootstrap` 都生效。
+
+## D-025 以已有的 sudo 普通用户运行时，同样执行 SSH 加固 ✅
+
+**日期**：2026-11-02
+
+- **决策**：以普通用户运行 `bootstrap.sh`（如腾讯云 Ubuntu 的 `ubuntu` 用户）时不新建用户，但在非容器的 Linux 主机上
+  经 sudo 对**当前用户**执行 SSH 加固（禁止 root 登录与密码登录，移走 root 的公钥）。手动 `--harden-ssh` 以普通用户运行时也默认加固当前用户。
+- **原因**：用户要求（2026-11-02）。这类主机虽然 root 通常没有公钥，但 `PermitRootLogin` 仍为 yes，加固后行为与 root 场景一致。
+- **防锁死**：条件与 root 场景相同（D-004）：当前用户必须已有 `authorized_keys`；交互模式需要确认；无人值守需要 `BOOTSTRAP_HARDEN_SSH=1`。
+- **测试**：`TEST_SUDO_USER=1 tests/run-host.sh`（预先创建免密 sudo 的用户，全程以该用户运行）。
