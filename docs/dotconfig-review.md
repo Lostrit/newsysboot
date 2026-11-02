@@ -34,9 +34,11 @@
    → 二选一：只保留实际用到的主题文件；或者改用 `[bootstrap.repos]` 按 tag 克隆到 `$XDG_DATA_HOME/themes`。
 ✅ 8. **版本锁定不一致**：其他工具都锁了具体版本，但 `claude = "latest"`、`bun = "1.4"` 没有锁；eza 补全从 `main` 分支下载。
    → 统一锁版本（eza 补全改用 `v0.23.5` tag），升级时走 dotconfig 的提交流程。
-⏳ 9. **mise `[env]` 只在交互式 shell 中生效**：只有 `.zshrc` 执行了 `mise activate`，所以 `EDITOR`、`*_CONFIG_PATH` 等变量
+✅ 9. **mise `[env]` 只在交互式 shell 中生效**：只有 `.zshrc` 执行了 `mise activate`，所以 `EDITOR`、`*_CONFIG_PATH` 等变量
    在 `ssh host cmd`、cron、systemd 用户服务里都不存在。→ 非交互场景也需要的变量（如 `EDITOR`）挪到 `~/.zshenv`，
    或者使用 mise 的 `zprofile = "shims"`。
+   → 已处理（2026-11-02）：`~/.zshenv` 把 mise shims 加入 PATH（shim 运行时带上 `[env]`），并导出 `EDITOR` / `VISUAL`；
+   dev 上实测 `ssh dev rg`、`bat` 读取配置均正常，交互式 shell 仍使用真实路径。
 ✅ 10. **docker-compose 使用宿主机代理**：`host.docker.internal:7890` 要求宿主机的 mihomo 监听 docker 网桥地址（`allow-lan`）。
     在云服务器上要避免把 7890 暴露到公网（`bind-address`、认证、安全组都要考虑）；`2224:22` 也映射到了 0.0.0.0。
     这一点和 mihomo 的「服务器」配置一起设计。

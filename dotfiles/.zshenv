@@ -15,7 +15,11 @@ export ZSH_COMPDUMP="$XDG_CACHE_HOME/zsh/zcompdump-$ZSH_VERSION"
 skip_global_compinit=1
 
 typeset -U path fpath
-path=("$HOME/.local/bin" $path)
+# 非交互式 shell（ssh host 命令、cron、systemd 用户服务等）不执行 mise activate：经 shims 提供 mise 管理的工具，
+# 通过 shim 运行时 mise 会带上 [env] 中的变量；交互式 shell 中 mise activate 会把工具的真实路径放在前面（评审第 9 项）
+path=("$HOME/.local/bin" "$XDG_DATA_HOME/mise/shims" $path)
+# shell 自身使用的变量（git commit 等会读取），shim 带不过来，与 mise 配置 [env] 保持一致
+export EDITOR=micro VISUAL=micro
 fpath=("$XDG_DATA_HOME/zsh/site-functions" $fpath)
 
 # bootstrap 写入的环境（GH_PROXY、MISE_URL_REPLACEMENTS 等），见 lib/env.sh
