@@ -52,6 +52,8 @@
    - ⏳ 阿里云 / 华为云（验证内网源探测，以及华为云、火山引擎的内网域名）
 4. SteamOS / macOS / Windows 真机测试
 5. 整理各环境的 mihomo 配置（目前只有 server 场景的模板）
+7. ✅ nvim 预装规则（2026-11-02，D-026）：网络检测通过时默认预装，否则 WARNING 跳过；`--no-nvim` 关闭、`--nvim` 强制。
+   dev 主机（自动预装）、dev 上的容器（注入代理 → 预装；屏蔽 GitHub → WARNING）、本地主机测试（WARNING，20 项通过）均已验证
 6. ✅ dotconfig 评审剩余 5 项已全部处理（2026-11-02）：herdr 配置、nvim 预装脚本（`--nvim`，D-026）、.themes 精简、
    非交互式 shell 的 mise 工具与 EDITOR、tmux 路径
 
