@@ -35,7 +35,9 @@
 
 1. ✅ 仓库已创建并推送（2026-11-02，GitHub `lostrit/newsysboot` 公开、匿名可 clone；地址已填入 `bootstrap.sh` / `bootstrap.ps1`）。
    ⏳ CNB `xfengjing/lostrit/NewSysBoot` 匿名访问返回 404（私有仓库），新机器无法用 `--source cnb` 拉取：需要公开仓库，或支持带令牌 clone
-2. 用真实节点验证代理切换：`TEST_REAL_SECRETS=1 FNOX_AGE_KEY=… tests/run-host.sh`（P-018）
+2. ✅ 用真实节点验证代理切换（2026-11-02，用户执行 `TEST_REAL_SECRETS=1 FNOX_AGE_KEY=… tests/run-host.sh`）：
+   真实 `fnox.toml` 解密 → mihomo 连通 → `env.sh` 切换为代理变量并清空 `GH_PROXY` → 第二次 bootstrap 经代理安装工具；
+   18 项检查两次运行全部通过，第二次运行无改动，日志与临时目录中无私钥
 3. 在真实的腾讯云 / 阿里云 / 华为云新机器上各跑一次（验证内网源探测，以及华为云、火山引擎的内网域名）
 4. SteamOS / macOS / Windows 真机测试
 5. 整理各环境的 mihomo 配置（目前只有 server 场景的模板）
