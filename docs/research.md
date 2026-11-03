@@ -154,6 +154,14 @@ fnox 是 mise 作者开发的机密管理工具：在 `fnox.toml` 中声明机�
   因此 bootstrap 的「关闭 GH_PROXY 重试一次」（`bs_mise_retry`）只在 mise 内部回退也失败时才会触发。
 - 资源占用（P-042）：nvim 预装的并发上限按 min(CPU, 内存 GB / 1.5) 计算；dev（2 核 7.5G）为 2，开发机（2 核 2G）为 1。
 
+## R-014 Ubuntu 26.04 LTS 真机部署（2026-11-03，dev 主机，腾讯云）
+
+- Ubuntu 26.04 默认的 sudo 是 **sudo-rs 0.2.13**，coreutils 是 **uutils 0.8.0**（Rust 实现）。部署全部正常；
+  sudo-rs 的 visudo 不接受 `Defaults !admin_flag`，`bs_sudo_no_admin_flag` 按设计跳过（sudo-rs 也不创建 `.sudo_as_admin_successful`）。
+- 腾讯云内网 docker-ce 源已有 `resolute`（26.04 代号），get-docker.sh 安装 Docker 29.9.2 成功。
+- mihomo 生效后 GitHub 下载仍经 GH_PROXY：mihomo 日志中整个部署期间只有 2 次 github.com（代理可用性检查与手动测试）
+  与 1 次 raw.githubusercontent.com（来源未定位：mise 的 aqua / claude / bun 安装、herdr 集成都已确认经 GH_PROXY 或不访问 raw）。
+
 ## R-009 Docker Hub 镜像加速（2026-10-29，在腾讯云内网主机上，`--noproxy`，请求 `/v2/`）
 
 | 地址 | 结果 | 说明 |

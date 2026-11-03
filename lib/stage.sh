@@ -432,7 +432,7 @@ bs_run_mise() {
       _i=$((_i + 1))
     done
     if bs_proxy_ok "$_px"; then
-      bs_log "mihomo 可用（$_px），之后经代理访问 GitHub"
+      bs_log "mihomo 可用（$_px）：其他海外流量经代理，GitHub 的下载仍经 GH_PROXY=${GH_PROXY:-<直连>}"
       BS_PROXY_URL=$_px
       bs_write_env
       export http_proxy https_proxy all_proxy no_proxy HTTP_PROXY HTTPS_PROXY NO_PROXY

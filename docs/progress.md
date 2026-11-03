@@ -7,7 +7,7 @@
 | 环境 | 实现 | 验证 |
 | --- | --- | --- |
 | Debian / Ubuntu 主机（root 运行，新建用户） | ✅ 完整 | ✅ 腾讯云 Debian 13 真机（dev，22 项；2026-11-03 全新系统重新部署：新配置 22 项主机检查 + 真实节点 server 分流 23 项全部通过）；本地 systemd 容器（`tests/run-host.sh`，23 项） |
-| Debian / Ubuntu 主机（已有 sudo 用户） | ✅ 完整（D-025） | ✅ 腾讯云 Ubuntu 24.04 真机（dev，`ubuntu` 用户，22 项）；`TEST_SUDO_USER=1 tests/run-host.sh` |
+| Debian / Ubuntu 主机（已有 sudo 用户） | ✅ 完整（D-025） | ✅ 腾讯云 Ubuntu 24.04 真机（dev，`ubuntu` 用户，22 项）；✅ 腾讯云 Ubuntu 26.04 真机（2026-11-03，sudo-rs + uutils coreutils，22 项主机检查 + 真实节点分流 17 项，GitHub 下载经 GH_PROXY）；`TEST_SUDO_USER=1 tests/run-host.sh` |
 | Docker 容器（Debian / Ubuntu） | ✅ 完整（不装 mihomo / Docker，使用注入的宿主机代理） | ✅ debian 12 / 13、ubuntu 22.04 / 24.04；dev 上的容器（注入代理 / 无代理 / 屏蔽 GitHub） |
 | `--dotfiles` 模式 | ✅ | ✅ 无 sudo 用户；dev 主机重复运行 |
 | SteamOS | 🟡 第一版（D-020、D-027、D-028） | ⏳ 真机未验证，清单：[verify-steamos.md](verify-steamos.md) |
