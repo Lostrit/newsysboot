@@ -348,3 +348,13 @@
   但部分克隆（`--filter=blob:none`）后 checkout、切换分支、合并时会读取并直接报错；lazy.nvim 正是先部分克隆再 checkout 锁定的提交。
 - **解决**：git 配置改为 include `~/.local/state/bootstrap/gitconfig`，由 `scripts/gen-gitconfig.sh`（`[tasks.bootstrap]` 中运行）
   按本机 git 版本写入 `zdiff3` 或 `diff3`；文件不存在时 git 忽略该 include。在 ubuntu:22.04 容器中按 lazy.lua 的方式复现并验证。
+
+## P-046 mise 安装 fnox 时下载 skill 文件，加速代理 429 时整个部署失败
+
+- **现象**（真机矩阵测试，Ubuntu 22.04 重跑）：第一次 `mise bootstrap`（还没有 mihomo）失败：
+  `fnox@1.43.0: declared skill(s) fnox are not installed`；日志中 `raw.githubusercontent.com/jdx/fnox/<提交>/skills/fnox/SKILL.md`
+  经 gh.qninq.cn 返回 429，回退直连又超时（国内无法直连 raw），bootstrap 报错退出。
+- **原因**：mise 2026.10 的 `skills.fetch` 默认开启，安装声明了 agent skill 的工具（fnox）时会从源码仓库下载 skill 文件；
+  这也是 R-014 中那次「来源未定位」的 raw 请求。所选加速代理当天被同一 IP 的大量测试请求限流。
+- **解决**：bootstrap 运行期间设置 `MISE_SKILLS_FETCH=false`（不写入 env.sh，日常使用不受影响）；在 dev 上验证 fnox 可正常安装。
+- **遗留**：所选加速代理在部署中途被限流、且尚无 mihomo 时，回退直连在国内同样失败。是否增加「备用加速代理」需要用户决定（D-031 规定回退直连）。

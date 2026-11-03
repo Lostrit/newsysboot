@@ -390,6 +390,9 @@ bs_proxy_ok_retry() {
 
 bs_run_mise() {
   cd "$BS_SRC"
+  # 部署时不下载工具附带的 agent skill（如 fnox 的 SKILL.md 在 raw.githubusercontent.com）：
+  # 第一次执行时还没有 mihomo，加速代理限流（429）时直连又不可用，会让整个部署失败（P-046）。只影响本次运行
+  export MISE_SKILLS_FETCH=false
   mise trust -q "$BS_SRC/mise.toml"
   for _m in $(printf '%s' "$BOOTSTRAP_MODULES" | tr ',' ' '); do
     [ -f "$BS_SRC/mise.$_m.toml" ] && mise trust -q "$BS_SRC/mise.$_m.toml"

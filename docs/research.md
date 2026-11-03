@@ -160,7 +160,7 @@ fnox 是 mise 作者开发的机密管理工具：在 `fnox.toml` 中声明机�
   sudo-rs 的 visudo 不接受 `Defaults !admin_flag`，`bs_sudo_no_admin_flag` 按设计跳过（sudo-rs 也不创建 `.sudo_as_admin_successful`）。
 - 腾讯云内网 docker-ce 源已有 `resolute`（26.04 代号），get-docker.sh 安装 Docker 29.9.2 成功。
 - mihomo 生效后 GitHub 下载仍经 GH_PROXY：mihomo 日志中整个部署期间只有 2 次 github.com（代理可用性检查与手动测试）
-  与 1 次 raw.githubusercontent.com（来源未定位：mise 的 aqua / claude / bun 安装、herdr 集成都已确认经 GH_PROXY 或不访问 raw）。
+  与 1 次 raw.githubusercontent.com（后来确认为 mise 安装 fnox 时下载其 skill 文件 SKILL.md，P-046；现已在部署时关闭）。
 
 ## R-009 Docker Hub 镜像加速（2026-10-29，在腾讯云内网主机上，`--noproxy`，请求 `/v2/`）
 
