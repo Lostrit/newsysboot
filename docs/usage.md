@@ -109,6 +109,7 @@ sh tests/mihomo-rules.sh
 - mise 工具、zsh 插件、eza 补全、mihomo 二进制、nvim 预装（插件、语法解析器、Mason、blink.cmp）都经它获取 GitHub 内容；
   有 mihomo 时也是如此。失败时回退直连（mise / mihomo 直连仍失败则报错；nvim 预装默认 WARNING）。
 - 手动指定：`GH_PROXY=https://… sh bootstrap.sh`；设为空表示直连。
+- Windows（`bootstrap.ps1`）使用同样的规则：拉取仓库后选择，结果缓存在 `%LOCALAPPDATA%\bootstrap\gh-proxy.txt`（`-Reprobe` 重新选择）。
 - 维护候选列表（在国内网络、不经代理的机器上运行，约 5 分钟）：
 
   ```sh

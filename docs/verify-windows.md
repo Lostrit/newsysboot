@@ -26,6 +26,10 @@ irm https://gh-proxy.com/https://raw.githubusercontent.com/Lostrit/newsysboot/ma
 预期：
 
 - [ ] winget 安装 Git 与 mise（已安装则跳过）
+- [ ] 依次尝试内置的加速代理拉取仓库（最后才直连）
+- [ ] 输出「选择 GitHub 加速代理（测延时与 release / raw / archive / clone）…」，约 30～60 秒后输出 `GH_PROXY: https://…`；
+      `%LOCALAPPDATA%\bootstrap\gh-proxy.txt` 记录选择结果；再次运行时输出「使用缓存的 GitHub 加速代理」（D-031）
+- [ ] mihomo、WinSW 经该加速代理下载；可手动设置 `$env:GH_PROXY='https://127.0.0.1:9/'` 后运行，确认输出「经 GitHub 加速代理下载失败，改为直连」并继续
 - [ ] 输出 `GH_PROXY: …`，选择拉取来源后检出到 `%USERPROFILE%\.local\share\bootstrap`
 - [ ] `mise install` 安装 fnox / age
 - [ ] 下载 mihomo 与 WinSW 时 sha256 校验通过（失败会报「sha256 校验失败」并中止）

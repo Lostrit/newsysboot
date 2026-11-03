@@ -16,7 +16,8 @@
 param(
   [ValidateSet('github', 'cnb', '')] [string] $Source = $env:BOOTSTRAP_SOURCE,
   [string] $Dir = $(if ($env:BOOTSTRAP_DIR) { $env:BOOTSTRAP_DIR } else { Join-Path $HOME '.local\share\bootstrap' }),
-  [switch] $NoMihomo = ($env:BOOTSTRAP_NO_MIHOMO -eq '1')
+  [switch] $NoMihomo = ($env:BOOTSTRAP_NO_MIHOMO -eq '1'),
+  [switch] $Reprobe = ($env:BOOTSTRAP_REPROBE -eq '1')
 )
 $ErrorActionPreference = 'Stop'
 
@@ -24,8 +25,11 @@ $RepoGithub = if ($env:BOOTSTRAP_REPO_GITHUB) { $env:BOOTSTRAP_REPO_GITHUB } els
 $RepoCnb = if ($env:BOOTSTRAP_REPO_CNB) { $env:BOOTSTRAP_REPO_CNB } else { 'https://cnb.cool/xfengjing/lostrit/NewSysBoot.git' }
 # 内置的 GitHub 加速代理（scripts/update-gh-proxies.sh 维护，D-031）；都不可用时直连
 $GhProxies = @('https://gh.qninq.cn/', 'https://github.cnxiaobai.com/', 'https://git.yylx.win/', 'https://gh.padao.fun/')  # @gh-proxies
-$ProbeUrl = 'https://github.com/FiloSottile/age/releases/download/v1.2.1/age-v1.2.1-linux-amd64.tar.gz'
-$ProbeSha256 = '75c2d0d2265769452a72f14e9b956b6cc3968d0abd5a19904cb79a9267a117b1'
+# Windows 自带 curl.exe / tar.exe（PowerShell 5.1 中 curl 是 Invoke-WebRequest 的别名）；在 Linux 的 pwsh 中测试时用 curl
+$OnWindows = ($PSVersionTable.PSEdition -ne 'Core') -or $IsWindows
+$Curl = if ($OnWindows) { 'curl.exe' } else { 'curl' }
+$NullDev = if ($OnWindows) { 'NUL' } else { '/dev/null' }
+$StateDir = if ($env:LOCALAPPDATA) { Join-Path $env:LOCALAPPDATA 'bootstrap' } else { Join-Path $HOME '.local/state/bootstrap' }
 
 # mihomo 与 WinSW：锁定版本 + sha256（升级时同时修改版本与校验值，D-029）
 # mihomo 的校验值来自 GitHub Release 记录的 digest；WinSW v2.12.0 发布时还没有 digest，经两个加速代理下载核对（2026-11-03）
@@ -46,22 +50,122 @@ function Install-WingetPackage($id) {
   }
 }
 
-# GitHub 加速代理测速：前 1MiB + sha256 校验，按速度选择；直连最快时返回空字符串
-function Select-GhProxy {
-  if ($null -ne $env:GH_PROXY) { return $env:GH_PROXY }
-  $best = $null; $bestSpeed = 0
-  foreach ($p in $GhProxies) {
-    $tmp = New-TemporaryFile
-    try {
-      $sw = [Diagnostics.Stopwatch]::StartNew()
-      Invoke-WebRequest -Uri "$p$ProbeUrl" -Headers @{ Range = 'bytes=0-1048575' } -OutFile $tmp -TimeoutSec 10 -UseBasicParsing
-      $sw.Stop()
-      if ((Get-FileHash $tmp -Algorithm SHA256).Hash.ToLower() -ne $ProbeSha256) { continue }
-      $speed = 1048576 / [Math]::Max($sw.Elapsed.TotalSeconds, 0.001)
-      if ($speed -gt $bestSpeed) { $best = $p; $bestSpeed = $speed }
-    } catch { } finally { Remove-Item $tmp -ErrorAction SilentlyContinue }
+# ---------------------------------------------------------------------------
+# GitHub 加速代理（D-031，与 lib/mirrors.sh 相同的规则）：
+#   候选来自仓库的 lib/gh-proxies.txt；测试目标（URL、sha256）从 lib/mirrors.sh 读取，两边共用一份定义。
+#   全部候选并行测延时，最低的 5 个做 release / raw / archive / clone 真实测试，全部通过者中取 release 最快的；
+#   结果缓存 7 天（-Reprobe 重新选择）；都不可用时直连
+# ---------------------------------------------------------------------------
+function Get-ShVar($repoDir, $name) {
+  $m = Select-String -Path (Join-Path $repoDir 'lib\mirrors.sh') -Pattern "^$name=`"(.*)`"$" | Select-Object -First 1
+  if (-not $m) { throw "lib/mirrors.sh 中没有 $name" }
+  $m.Matches[0].Groups[1].Value
+}
+
+# 首字节时间（毫秒），并行测全部候选；返回按延时排序的前缀
+function Get-GhByLatency($candidates) {
+  $dir = Join-Path ([IO.Path]::GetTempPath()) "bootstrap-ghlat-$PID"
+  New-Item -ItemType Directory -Force -Path $dir | Out-Null
+  $procs = @()
+  $i = 0
+  foreach ($c in $candidates) {
+    $i++
+    $out = Join-Path $dir "$i.txt"
+    Set-Content -Path (Join-Path $dir "$i.url") -Value $c
+    $cargs = "-s --noproxy * --connect-timeout 3 -m 5 -o $NullDev -w `"%{http_code} %{time_starttransfer}`" $c"
+    $procs += Start-Process -FilePath $Curl -ArgumentList $cargs -NoNewWindow -PassThru -RedirectStandardOutput $out
   }
-  if ($null -eq $best) { Write-Warning 'GitHub 直连与所有加速代理都不可用'; return '' }
+  $procs | Wait-Process -Timeout 15 -ErrorAction SilentlyContinue
+  $res = @()
+  for ($j = 1; $j -le $i; $j++) {
+    $t = (Get-Content (Join-Path $dir "$j.txt") -ErrorAction SilentlyContinue | Out-String).Trim()
+    if ($t -match '^(\d{3}) ([\d.]+)$' -and $Matches[1] -ne '000') {
+      $res += [pscustomobject]@{ Ms = [int]([double]$Matches[2] * 1000); Prefix = (Get-Content (Join-Path $dir "$j.url")).Trim() }
+    }
+  }
+  Remove-Item $dir -Recurse -Force -ErrorAction SilentlyContinue
+  $res | Sort-Object Ms | ForEach-Object { $_.Prefix }
+}
+
+# release 前 1MiB：校验 sha256，返回速度（B/s）；失败返回 0
+function Get-GhReleaseSpeed($url, $sha) {
+  $tmp = [IO.Path]::GetTempFileName()
+  try {
+    $o = & $Curl -sL --noproxy '*' --connect-timeout 3 -m 10 -r 0-1048575 -o $tmp -w '%{http_code} %{speed_download}' $url
+    if ($o -notmatch '^(200|206) ([\d.]+)$') { return 0 }
+    $speed = [double]$Matches[2]
+    if ((Get-FileHash $tmp -Algorithm SHA256).Hash.ToLower() -ne $sha) { return 0 }
+    return $speed
+  } finally { Remove-Item $tmp -Force -ErrorAction SilentlyContinue }
+}
+
+# 真实测试：全部通过时返回 release 下载速度（两次取较慢），否则返回 0
+function Test-GhProxy($p, $t) {
+  $s1 = Get-GhReleaseSpeed "$p$($t.ProbeUrl)" $t.ProbeSha
+  $s2 = if ($s1 -gt 0) { Get-GhReleaseSpeed "$p$($t.ProbeUrl)" $t.ProbeSha } else { 0 }
+  $speed = [Math]::Min($s1, $s2)
+  if ($speed -le 0) { return 0 }
+  $tmp = Join-Path ([IO.Path]::GetTempPath()) "bootstrap-ghtest-$PID"
+  Remove-Item $tmp -Recurse -Force -ErrorAction SilentlyContinue
+  New-Item -ItemType Directory -Force -Path $tmp | Out-Null
+  try {
+    # raw
+    $raw = Join-Path $tmp 'raw'
+    & $Curl -fsSL --noproxy '*' --connect-timeout 5 -m 20 -o $raw "$p$($t.RawUrl)" | Out-Null
+    if (-not (Test-Path $raw) -or (Get-FileHash $raw -Algorithm SHA256).Hash.ToLower() -ne $t.RawSha) { return 0 }
+    # archive
+    $tgz = Join-Path $tmp 'a.tgz'
+    & $Curl -fsSL --noproxy '*' --connect-timeout 5 -m 30 -o $tgz "$p$($t.ArchiveUrl)" | Out-Null
+    if (-not (Test-Path $tgz)) { return 0 }
+    $list = & tar -tzf $tgz 2>$null
+    if (-not ($list -contains $t.ArchiveFile)) { return 0 }
+    # clone（不经环境中的代理；最多 60 秒）
+    $saved = @{}
+    foreach ($v in 'HTTP_PROXY', 'HTTPS_PROXY', 'ALL_PROXY', 'http_proxy', 'https_proxy', 'all_proxy') {
+      $saved[$v] = [Environment]::GetEnvironmentVariable($v, 'Process')
+      [Environment]::SetEnvironmentVariable($v, $null, 'Process')
+    }
+    $env:GIT_TERMINAL_PROMPT = '0'
+    try {
+      $dest = Join-Path $tmp 'clone'
+      $gargs = "-c http.lowSpeedLimit=1024 -c http.lowSpeedTime=15 clone -q --depth 1 $p$($t.CloneUrl) `"$dest`""
+      $gp = Start-Process -FilePath git -ArgumentList $gargs -NoNewWindow -PassThru `
+        -RedirectStandardOutput (Join-Path $tmp 'git.out') -RedirectStandardError (Join-Path $tmp 'git.err')
+      if (-not $gp.WaitForExit(60000)) { $gp.Kill(); return 0 }
+      if ($gp.ExitCode -ne 0 -or -not (Test-Path (Join-Path $dest $t.CloneFile))) { return 0 }
+    } finally {
+      foreach ($v in $saved.Keys) { [Environment]::SetEnvironmentVariable($v, $saved[$v], 'Process') }
+    }
+    return $speed
+  } finally { Remove-Item $tmp -Recurse -Force -ErrorAction SilentlyContinue }
+}
+
+function Select-GhProxy($repoDir) {
+  if ($null -ne $env:GH_PROXY) { return $env:GH_PROXY }
+  $cache = Join-Path $StateDir 'gh-proxy.txt'
+  if (-not $Reprobe -and (Test-Path $cache) -and ((Get-Item $cache).LastWriteTime -gt (Get-Date).AddDays(-7))) {
+    Say "使用缓存的 GitHub 加速代理：$cache（-Reprobe 重新选择）"
+    return (Get-Content $cache -Raw).Trim()
+  }
+  Say '选择 GitHub 加速代理（测延时与 release / raw / archive / clone）…'
+  $t = @{
+    ProbeUrl = Get-ShVar $repoDir 'BS_GH_PROBE_URL'; ProbeSha = Get-ShVar $repoDir 'BS_GH_PROBE_SHA256'
+    RawUrl = Get-ShVar $repoDir 'BS_GH_RAW_URL'; RawSha = Get-ShVar $repoDir 'BS_GH_RAW_SHA256'
+    ArchiveUrl = Get-ShVar $repoDir 'BS_GH_ARCHIVE_URL'; ArchiveFile = Get-ShVar $repoDir 'BS_GH_ARCHIVE_FILE'
+    CloneUrl = Get-ShVar $repoDir 'BS_GH_CLONE_URL'; CloneFile = Get-ShVar $repoDir 'BS_GH_CLONE_FILE'
+  }
+  $list = Join-Path $repoDir 'lib\gh-proxies.txt'
+  $candidates = if (Test-Path $list) {
+    Get-Content $list | Where-Object { $_ -match '^(https:[^\s#]*)' } | ForEach-Object { ($_ -split '\s')[0] }
+  } else { $GhProxies }
+  $best = ''; $bestSpeed = 0
+  foreach ($c in (Get-GhByLatency $candidates | Select-Object -First 5)) {
+    $sp = Test-GhProxy $c $t
+    if ($sp -gt $bestSpeed) { $best = $c; $bestSpeed = $sp }
+  }
+  if (-not $best) { Write-Warning '没有完整可用的 GitHub 加速代理，GitHub 下载将直连（国内可能很慢或失败）' }
+  New-Item -ItemType Directory -Force -Path $StateDir | Out-Null
+  Set-Content -Path $cache -Value $best
   return $best
 }
 
@@ -69,12 +173,21 @@ function Test-Admin {
   ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
 }
 
-# 下载并校验 sha256（经第三方加速代理下载的文件必须校验）
-function Get-VerifiedFile($url, $sha256, $out) {
-  Say "下载 $url"
-  Invoke-WebRequest -Uri $url -OutFile $out -UseBasicParsing -TimeoutSec 600
-  $got = (Get-FileHash $out -Algorithm SHA256).Hash.ToLower()
-  if ($got -ne $sha256) { Remove-Item $out -Force; throw "sha256 校验失败：$url（$got）" }
+# 下载并校验 sha256（经第三方加速代理下载的文件必须校验）；先经 GH_PROXY，失败回退直连（D-031），仍失败则报错
+function Get-VerifiedFile($gh, $url, $sha256, $out) {
+  foreach ($u in @("$gh$url", $url) | Select-Object -Unique) {
+    if (-not $u) { continue }
+    Say "下载 $u"
+    try {
+      Invoke-WebRequest -Uri $u -OutFile $out -UseBasicParsing -TimeoutSec 600
+      $got = (Get-FileHash $out -Algorithm SHA256).Hash.ToLower()
+      if ($got -eq $sha256) { return }
+      Write-Warning "sha256 校验失败：$u（$got）"
+    } catch { Write-Warning "下载失败：$u（$($_.Exception.Message)）" }
+    Remove-Item $out -Force -ErrorAction SilentlyContinue
+    if ($u -ne $url) { Write-Warning '经 GitHub 加速代理下载失败，改为直连' }
+  }
+  throw "下载失败：$url"
 }
 
 function Get-FileSha256($path) {
@@ -115,12 +228,12 @@ function Install-MihomoService($gh, $repoDir) {
   try {
     if ($needMihomo) {
       $zip = Join-Path $tmp $MihomoAsset
-      Get-VerifiedFile "${gh}https://github.com/MetaCubeX/mihomo/releases/download/v$MihomoVersion/$MihomoAsset" $MihomoSha256 $zip
+      Get-VerifiedFile $gh "https://github.com/MetaCubeX/mihomo/releases/download/v$MihomoVersion/$MihomoAsset" $MihomoSha256 $zip
       Expand-Archive -Path $zip -DestinationPath $tmp -Force
       Copy-Item (Join-Path $tmp 'mihomo-windows-amd64-compatible.exe') $exe -Force
     }
     if ($needWinsw) {
-      Get-VerifiedFile "${gh}https://github.com/winsw/winsw/releases/download/v$WinswVersion/WinSW-x64.exe" $WinswSha256 (Join-Path $tmp 'WinSW-x64.exe')
+      Get-VerifiedFile $gh "https://github.com/winsw/winsw/releases/download/v$WinswVersion/WinSW-x64.exe" $WinswSha256 (Join-Path $tmp 'WinSW-x64.exe')
       Copy-Item (Join-Path $tmp 'WinSW-x64.exe') $svcExe -Force
     }
   } finally { Remove-Item $tmp -Recurse -Force -ErrorAction SilentlyContinue }
@@ -208,24 +321,38 @@ Install-WingetPackage 'Git.Git'
 Install-WingetPackage 'jdx.mise'
 $env:Path = [Environment]::GetEnvironmentVariable('Path', 'Machine') + ';' + [Environment]::GetEnvironmentVariable('Path', 'User')
 
-$gh = Select-GhProxy
-Say "GH_PROXY: $(if ($gh) { $gh } else { '<直连>' })"
-
 if (-not $Source) {
   $c = Read-Host '从哪里拉取本仓库？ 1) GitHub（经加速代理）  2) CNB  [1]'
   $Source = if ($c -eq '2' -or $c -eq 'cnb') { 'cnb' } else { 'github' }
 }
-$repo = if ($Source -eq 'cnb') { $RepoCnb } else { "$gh$RepoGithub" }
 
 if (Test-Path (Join-Path $Dir '.git')) {
   Say "更新仓库 $Dir"
   git -C $Dir pull -q --ff-only
 } else {
-  Say "检出 $repo → $Dir"
   New-Item -ItemType Directory -Force -Path (Split-Path $Dir) | Out-Null
-  git clone -q $repo $Dir
-  if ($Source -eq 'github') { git -C $Dir remote set-url origin $RepoGithub }
+  if ($Source -eq 'cnb') {
+    Say "检出 $RepoCnb → $Dir"
+    git clone -q $RepoCnb $Dir
+  } else {
+    # 此时还没有选择结果：依次尝试内置的加速代理，最后直连（与 bootstrap.sh 的管道模式一致）
+    $tries = @()
+    if ($env:GH_PROXY) { $tries += $env:GH_PROXY }
+    $tries += $GhProxies
+    $tries += ''
+    foreach ($p in ($tries | Select-Object -Unique)) {
+      Say "检出 $p$RepoGithub → $Dir"
+      git clone -q --depth 1 "$p$RepoGithub" $Dir
+      if ($LASTEXITCODE -eq 0) { break }
+      Remove-Item $Dir -Recurse -Force -ErrorAction SilentlyContinue
+    }
+    if (-not (Test-Path (Join-Path $Dir '.git'))) { throw '无法从 GitHub 拉取仓库，可改用 -Source cnb' }
+    git -C $Dir remote set-url origin $RepoGithub
+  }
 }
+
+$gh = Select-GhProxy $Dir
+Say "GH_PROXY: $(if ($gh) { $gh } else { '<直连>' })"
 
 # mise 的 GitHub 下载经加速代理（与 Linux 的 env.sh 一致），并持久化到用户环境变量
 if ($gh) {

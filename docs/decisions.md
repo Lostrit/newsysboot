@@ -428,6 +428,7 @@ Linux 主机为 server（`allow-lan: true`，只放行本机和 Docker 网段）
      | 位置 | 方式 | 失败时 |
      | --- | --- | --- |
      | 管道模式拉取本仓库 | 内置列表依次尝试，最后直连 30 秒 | 报错 |
+     | Windows（bootstrap.ps1） | 内置列表拉取仓库后，按同样的规则选择（测试目标从 `lib/mirrors.sh` 读取，curl.exe / tar.exe / git，缓存 7 天）；mihomo、WinSW 下载经 GH_PROXY | 直连；仍失败报错 |
      | mihomo 二进制（install-mihomo.sh） | `GH_PROXY` 前缀 | 直连；仍失败报错 |
      | mise 工具 | `MISE_URL_REPLACEMENTS`（github.com、raw） | 关闭 GH_PROXY 直连重试一次；仍失败报错 |
      | zsh 插件 | git `insteadOf`（origin 保持原始地址） | 直连 |
