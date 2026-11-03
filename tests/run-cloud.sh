@@ -81,6 +81,11 @@ until poll 'grep -q "^EXIT=" /var/tmp/bs-run.log'; do
   sleep 30
 done
 log "部署结束（$(($(date +%s) - t0)) 秒）"
+# 完整部署日志拷回本机（测试主机下次重装就没了），与检查结果放在一起
+full=${TEST_OUT:-${TMPDIR:-/tmp}/run-cloud}.deploy.log
+for _u in "$final" "$login"; do
+  timeout 60 scp -q $so "$_u@$ip:/var/tmp/bs-run.log" "$full" 2>/dev/null && { log "完整部署日志：$full"; break; }
+done
 poll 'sed "s/\x1b\[[0-9;]*m//g" /var/tmp/bs-run.log | grep -E "==>|^warn|^error|WARNING|EXIT=|E: |installed .* tools|bootstrap\.sh: (完成|3 次)|install-mihomo: (下载|已)" | grep -v "⇢"'
 
 # 5. 检查（以最终用户运行；最终用户不能 SSH 登录时经登录用户 sudo 切换）；结果另存到 TEST_OUT

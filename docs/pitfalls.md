@@ -330,3 +330,13 @@
   - 预装时 lazy.nvim 的 `concurrency = 4`；每次尝试前恢复 `lazy-lock.json`，结束后也恢复；
   - `tests/cloud/verify-host.zsh` 检查全部 mise 工具都能运行，sshd 改用绝对路径（该镜像中 sudo 的 PATH 不含 /usr/sbin）。
 - **以后**：如需在旧系统上使用 treesitter，可考虑从源码构建 tree-sitter CLI（需要 Rust 工具链，编译耗内存），暂不做。
+
+## P-044 Ubuntu 镜像上以 root 运行：新用户没有公钥，SSH 加固被跳过；sudo -i 下 zsh 报 terminfo 警告
+
+- **现象**（真机矩阵测试，Ubuntu 26.04，由 ubuntu 用户 `sudo` 成 root 运行）：日志「lostrit 没有 SSH 公钥…跳过 SSH 加固」；
+  新用户的 HOME 中没有 `.ssh`；`sudo -u lostrit -i` 启动 zsh 时报 `.zshenv:29: can't find terminal definition for unknown`。
+- **原因**：
+  - Ubuntu 云镜像中 root 的 `authorized_keys` 为空，公钥在 ubuntu 用户下；bootstrap 只复制 root 的公钥。
+  - zsh 在 `TERMINFO_DIRS` 被赋值时重新初始化终端，`TERM` 没有对应的 terminfo 时警告（sudo-rs 的 `-i` 设置 `TERM=unknown`；
+    真实场景如 Ghostty 首次登录、远端还没有 `xterm-ghostty` 的 terminfo）。
+- **解决**：root 没有公钥且经 sudo 运行时，复制 `SUDO_USER` 的公钥；`.zshenv` 中赋值 `TERMINFO_DIRS` 时屏蔽该警告。

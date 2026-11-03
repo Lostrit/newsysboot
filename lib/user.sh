@@ -74,6 +74,15 @@ bs_set_password() {
 # 把 root 的 authorized_keys 追加给新用户（去重）
 bs_copy_root_keys() {
   _src=/root/.ssh/authorized_keys
+  _from=root
+  # root 没有公钥、且是经 sudo 切换成 root 时（如 Ubuntu 云镜像的 ubuntu 用户执行），改为复制调用者的公钥（P-044）
+  if [ ! -s "$_src" ] && [ -n "${SUDO_USER:-}" ] && [ "$SUDO_USER" != root ] && [ "$SUDO_USER" != "$1" ]; then
+    _sh=$(getent passwd "$SUDO_USER" | cut -d: -f6)
+    if [ -s "$_sh/.ssh/authorized_keys" ]; then
+      _src=$_sh/.ssh/authorized_keys
+      _from=$SUDO_USER
+    fi
+  fi
   [ -s "$_src" ] || return 0
   _home=$(getent passwd "$1" | cut -d: -f6)
   install -d -m 700 -o "$1" -g "$(id -gn "$1")" "$_home/.ssh"
@@ -86,5 +95,5 @@ bs_copy_root_keys() {
   done <"$_src"
   chown "$1:$(id -gn "$1")" "$_dst"
   chmod 600 "$_dst"
-  bs_log "已把 root 的 SSH 公钥复制给 $1"
+  bs_log "已把 $_from 的 SSH 公钥复制给 $1"
 }
