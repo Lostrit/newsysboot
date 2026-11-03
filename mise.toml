@@ -58,6 +58,8 @@ description = "用户目录；bat 主题缓存；预热 zsh（克隆插件、生
 run = [
   # node / bash / less / python 不会自己创建历史文件所在的目录（NODE_REPL_HISTORY、bash 别名、LESSHISTFILE、PYTHON_HISTORY，D-030）
   "mkdir -p ~/.config ~/.local/bin ~/.local/share/zsh/site-functions ~/.local/share/zsh/plugins ~/.local/state/zsh ~/.cache/zsh ~/.local/state/node ~/.local/state/bash ~/.local/state/less ~/.local/state/python",
+  # 按本机 git 版本生成 git 的部分设置（zdiff3 需要 git 2.35+，P-045）
+  "sh {{ config_root }}/scripts/gen-gitconfig.sh",
   "if command -v bat >/dev/null 2>&1; then bat cache --build >/dev/null; fi",
   "if command -v zsh >/dev/null 2>&1; then zsh -i -c exit </dev/null >/dev/null 2>&1 || true; fi",
 ]

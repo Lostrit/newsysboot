@@ -340,3 +340,11 @@
   - zsh 在 `TERMINFO_DIRS` 被赋值时重新初始化终端，`TERM` 没有对应的 terminfo 时警告（sudo-rs 的 `-i` 设置 `TERM=unknown`；
     真实场景如 Ghostty 首次登录、远端还没有 `xterm-ghostty` 的 terminfo）。
 - **解决**：root 没有公钥且经 sudo 运行时，复制 `SUDO_USER` 的公钥；`.zshenv` 中赋值 `TERMINFO_DIRS` 时屏蔽该警告。
+
+## P-045 Ubuntu 22.04 上 git 报 `unknown style 'zdiff3'`，lazy.nvim 无法安装
+
+- **现象**（真机矩阵测试，Ubuntu 22.04，git 2.34.1）：nvim 预装 3 次都失败，`Failed to clone lazy.nvim: fatal: unknown style 'zdiff3' given for 'merge.conflictstyle'`。
+- **原因**：dotfiles 的 git 配置写死了 `merge.conflictstyle = zdiff3`（git 2.35+ 才支持）。普通的提交、clone、log 不读这个设置，
+  但部分克隆（`--filter=blob:none`）后 checkout、切换分支、合并时会读取并直接报错；lazy.nvim 正是先部分克隆再 checkout 锁定的提交。
+- **解决**：git 配置改为 include `~/.local/state/bootstrap/gitconfig`，由 `scripts/gen-gitconfig.sh`（`[tasks.bootstrap]` 中运行）
+  按本机 git 版本写入 `zdiff3` 或 `diff3`；文件不存在时 git 忽略该 include。在 ubuntu:22.04 容器中按 lazy.lua 的方式复现并验证。

@@ -31,6 +31,7 @@ for t in node bun atuin bat claude delta eza fd fzf herdr micro rg starship vivi
 done
 check "all mise tools run${bad:+ (FAIL: $bad)}" "(( ${#bad} == 0 ))"
 print "tree-sitter: $(tree-sitter --version 2>&1 | head -1 | cut -c1-100)"
+check "git conflictstyle matches git version" "s=\$(git config --get merge.conflictstyle); [[ \$s == zdiff3 || \$s == diff3 ]]"
 check "nvim preinstalled"              "(( $(ls ~/.local/share/nvim/lazy | wc -l) >= 30 )) && (( $(ls ~/.local/share/nvim/mason/packages | wc -l) == 12 ))"
 check "zsh startup clean (pty)"        "[[ -z \"$(script -qc 'zsh -i -c exit' /dev/null </dev/null | sed $'s/\x1b\\[[0-9;?]*[a-zA-Z]//g; s/\x1b\\][^\x07]*\x07//g' | tr -d '\r')\" ]]"
 check "no key material on system"      "[[ -z \"$(sudo grep -rlsaE 'AGE-SECRET-KEY-1[0-9A-Z]{50,}' /home /var/log /tmp /dev/shm /root /run/log /etc 2>/dev/null | grep -v /age-keygen)\" ]]"

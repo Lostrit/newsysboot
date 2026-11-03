@@ -23,8 +23,10 @@
 [diff]
     colorMoved = default         # 让"移动的代码块"和"真改动"区分开
 
-[merge]
-    conflictstyle = zdiff3       # git 2.35+；旧版用 diff3
+# merge.conflictstyle：zdiff3 需要 git 2.35+，旧版（如 Ubuntu 22.04 的 2.34）在 checkout 时直接报错（P-045）。
+# 由 bootstrap 按本机 git 版本生成（zdiff3 或 diff3）；文件不存在时 git 忽略此 include，使用默认样式
+[include]
+    path = ~/.local/state/bootstrap/gitconfig
 
 # 本机覆盖（user.name / user.email 等机器相关配置），不入库（.gitignore）
 [include]
