@@ -254,6 +254,8 @@ stage-0 在 `env.sh` 中写入 `NPM_CONFIG_REGISTRY` 和 `BUN_CONFIG_REGISTRY`�
 
 ## D-020 SteamOS：mihomo 用独立二进制，放在 /var/lib/mihomo 🟡（未在真机验证）
 
+> 真机验证清单：verify-steamos.md
+
 **日期**：2026-10-29
 
 SteamOS 的根分区只读，不能用 pacman，也不能写 `/usr`。二进制装在 `/var/lib/mihomo/bin`（`/var` 可写，系统升级后保留），
@@ -344,6 +346,8 @@ Linux 主机为 server（`allow-lan: true`，只放行本机和 Docker 网段）
 - **备选方案**：三份独立模板（重复太多）；继续使用 ACL4SSR / blackmatrix7 文本规则（体积大、分类粗）。
 
 ## D-028 代理接入方式：Linux 主机用环境变量，本地个人设备默认 TUN 🟡（macOS / Windows / SteamOS 未在真机验证）
+
+> 真机验证清单：verify-macos.md、verify-steamos.md、verify-windows.md
 
 **日期**：2026-11-03
 
