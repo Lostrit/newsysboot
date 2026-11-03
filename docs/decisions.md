@@ -365,6 +365,8 @@ Linux 主机为 server（`allow-lan: true`，只放行本机和 Docker 网段）
 
 ## D-029 Windows：bootstrap 部署 mihomo 系统服务（WinSW） 🟡（未在真机验证）
 
+> 真机验证清单：[verify-windows.md](verify-windows.md)
+
 **日期**：2026-11-03
 
 - **决策**（用户确认）：`bootstrap.ps1` 以管理员身份运行时部署 mihomo 系统服务，取代「导出配置、导入 GUI 客户端」的做法（D-027 中的 Windows 部分）：

@@ -9,6 +9,7 @@
 | [pitfalls.md](pitfalls.md) | 开发中遇到的坑 |
 | [design-zsh-tools.md](design-zsh-tools.md) | 设计：工具的 shell 集成与 zshrc 解耦 |
 | [usage.md](usage.md) | 使用说明（入口、选项、环境变量、测试） |
+| [verify-windows.md](verify-windows.md) | Windows 真机验证清单（待执行）：步骤、命令与预期结果 |
 | [dotfiles.md](dotfiles.md) | dotfiles 说明（原 dotconfig 的 README：开发工具、提交钩子） |
 | [nvim/](nvim/) | nvim 配置说明、上手指南、容器镜像构建 |
 | [dotconfig-review.md](dotconfig-review.md) | 对 `/root/dotconfig` 的评审与改进建议 |
