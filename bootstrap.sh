@@ -95,11 +95,12 @@ if [ ! -f "$(bs_self_dir)/lib/common.sh" ]; then
     BOOTSTRAP_REPO=$BOOTSTRAP_REPO_CNB
     git clone -q --depth 1 "$BOOTSTRAP_REPO" "$_tmp/repo" || _die "clone 失败：$BOOTSTRAP_REPO"
   else
-    # GitHub：直连与常用加速代理依次尝试（此时还没有测速结果）；
-    # 跳过重复的候选（GH_PROXY 为空时与直连相同，P-039）；直连在国内常常卡住，只给 30 秒
+    # GitHub：此时还没有选源结果，按内置列表（scripts/update-gh-proxies.sh 维护，D-031）依次尝试加速代理，最后才直连
+    # （默认国内网络）；跳过重复的候选（P-039）；直连在国内常常卡住，只给 30 秒
     BOOTSTRAP_REPO=$BOOTSTRAP_REPO_GITHUB
     _tried=
-    for _p in "${GH_PROXY:-}" "" https://gh-proxy.com/ https://ghfast.top/ https://gh.qninq.cn/ https://github.cnxiaobai.com/; do
+    for _p in "${GH_PROXY:-_none_}" https://gh.qninq.cn/ https://github.cnxiaobai.com/ https://git.yylx.win/ https://gh.padao.fun/ ""; do  # @gh-proxies
+      [ "$_p" != _none_ ] || continue
       case "$_tried" in *"[$_p]"*) continue ;; esac
       _tried="$_tried[$_p]"
       _say "clone ${_p}$BOOTSTRAP_REPO"

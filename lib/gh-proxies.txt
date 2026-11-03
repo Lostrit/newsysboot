@@ -1,0 +1,43 @@
+# lib/gh-proxies.txt — GitHub 加速代理候选（D-031），由 scripts/update-gh-proxies.sh 生成，勿直接编辑
+# 来源：https://github.xxlab.tech/（以及上一版列表）；生成时间：2026-11-03 13:56 +0800；测试机：VM-0-3-debian
+# 条件：直连可用，3 轮测试中 release / raw / archive / clone 每一轮都全部通过；按最慢一轮的 release 下载速度排序
+# 部署时（lib/mirrors.sh 的 bs_select_gh_proxy）会在本机重新测延时与真实下载，从中选出最优的一个
+https://gh.qninq.cn/                             # 最慢一轮 866 KB/s，最高延时 244 ms
+https://github.cnxiaobai.com/                    # 最慢一轮 640 KB/s，最高延时 562 ms
+https://git.yylx.win/                            # 最慢一轮 592 KB/s，最高延时 449 ms
+https://gh.padao.fun/                            # 最慢一轮 567 KB/s，最高延时 632 ms
+https://ghproxy.sakuramoe.dev/                   # 最慢一轮 506 KB/s，最高延时 852 ms
+https://ghproxy.mirror.skybyte.me/               # 最慢一轮 501 KB/s，最高延时 836 ms
+https://gh.39.al/                                # 最慢一轮 436 KB/s，最高延时 831 ms
+https://github.ednovas.xyz/                      # 最慢一轮 268 KB/s，最高延时 1575 ms
+https://github.880824.xyz/                       # 最慢一轮 246 KB/s，最高延时 2298 ms
+https://ghproxy.xzhouqd.com/                     # 最慢一轮 193 KB/s，最高延时 1737 ms
+https://git.820828.xyz/                          # 最慢一轮 192 KB/s，最高延时 1723 ms
+https://fastgit.cc/                              # 最慢一轮 185 KB/s，最高延时 1918 ms
+https://ghfast.top/                              # 最慢一轮 181 KB/s，最高延时 1483 ms
+https://ggg.clwap.dpdns.org/                     # 最慢一轮 178 KB/s，最高延时 1387 ms
+https://github.lsdfxdk.nyc.mn/                   # 最慢一轮 175 KB/s，最高延时 2192 ms
+https://gh.noki.eu.org/                          # 最慢一轮 172 KB/s，最高延时 2342 ms
+https://github.ihnic.com/                        # 最慢一轮 169 KB/s，最高延时 1500 ms
+https://ghpxy.hwinzniej.top/                     # 最慢一轮 161 KB/s，最高延时 2135 ms
+https://proxy.baguoyuyan.com/                    # 最慢一轮 161 KB/s，最高延时 2686 ms
+https://gh.1k.ink/                               # 最慢一轮 155 KB/s，最高延时 1749 ms
+https://gp.871201.xyz/                           # 最慢一轮 154 KB/s，最高延时 1543 ms
+https://hub.ddayh.com/                           # 最慢一轮 153 KB/s，最高延时 2028 ms
+https://github.chenc.dev/                        # 最慢一轮 153 KB/s，最高延时 1962 ms
+https://github.boringhex.top/                    # 最慢一轮 150 KB/s，最高延时 1760 ms
+https://git.669966.xyz/                          # 最慢一轮 149 KB/s，最高延时 1575 ms
+https://gh.idayer.com/                           # 最慢一轮 142 KB/s，最高延时 1890 ms
+https://gh.chjina.com/                           # 最慢一轮 142 KB/s，最高延时 2215 ms
+https://gh.996986.xyz/                           # 最慢一轮 140 KB/s，最高延时 933 ms
+https://github.crdz.eu.org/                      # 最慢一轮 138 KB/s，最高延时 1051 ms
+https://github.mlmle.cn/                         # 最慢一轮 134 KB/s，最高延时 1948 ms
+https://kenyu.ggff.net/                          # 最慢一轮 131 KB/s，最高延时 2935 ms
+https://jiashu.1win.eu.org/                      # 最慢一轮 131 KB/s，最高延时 1800 ms
+https://tvv.tw/                                  # 最慢一轮 128 KB/s，最高延时 1057 ms
+https://github.788787.xyz/                       # 最慢一轮 127 KB/s，最高延时 1327 ms
+https://gh.nxnow.top/                            # 最慢一轮 127 KB/s，最高延时 908 ms
+https://getgit.love8yun.eu.org/                  # 最慢一轮 125 KB/s，最高延时 1761 ms
+https://github.tianrld.top/                      # 最慢一轮 121 KB/s，最高延时 1343 ms
+https://gh.monlor.com/                           # 最慢一轮 121 KB/s，最高延时 2061 ms
+https://github.1ms.xx.kg/                        # 最慢一轮 115 KB/s，最高延时 1250 ms

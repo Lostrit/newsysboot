@@ -71,6 +71,8 @@ bs_stage_root() {
   fi
   # 关闭 Ubuntu sudo 的 admin_flag（不再在 HOME 中创建 .sudo_as_admin_successful，D-030）
   bs_sudo_no_admin_flag
+  # 选源时还没有 git 的话，现在选择 GitHub 加速代理（P-040）
+  bs_select_gh_proxy_pending
 
   if [ "$(id -u)" != 0 ]; then
     # 已有 sudo 的普通用户：不新建用户，对当前用户执行 SSH 加固（经 sudo，条件与 root 时相同，D-025）
@@ -156,23 +158,18 @@ bs_mise() {
   fi
 }
 
-# bs_mise_retry <envs> <mise 参数…>：失败且正在使用 GH_PROXY 时，第三方加速代理可能临时限流（429）或失效，
-# 换一个代理再试一次，并更新选源缓存与 env.sh（P-029）
+# bs_mise_retry <envs> <mise 参数…>：经 GH_PROXY 执行失败时（第三方加速代理可能临时限流或失效），
+# 不再重新测速选择（D-031），而是关闭 GH_PROXY、直连 GitHub 重试一次（有 mihomo 时即经代理）；仍失败由调用方报错
 bs_mise_retry() {
   bs_mise "$@" && return 0
-  [ -z "${BS_PROXY_URL:-}" ] && [ -n "${GH_PROXY:-}" ] || return 1
-  _bad=$GH_PROXY
-  _rest=
-  for _p in $BS_GH_PROXIES; do [ "$_p" = "$_bad" ] || _rest="$_rest $_p"; done
-  GH_PROXY=$(BS_GH_PROXIES=$_rest bs_select_gh_proxy) || return 1
-  bs_warn "mise 执行失败（如果是 GitHub 加速代理 $_bad 限流或失效），改用 ${GH_PROXY:-<直连>} 重试一次"
-  if [ -w "$BS_STATE_DIR/mirrors.env" ]; then
-    _np=$(grep -v '^export GH_PROXY=' "$BS_STATE_DIR/mirrors.env")
-    { printf '%s\n' "$_np"; bs_env_line GH_PROXY "$GH_PROXY"; } >"$BS_STATE_DIR/mirrors.env"
-  fi
-  export GH_PROXY
-  bs_write_env
-  bs_mise "$@"
+  [ -n "${GH_PROXY:-}" ] || return 1
+  bs_warn "WARNING: mise 经 GitHub 加速代理 $GH_PROXY 执行失败，改为直连 GitHub 重试一次${BS_PROXY_URL:+（经 $BS_PROXY_URL）}"
+  (
+    unset MISE_URL_REPLACEMENTS GIT_CONFIG_COUNT GIT_CONFIG_KEY_0 GIT_CONFIG_VALUE_0
+    GH_PROXY=
+    export GH_PROXY
+    bs_mise "$@"
+  )
 }
 
 # ---------------------------------------------------------------------------
@@ -252,11 +249,11 @@ bs_ensure_mise() {
 }
 
 # 写入 ~/.local/state/bootstrap/env.sh：~/.zshenv 会读取它（GH_PROXY、代理等），本脚本也用它驱动 mise
-# BS_PROXY_URL 非空时（本机 mihomo 已可用）写入代理变量，GitHub 改为经代理直连，不再需要 GH_PROXY
+# BS_PROXY_URL 非空时（本机 mihomo 已可用）写入代理变量；GitHub 的 release / raw / clone 仍经 GH_PROXY（D-031）
 bs_write_env() {
   mkdir -p "$BS_STATE_DIR"
+  # mihomo 可用后也继续使用 GH_PROXY 获取 GitHub 的 release / raw / clone（D-031）；加速代理主机在 no_proxy 中，直连访问
   _gh=$GH_PROXY
-  [ -n "${BS_PROXY_URL:-}" ] && _gh=
   {
     echo "# 由 bootstrap 生成（lib/stage.sh），~/.zshenv 读取；重新运行 bootstrap.sh 会覆盖"
     bs_env_line BOOTSTRAP_DIR "$BOOTSTRAP_DIR"
@@ -311,10 +308,10 @@ bs_write_env() {
   . "$BS_STATE_DIR/env.sh"
 }
 
-# 不走代理的地址：本机、各家云内网镜像、选中的 apt / docker 镜像
+# 不走代理的地址：本机、各家云内网镜像、选中的 apt / docker 镜像、GitHub 加速代理
 bs_no_proxy() {
   _np="localhost,127.0.0.1,::1,.tencentyun.com,.aliyuncs.com,.myhuaweicloud.com,.ivolces.com"
-  for _u in "${BOOTSTRAP_APT_MIRROR:-}" "${BOOTSTRAP_DOCKER_MIRROR:-}"; do
+  for _u in "${BOOTSTRAP_APT_MIRROR:-}" "${BOOTSTRAP_DOCKER_MIRROR:-}" "${GH_PROXY:-}"; do
     [ -n "$_u" ] || continue
     _h=${_u#*://}
     _h=${_h%%/*}
@@ -323,12 +320,18 @@ bs_no_proxy() {
   printf '%s\n' "$_np"
 }
 
-# nvim 预装所需的网络：插件经 git 直接从 GitHub 克隆，语法解析器 / Mason 工具 / blink.cmp 库从 GitHub Releases 下载
-# （都不经 GH_PROXY，只能经代理或直连），npm 类工具走 NPM_CONFIG_REGISTRY。三项都经当前环境的代理检测；
+# nvim 预装所需的网络：插件经 git 从 GitHub 克隆，语法解析器 / Mason 工具 / blink.cmp 库从 GitHub 下载
+# （预装时优先经 GH_PROXY，失败后直连，D-031），npm 类工具走 NPM_CONFIG_REGISTRY；
 # npm 镜像的根路径可能返回 404（腾讯云），且不支持 Range，因此对一个包的元数据发 HEAD 请求
 bs_nvim_net_ok() {
-  curl -fsS -m 15 -o /dev/null "https://github.com/folke/lazy.nvim.git/info/refs?service=git-upload-pack" 2>/dev/null &&
-    curl -fsSL -m 20 -r 0-1023 -o /dev/null "$BS_GH_PROBE_URL" 2>/dev/null &&
+  # GitHub：经 GH_PROXY（预装第 1 次使用）或直连（之后的尝试）任一可用即可（D-031）
+  _ok=
+  for _pre in "${GH_PROXY:-}" ""; do
+    [ -n "$_pre" ] || [ -z "$_ok" ] || continue
+    curl -fsS -m 15 -o /dev/null "${_pre}https://github.com/folke/lazy.nvim.git/info/refs?service=git-upload-pack" 2>/dev/null &&
+      curl -fsSL -m 20 -r 0-1023 -o /dev/null "${_pre}$BS_GH_PROBE_URL" 2>/dev/null && { _ok=1; break; }
+  done
+  [ -n "$_ok" ] &&
     curl -fsS -I -m 15 -o /dev/null "${NPM_CONFIG_REGISTRY:-https://registry.npmjs.org/}prettier" 2>/dev/null
 }
 
@@ -357,7 +360,7 @@ bs_nvim_preinstall() {
 }
 
 # 环境中已有代理（容器由编排注入的宿主机代理，或之前运行写进 env.sh 的本机 mihomo）时：
-# 可用就直接经它访问 GitHub（不再需要 GH_PROXY）；不可用就清掉代理变量，改用 GH_PROXY（P-028）
+# 可用就写入 env.sh（其他海外流量经它；GitHub 的 release / raw / clone 仍经 GH_PROXY，D-031）；不可用就清掉代理变量（P-028）
 bs_detect_proxy() {
   _px=${https_proxy:-${HTTPS_PROXY:-${http_proxy:-${HTTP_PROXY:-}}}}
   # 环境中没有代理、但本机应有 mihomo 时（如 --dotfiles 重新运行），也试一下本机端口

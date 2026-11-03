@@ -140,6 +140,20 @@ fnox 是 mise 作者开发的机密管理工具：在 `fnox.toml` 中声明机�
   `fake-ip-filter` 中的 `rule-set:`、`fallback` 组（二进制中字段均存在，并经 `mihomo -t` 与实际分流测试验证）。
 - 腾讯云 npm 镜像根路径返回 404、不支持 Range（P-033）。
 
+## R-013 GitHub 加速代理候选（2026-11-03，开发机：腾讯云，国内网络，不经代理）
+
+- 来源 https://github.xxlab.tech/：页面「加速源」下拉框中共 75 个前缀（含该站自身）；页面没有标注各地址支持哪些获取方式，
+  说明文字称该站自身「支持 release、archive 以及文件……文件会跳转至 jsDelivr……clone 加速：在原始链接前加上本站地址」。
+- 3 轮完整测试（release / raw / archive / clone）：39 个全部通过；未通过的原因以连接失败与 release 失败为主，
+  也有只在部分轮次失败的（如 `gh.dpik.top` 第 2 轮 raw、`github-proxy.lixxing.top` 第 3 轮 clone），说明多轮测试有意义。
+- `gh-proxy.com` 第 1 轮 release 即失败（当天该机器访问频繁，疑似限流，P-029），未进入列表；`ghfast.top` 通过但速度一般。
+- 速度最快的前几个：gh.qninq.cn（最慢一轮 866 KB/s）、github.cnxiaobai.com、git.yylx.win、gh.padao.fun。
+- 结论：候选质量变化快，需要定期运行 `scripts/update-gh-proxies.sh`；部署时仍要在本机重新测试。
+- mise 2026.10.22 自身的回退（dev 主机实测）：`MISE_URL_REPLACEMENTS` 指向不可用的代理时，release 下载的 HEAD 请求重试 3 次失败后，
+  mise 自动改用 GitHub API 的资源地址（`api.github.com/repos/<o>/<r>/releases/assets/<id>`）下载，即直连（有 mihomo 时经 mihomo），安装成功。
+  因此 bootstrap 的「关闭 GH_PROXY 重试一次」（`bs_mise_retry`）只在 mise 内部回退也失败时才会触发。
+- 资源占用（P-042）：nvim 预装的并发上限按 min(CPU, 内存 GB / 1.5) 计算；dev（2 核 7.5G）为 2，开发机（2 核 2G）为 1。
+
 ## R-009 Docker Hub 镜像加速（2026-10-29，在腾讯云内网主机上，`--noproxy`，请求 `/v2/`）
 
 | 地址 | 结果 | 说明 |

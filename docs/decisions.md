@@ -408,3 +408,34 @@ Linux 主机为 server（`allow-lan: true`，只放行本机和 Docker 网段）
   bash 三个文件与 `/etc/skel` 相同；`.terminfo` 来自 Ghostty 终端的 SSH 集成（登录时的「Setting up xterm-ghostty terminfo」）；
   `.sudo_as_admin_successful` 来自 Ubuntu 的 sudo；`bs-run*`、`ct-*` 是测试时手动留下的文件，不是 bootstrap 生成的。
 - **备选方案**：只清理不移动（会丢失历史）；用 `/etc/zsh/zshenv` 设置 `ZDOTDIR` 以去掉 `~/.zshenv`（需要 root，且 macOS / SteamOS 不适用，维持 D-003）。
+
+## D-031 GitHub 加速代理：维护候选列表、按能力真实测试后只选一次，失败回退直连 ✅
+
+**日期**：2026-11-03
+
+- **决策**（用户需求）：
+  1. **候选来源**：`scripts/update-gh-proxies.sh` 从 https://github.xxlab.tech/ 抓取全部加速前缀（与现有列表合并），
+     在国内网络、不经代理的机器上逐个做 3 轮完整测试，只保留每一轮都通过的，按最慢一轮的 release 下载速度排序写入
+     `lib/gh-proxies.txt`，并更新 `bootstrap.sh`、`bootstrap.ps1`、`lib/mirrors.sh` 中的内置列表（拉取仓库之前使用）。
+  2. **能力要求**：所选代理必须支持部署链路中全部 4 种获取方式（`bs_gh_test`）：
+     release 下载（age 的 1MiB，校验 sha256）、raw 文件（eza 补全，校验 sha256）、archive 源码包（zsh-defer 固定提交的 tar.gz，检查内容）、
+     git clone（浅克隆 zsh-defer，检查文件）。
+  3. **部署时只选一次**（`bs_select_gh_proxy`，在选源阶段）：全部候选并行测延时，对最低的 5 个做上述真实测试，
+     全部通过者中取 release 下载最快的；结果缓存 7 天（`mirrors.env`），之后不再测速、不再更换。都不可用时 WARNING 并直连。
+  4. **有 mihomo 也使用 GH_PROXY**：GitHub 的 release / raw / clone 仍经 GH_PROXY（加速代理主机加入 `no_proxy`，直连访问）；
+     其他海外流量经 mihomo。
+  5. **使用位置**：
+     | 位置 | 方式 | 失败时 |
+     | --- | --- | --- |
+     | 管道模式拉取本仓库 | 内置列表依次尝试，最后直连 30 秒 | 报错 |
+     | mihomo 二进制（install-mihomo.sh） | `GH_PROXY` 前缀 | 直连；仍失败报错 |
+     | mise 工具 | `MISE_URL_REPLACEMENTS`（github.com、raw） | 关闭 GH_PROXY 直连重试一次；仍失败报错 |
+     | zsh 插件 | git `insteadOf`（origin 保持原始地址） | 直连 |
+     | eza 补全 | `GH_PROXY` 前缀 | 直连；仍失败记录失败、24 小时后重试 |
+     | nvim 预装：lazy.nvim 插件 | git `insteadOf`（`GIT_CONFIG_*`，只在预装期间） | 第 2、3 次直连；默认模式 WARNING，`--nvim` 报错 |
+     | nvim 预装：treesitter / Mason / blink.cmp | PATH 中的 curl 包装脚本改写 github.com / raw 地址（P-041） | 同上 |
+- **不再重新测速**：取代 P-029 中「mise 失败时换一个代理重试」的做法（违反「只选一次」）。
+- **不经 GH_PROXY 的部分**：api.github.com（mise 的签名信息查询、Mason 的版本查询；加速代理一般不支持 API），经直连 / mihomo。
+- **原因**：公共加速代理数量多、质量差异大且经常变化；只测 release 的旧做法选出过不支持 clone / archive 的代理；
+  mihomo 节点流量有限，GitHub 大文件更适合经国内可直连的加速代理。
+- **首次结果**（2026-11-03，开发机，腾讯云）：75 个候选中 39 个通过；部署时选择耗时约 30 秒。

@@ -22,7 +22,8 @@ $ErrorActionPreference = 'Stop'
 
 $RepoGithub = if ($env:BOOTSTRAP_REPO_GITHUB) { $env:BOOTSTRAP_REPO_GITHUB } else { 'https://github.com/Lostrit/newsysboot.git' }
 $RepoCnb = if ($env:BOOTSTRAP_REPO_CNB) { $env:BOOTSTRAP_REPO_CNB } else { 'https://cnb.cool/xfengjing/lostrit/NewSysBoot.git' }
-$GhProxies = @('', 'https://gh-proxy.com/', 'https://ghfast.top/', 'https://gh.qninq.cn/', 'https://github.cnxiaobai.com/', 'https://tvv.tw/')
+# 内置的 GitHub 加速代理（scripts/update-gh-proxies.sh 维护，D-031）；都不可用时直连
+$GhProxies = @('https://gh.qninq.cn/', 'https://github.cnxiaobai.com/', 'https://git.yylx.win/', 'https://gh.padao.fun/')  # @gh-proxies
 $ProbeUrl = 'https://github.com/FiloSottile/age/releases/download/v1.2.1/age-v1.2.1-linux-amd64.tar.gz'
 $ProbeSha256 = '75c2d0d2265769452a72f14e9b956b6cc3968d0abd5a19904cb79a9267a117b1'
 

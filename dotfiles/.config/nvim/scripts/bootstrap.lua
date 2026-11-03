@@ -9,6 +9,19 @@
 
 local TIMEOUT = 15 * 60 * 1000
 
+-- GitHub 加速代理由 scripts/bootstrap.sh 处理（D-031）：git 经 GIT_CONFIG_*（url.<GH_PROXY>.insteadOf），
+-- curl 下载（treesitter 语法解析器源码、Mason、blink.cmp）经 PATH 中的 curl 包装脚本改写地址；这里只用于输出
+local GH_PROXY = vim.env.GH_PROXY or ""
+
+-- 并发上限：编译语法解析器（cc1）与 npm 安装都很占内存，小内存机器上并发过高会把内存耗尽（P-042）。
+-- 按每个任务约 1.5GB 估算：min(CPU 核数, 总内存 GB / 1.5)，至少 1；可用 NVIM_BOOTSTRAP_JOBS 覆盖
+local JOBS = tonumber(vim.env.NVIM_BOOTSTRAP_JOBS or "")
+if not JOBS then
+  local uv = vim.uv or vim.loop
+  local mem_gb = uv.get_total_memory() / 1024 / 1024 / 1024
+  JOBS = math.max(1, math.min(uv.available_parallelism(), math.floor(mem_gb / 1.5)))
+end
+
 local function say(msg)
   io.stdout:write("bootstrap.lua: " .. msg .. "\n")
 end
@@ -81,7 +94,7 @@ local function step_treesitter()
   end, langs)
   say(("treesitter：清单 %d 个，需要安装 %d 个"):format(#langs, #missing))
   if #missing > 0 then
-    ts.install(missing, { summary = true }):wait(TIMEOUT)
+    ts.install(missing, { summary = true, max_jobs = JOBS }):wait(TIMEOUT)
   end
 
   installed = {}
@@ -100,6 +113,7 @@ end
 -- ---------------------------------------------------------------------------
 local function step_mason()
   require("lazy").load({ plugins = { "mason.nvim" } })
+  require("mason.settings").current.max_concurrent_installers = JOBS
   local registry = require("mason-registry")
   if not wait_for("Mason：刷新软件源", function(cb)
     registry.refresh(cb)
@@ -144,8 +158,9 @@ end
 -- ---------------------------------------------------------------------------
 local function step_blink()
   require("lazy").load({ plugins = { "blink.cmp" } })
+  local download = require("blink.cmp.fuzzy.download")
   local res = wait_for("blink.cmp：下载模糊匹配库", function(cb)
-    require("blink.cmp.fuzzy.download").ensure_downloaded(cb)
+    download.ensure_downloaded(cb)
   end)
   if not res then
     return
@@ -162,6 +177,7 @@ local function step_blink()
   say("blink.cmp：模糊匹配库可用")
 end
 
+say("GitHub 加速代理：" .. (GH_PROXY ~= "" and GH_PROXY or "<直连>") .. "；并发上限：" .. JOBS)
 for _, step in ipairs({ step_plugins, step_treesitter, step_mason, step_blink }) do
   local ok, err = pcall(step)
   if not ok then

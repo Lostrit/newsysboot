@@ -8,8 +8,9 @@
 # 0. 目录与基础变量
 # ------------------------------------------------------------
 : ${ZPLUGINDIR:=$XDG_DATA_HOME/zsh/plugins}
-# GH_PROXY 形如 https://ghproxy.example/ （带尾斜杠），未设置时直连
-: ${ZPLUGIN_GIT_BASE:=${GH_PROXY}https://github.com/}
+# 插件从 GitHub 克隆；GH_PROXY（形如 https://ghproxy.example/，带尾斜杠）非空时经 git 的 insteadOf 走加速代理，
+# 仓库中记录的 origin 仍是原始地址；加速代理失败时回退直连（D-031）
+: ${ZPLUGIN_GIT_BASE:=https://github.com/}
 
 () {
   local -a dirs=(
@@ -32,6 +33,16 @@ export FAST_WORK_DIR="$XDG_CACHE_HOME/fsh"
 ## ? 用法: plugin-load [-d] <user/repo>[@<ref>] ...
 ## ?   -d        若 zsh-defer 可用则延迟加载（仅对纯 widget 类插件安全）
 ## ?   @<ref>    固定到某个 commit sha / tag / 分支，用于可重现构建
+# git 操作：先经 GH_PROXY（insteadOf），失败时清理半成品并直连重试
+function _zplug_git {
+  if [[ -n $GH_PROXY ]]; then
+    git -c "url.${GH_PROXY}https://github.com/.insteadOf=https://github.com/" "$@" && return 0
+    print -u2 "  经 GitHub 加速代理失败，改为直连：git $*"
+    [[ $1 == clone ]] && rm -rf -- "${@[-1]}"
+  fi
+  git "$@"
+}
+
 function plugin-load {
   local defer=0
   [[ "$1" == "-d" ]] && { defer=1; shift }
@@ -56,13 +67,13 @@ function plugin-load {
 
     if [[ ! -d "$plugdir" ]]; then
       print -u2 "Cloning $repo ..."
-      git clone "${clone_args[@]}" "${ZPLUGIN_GIT_BASE}${repo}" "$plugdir" || {
+      _zplug_git clone "${clone_args[@]}" "${ZPLUGIN_GIT_BASE}${repo}" "$plugdir" || {
         print -u2 "  clone failed: $repo"
         continue
       }
       if [[ -n "$ref" ]]; then
-        git -C "$plugdir" fetch -q --depth 1 origin "$ref" \
-          || git -C "$plugdir" fetch -q origin "$ref"
+        _zplug_git -C "$plugdir" fetch -q --depth 1 origin "$ref" \
+          || _zplug_git -C "$plugdir" fetch -q origin "$ref"
         git -C "$plugdir" checkout -q FETCH_HEAD || {
           print -u2 "  checkout '$ref' failed: $repo"
           continue

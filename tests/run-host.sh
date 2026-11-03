@@ -103,7 +103,7 @@ docker exec -e TEST_REAL_SECRETS="${TEST_REAL_SECRETS:-}" "$name" sh -c '
   check "mihomo listening 7890"          "curl -s -o /dev/null -m 3 http://127.0.0.1:7890"
   if [ -n "$TEST_REAL_SECRETS" ]; then
     check "proxy reaches github"         "curl -fsS -x http://127.0.0.1:7890 -m 10 -o /dev/null https://github.com"
-    check "env.sh: proxy, no GH_PROXY"   "grep -q \"http_proxy=\" $st/env.sh && grep -q \"^export GH_PROXY=..\$\" $st/env.sh"
+    check "env.sh: proxy + GH_PROXY"     "grep -q \"http_proxy=\" $st/env.sh && grep -q \"^export GH_PROXY=.https\" $st/env.sh"
   else
     check "env.sh: fallback GH_PROXY"    "! grep -q \"http_proxy=\" $st/env.sh && grep -q \"^export GH_PROXY=.https\" $st/env.sh"
   fi

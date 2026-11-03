@@ -102,6 +102,19 @@ sh tests/mihomo-rules.sh
 
 导出的文件包含节点信息（明文），用完请删除，不要提交或分享。
 
+## GitHub 加速代理（D-031）
+
+- 部署时在选源阶段选择一次：从 `lib/gh-proxies.txt` 的候选中，先测延时，再对最快的 5 个做 release / raw / archive / clone 的真实测试，
+  选出 release 下载最快的一个（缓存 7 天，`--reprobe` 重新选择）；都不可用时 WARNING 并直连。
+- mise 工具、zsh 插件、eza 补全、mihomo 二进制、nvim 预装（插件、语法解析器、Mason、blink.cmp）都经它获取 GitHub 内容；
+  有 mihomo 时也是如此。失败时回退直连（mise / mihomo 直连仍失败则报错；nvim 预装默认 WARNING）。
+- 手动指定：`GH_PROXY=https://… sh bootstrap.sh`；设为空表示直连。
+- 维护候选列表（在国内网络、不经代理的机器上运行，约 5 分钟）：
+
+  ```sh
+  sh scripts/update-gh-proxies.sh   # 更新 lib/gh-proxies.txt 与 bootstrap.sh / bootstrap.ps1 / lib/mirrors.sh 的内置列表
+  ```
+
 ## HOME 整理（D-030）
 
 部署时自动整理当前用户的 HOME，最终只保留 `.cache`、`.config`、`.local`、`.ssh` 与 `.zshenv`：

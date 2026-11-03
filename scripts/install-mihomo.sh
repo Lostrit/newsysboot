@@ -45,11 +45,24 @@ if [ -x "$BIN" ] && "$BIN" -v 2>/dev/null | grep -q "v$VERSION "; then
   exit 0
 fi
 
-url="${GH_PROXY:-}https://github.com/MetaCubeX/mihomo/releases/download/v$VERSION/$ASSET"
+url="https://github.com/MetaCubeX/mihomo/releases/download/v$VERSION/$ASSET"
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
-echo "install-mihomo: 下载 $url"
-curl -fsSL --retry 3 -o "$tmp/$ASSET" "$url"
+# 先经 GH_PROXY；失败时回退直连（D-031）。mihomo 是必需的，直连也失败（含超时）则报错退出
+if [ -n "${GH_PROXY:-}" ]; then
+  echo "install-mihomo: 下载 ${GH_PROXY}$url"
+  curl -fsSL --retry 2 --connect-timeout 10 -m 300 -o "$tmp/$ASSET" "${GH_PROXY}$url" || {
+    echo "install-mihomo: WARNING: 经 GitHub 加速代理 $GH_PROXY 下载失败，改为直连" >&2
+    rm -f "$tmp/$ASSET"
+  }
+fi
+if [ ! -s "$tmp/$ASSET" ]; then
+  echo "install-mihomo: 下载 $url"
+  curl -fsSL --retry 2 --connect-timeout 10 -m 300 -o "$tmp/$ASSET" "$url" || {
+    echo "install-mihomo: 直连下载失败（含超时），无法安装 mihomo" >&2
+    exit 1
+  }
+fi
 # macOS 没有 sha256sum
 if command -v sha256sum >/dev/null 2>&1; then got=$(sha256sum "$tmp/$ASSET"); else got=$(shasum -a 256 "$tmp/$ASSET"); fi
 [ "${got%% *}" = "$SHA256" ] || {

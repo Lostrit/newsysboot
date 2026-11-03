@@ -196,6 +196,7 @@
     换一个代理重试一次，并更新 `mirrors.env` 与 `env.sh`（最初只覆盖最后一次执行，之后 fnox 安装也遇到了 429）。
   - `bs_select_gh_proxy` 全部失败时，放宽到 30 秒超时、只测一次再试。
   - 用一个不可用的 `GH_PROXY=https://127.0.0.1:9/` 验证：第一次失败后自动改用 `gh.qninq.cn` 完成。
+- **更新（D-031）**：「换一个代理重试」已改为「关闭 GH_PROXY 直连重试一次」：部署过程中只选一次代理，不再重新测速。
 
 ## P-030 主机部署后用户家目录中的 zsh 目录属于 root
 
@@ -283,3 +284,30 @@
 - **现象**：dev 主机（腾讯云 Debian 13）重新部署时，`clone https://github.com/…` 出现两次，每次都要等到超时才换下一个。
 - **原因**：候选列表是 `"$GH_PROXY" "" <加速代理…>`；`GH_PROXY` 为空时第一个候选也是直连。直连在国内常常卡住，每次最多等 120 秒。
 - **解决**：跳过重复的候选；直连只给 30 秒（浅克隆小仓库足够），加速代理仍为 120 秒。
+
+## P-040 选择 GitHub 加速代理时还没有 git，clone 测试全部失败
+
+- **现象**：主机测试（`tests/run-host.sh`，在检出目录中以 root 运行）中，所有候选都被判为不可用，GH_PROXY 为空、全部直连；
+  测试容器屏蔽了 GitHub 直连，于是后续全部失败。
+- **原因**：root 阶段的顺序是「选源 → apt 换源 → 安装 git 等基础包」，选源时还没有 git，`bs_gh_test` 的 clone 测试必然失败。
+  经管道模式部署时会先安装 git，因此在 dev 主机上没有出现；直接在检出中运行、或系统没有 git 时会出现。
+- **解决**：没有 git 时推迟选择（`BS_GH_PENDING`），装好基础包后再选（`bs_select_gh_proxy_pending`），结果补写进 `mirrors.env`；
+  读取缓存时如果其中没有 GH_PROXY，也在有 git 时补选。
+
+## P-041 在 Lua 中改写 treesitter 的下载地址无效
+
+- **现象**：nvim 预装经 GH_PROXY 时，插件、Mason、blink.cmp 都成功，treesitter 语法解析器一个都没装上；
+  单独安装时报 `curl: (7) Failed to connect to github.com port 443`（测试容器屏蔽了 GitHub 直连）。
+- **原因**：`require("nvim-treesitter").install()` 每次都会调用 `reload_parsers()` 重新加载解析器表，预先改过的 `install_info.url` 被覆盖。
+- **解决**：nvim 预装第 1 次尝试时，在 PATH 最前面放一个 curl 包装脚本，把以 `https://github.com/`、`https://raw.githubusercontent.com/`
+  开头的参数加上 GH_PROXY 前缀（api.github.com 不改）；treesitter、Mason、blink.cmp 的下载都经 curl，一处覆盖。
+  Lua 中的地址改写全部去掉；git 仍用 `GIT_CONFIG_*` 的 insteadOf。
+- **另外**：测试中所选的 gh.qninq.cn 当天被我频繁访问，返回 429 与 `expected flush after ref listing`，
+  说明加速代理随时可能失效，回退直连是必要的（D-031）。
+
+## P-042 nvim 预装在小内存机器上耗尽内存
+
+- **现象**：在开发机（2 核 2G、无 swap）的测试容器中运行 nvim 预装时，整台机器失去响应并重启，会话中断。
+- **原因**：treesitter 默认按 CPU 数并行编译几十个语法解析器，单个 cc1 可占数百 MB；Mason 也会并行执行 npm 安装。
+- **解决**：`bootstrap.lua` 按 min(CPU 核数, 总内存 GB / 1.5)（至少 1）限制 treesitter 的 `max_jobs` 与 Mason 的
+  `max_concurrent_installers`，可用 `NVIM_BOOTSTRAP_JOBS` 覆盖。较重的测试改在 dev 主机（7.5G）上运行。

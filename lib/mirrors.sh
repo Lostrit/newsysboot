@@ -18,11 +18,73 @@ BS_PUBLIC_MIRRORS="https://mirrors.cloud.tencent.com https://mirrors.aliyun.com 
 # Docker Hub 镜像：内网（腾讯云）与公网第三方（research R-009，仅作辅助）
 BS_INTRANET_REGISTRIES="https://mirror.ccs.tencentyun.com"
 BS_PUBLIC_REGISTRIES="https://docker.1ms.run https://docker.m.daocloud.io"
-# GitHub 加速代理（前缀形式，带尾斜杠）；"direct" 表示直连
-BS_GH_PROXIES="direct https://gh-proxy.com/ https://ghfast.top/ https://gh.qninq.cn/ https://github.cnxiaobai.com/ https://tvv.tw/ https://gh-proxy.org/"
+# GitHub 加速代理（前缀形式，带尾斜杠）：候选来自 lib/gh-proxies.txt（由 scripts/update-gh-proxies.sh 从
+# https://github.xxlab.tech/ 收集并逐项验证后生成，D-031）；文件缺失时使用下面的内置列表
+BS_GH_PROXIES_BUILTIN="https://gh.qninq.cn/ https://github.cnxiaobai.com/ https://git.yylx.win/ https://gh.padao.fun/"
+# 部署时：先对全部候选测延时，再对延时最低的 BS_GH_FINALISTS 个做完整的真实测试
+: "${BS_GH_FINALISTS:=5}"
 # GitHub 测速文件：不可变的 release 资源，取前 1MiB 并校验 sha256，防止代理篡改内容
 BS_GH_PROBE_URL="https://github.com/FiloSottile/age/releases/download/v1.2.1/age-v1.2.1-linux-amd64.tar.gz"
 BS_GH_PROBE_SHA256="75c2d0d2265769452a72f14e9b956b6cc3968d0abd5a19904cb79a9267a117b1"
+# 部署链路用到的 GitHub 获取方式，所选代理必须全部支持（D-031）：
+#   release —— mihomo、mise 的 aqua / github 工具、Mason、blink.cmp（上面的测速文件）
+#   raw     —— raw.githubusercontent.com 文件（eza 补全）
+#   archive —— github.com/<repo>/archive/<rev>.tar.gz（treesitter 语法解析器源码）
+#   clone   —— git 智能 HTTP（本仓库、zsh 插件、lazy.nvim 插件）
+BS_GH_RAW_URL="https://raw.githubusercontent.com/eza-community/eza/v0.23.5/completions/zsh/_eza"
+BS_GH_RAW_SHA256="251d3f3059fe6dbe17a14f55250b554ffa85ad7939e7a55720ff61a9747aff1e"
+BS_GH_ARCHIVE_URL="https://github.com/romkatv/zsh-defer/archive/53a26e287fbbe2dcebb3aa1801546c6de32416fa.tar.gz"
+BS_GH_ARCHIVE_FILE="zsh-defer-53a26e287fbbe2dcebb3aa1801546c6de32416fa/zsh-defer.plugin.zsh"
+BS_GH_CLONE_URL="https://github.com/romkatv/zsh-defer.git"
+BS_GH_CLONE_FILE="zsh-defer.plugin.zsh"
+
+# 候选列表：lib/gh-proxies.txt 中每行第一列（# 开头为注释）
+bs_gh_candidates() {
+  _gf="${BS_SRC:-.}/lib/gh-proxies.txt"
+  if [ -r "$_gf" ]; then
+    sed -n 's/^\(https:[^[:space:]#]*\).*/\1/p' "$_gf"
+  else
+    printf '%s\n' $BS_GH_PROXIES_BUILTIN
+  fi
+}
+
+# bs_gh_latency <前缀>：首字节时间（毫秒）；连不上不输出
+bs_gh_latency() {
+  _t=$(curl -s --noproxy '*' --connect-timeout 3 -m 5 -o /dev/null -w '%{http_code} %{time_starttransfer}' "$1" 2>/dev/null) || return 0
+  case "$_t" in 000*) return 0 ;; esac
+  awk -v t="${_t#* }" 'BEGIN { printf "%d\n", t * 1000 }'
+}
+
+# bs_gh_test <前缀>：对部署链路用到的全部获取方式做真实请求（直连代理，不经环境中的代理）。
+# 全部通过时输出 release 下载速度（B/s）；任一失败返回 1，并在 stderr 说明哪一项失败
+bs_gh_test() {
+  _p=$1
+  _d=$(mktemp -d)
+  _fail=
+  _sp=$(bs_score "$_p$BS_GH_PROBE_URL" 1048576 "$BS_GH_PROBE_SHA256")
+  [ -n "$_sp" ] || _fail="$_fail release"
+  if [ -z "$_fail" ]; then
+    curl -fsSL --noproxy '*' --connect-timeout 5 -m 20 -o "$_d/raw" "$_p$BS_GH_RAW_URL" 2>/dev/null &&
+      [ "$(bs_sha256 <"$_d/raw")" = "$BS_GH_RAW_SHA256" ] || _fail="$_fail raw"
+  fi
+  if [ -z "$_fail" ]; then
+    curl -fsSL --noproxy '*' --connect-timeout 5 -m 30 -o "$_d/a.tgz" "$_p$BS_GH_ARCHIVE_URL" 2>/dev/null &&
+      tar -tzf "$_d/a.tgz" 2>/dev/null | grep -qx "$BS_GH_ARCHIVE_FILE" || _fail="$_fail archive"
+  fi
+  if [ -z "$_fail" ]; then
+    _to=
+    command -v timeout >/dev/null 2>&1 && _to="timeout 60"
+    env -u http_proxy -u https_proxy -u all_proxy -u HTTP_PROXY -u HTTPS_PROXY -u ALL_PROXY GIT_TERMINAL_PROMPT=0 \
+      $_to git -c http.lowSpeedLimit=1024 -c http.lowSpeedTime=15 clone -q --depth 1 "$_p$BS_GH_CLONE_URL" "$_d/clone" \
+      >/dev/null 2>&1 && [ -f "$_d/clone/$BS_GH_CLONE_FILE" ] || _fail="$_fail clone"
+  fi
+  rm -rf "$_d"
+  if [ -n "$_fail" ]; then
+    printf '%s 不支持 / 失败：%s\n' "$_p" "$_fail" >&2
+    return 1
+  fi
+  printf '%s\n' "$_sp"
+}
 
 # bs_fetch_ok <url> [max_time]：能在短时间内拿到 2xx 即成功（用于内网探测）
 bs_fetch_ok() {
@@ -136,11 +198,23 @@ bs_select_registry_mirrors() {
 
 # GitHub：直连与各代理一起测速，直连最快时 GH_PROXY 为空
 bs_select_gh_proxy() {
-  # 全部失败时放宽超时、只测一次再试（网络繁忙时 10 秒可能不够，P-029）
-  _best=$(bs_pick_fastest "$BS_GH_PROBE_URL" 1048576 "$BS_GH_PROBE_SHA256" $BS_GH_PROXIES) ||
-    _best=$(BS_PROBE_MAX_TIME=30 BS_SAMPLES=1 bs_pick_fastest "$BS_GH_PROBE_URL" 1048576 "$BS_GH_PROBE_SHA256" $BS_GH_PROXIES) ||
-    return 1
-  [ "$_best" = direct ] && _best=
+  # 1. 全部候选并行测延时，取最低的 BS_GH_FINALISTS 个
+  _gd=$(mktemp -d)
+  _n=0
+  for _c in $(bs_gh_candidates); do
+    _n=$((_n + 1))
+    ( _l=$(bs_gh_latency "$_c"); [ -z "$_l" ] || printf '%s %s\n' "$_l" "$_c" >"$_gd/$_n" ) &
+  done
+  wait
+  _finalists=$(cat "$_gd"/* 2>/dev/null | sort -n | head -n "$BS_GH_FINALISTS" | cut -d' ' -f2)
+  rm -rf "$_gd"
+  # 2. 依次对入围者做真实请求测试（release / raw / archive / clone），全部通过者中取 release 下载最快的
+  _best= _bestsp=0
+  for _c in $_finalists; do
+    _sp=$(bs_gh_test "$_c" 2>/dev/null) || continue
+    if [ "$_sp" -gt "$_bestsp" ]; then _best=$_c _bestsp=$_sp; fi
+  done
+  [ -n "$_best" ] || return 1
   printf '%s\n' "$_best"
 }
 
@@ -166,6 +240,12 @@ bs_select_mirrors() {
       [ -n "$_keep_docker" ] && BOOTSTRAP_DOCKER_MIRROR=$_keep_docker
       [ -n "$_keep_reg" ] && BOOTSTRAP_DOCKER_REGISTRY_MIRRORS=$_keep_reg
       [ "$_keep_gh" != __unset__ ] && GH_PROXY=$_keep_gh
+      # 缓存中没有 GitHub 加速代理（上次选择被推迟，P-040）：有 git 时补选并写入缓存
+      BS_GH_PENDING=
+      if [ -z "${GH_PROXY+x}" ]; then
+        BS_GH_PENDING=1
+        bs_select_gh_proxy_pending
+      fi
       return 0
     fi
   fi
@@ -185,11 +265,14 @@ bs_select_mirrors() {
         ;;
     esac
   fi
+  BS_GH_PENDING=
   if [ -z "${GH_PROXY+x}" ]; then
-    GH_PROXY=$(bs_select_gh_proxy) || {
-      bs_warn "GitHub 直连和所有加速代理都不可用"
-      GH_PROXY=
-    }
+    if bs_have git; then
+      bs_select_gh_proxy_now
+    else
+      # clone 测试需要 git：root 阶段装好基础包后再选（bs_select_gh_proxy_pending，P-040）
+      BS_GH_PENDING=1
+    fi
   fi
 
   mkdir -p "$BS_STATE_DIR"
@@ -199,8 +282,27 @@ bs_select_mirrors() {
     bs_env_line BOOTSTRAP_APT_MIRROR "${BOOTSTRAP_APT_MIRROR:-}"
     bs_env_line BOOTSTRAP_DOCKER_MIRROR "${BOOTSTRAP_DOCKER_MIRROR:-}"
     bs_env_line BOOTSTRAP_DOCKER_REGISTRY_MIRRORS "${BOOTSTRAP_DOCKER_REGISTRY_MIRRORS:-}"
-    bs_env_line GH_PROXY "$GH_PROXY"
+    [ -n "$BS_GH_PENDING" ] || bs_env_line GH_PROXY "$GH_PROXY"
   } >"$_cache"
+}
+
+bs_select_gh_proxy_now() {
+  GH_PROXY=$(bs_select_gh_proxy) || {
+    bs_warn "WARNING: 没有完整可用的 GitHub 加速代理，GitHub 下载将直连（国内可能很慢或失败）"
+    GH_PROXY=
+  }
+}
+
+# 选源时还没有 git（无法测试 clone）的情况：装好 git 后再选择 GitHub 加速代理，并补写进缓存
+bs_select_gh_proxy_pending() {
+  [ -n "${BS_GH_PENDING:-}" ] || return 0
+  bs_have git || return 0
+  BS_GH_PENDING=
+  bs_log "选择 GitHub 加速代理（测延时与 release / raw / archive / clone）…"
+  bs_select_gh_proxy_now
+  [ -w "$BS_STATE_DIR/mirrors.env" ] && bs_env_line GH_PROXY "$GH_PROXY" >>"$BS_STATE_DIR/mirrors.env"
+  export GH_PROXY
+  bs_log "GH_PROXY: ${GH_PROXY:-<直连>}"
 }
 
 bs_export_mirrors() {
@@ -208,5 +310,6 @@ bs_export_mirrors() {
     BOOTSTRAP_DOCKER_MIRROR="${BOOTSTRAP_DOCKER_MIRROR:-}" \
     BOOTSTRAP_DOCKER_REGISTRY_MIRRORS="${BOOTSTRAP_DOCKER_REGISTRY_MIRRORS:-}" \
     GH_PROXY="${GH_PROXY:-}"
-  bs_log "apt: ${BOOTSTRAP_APT_MIRROR:-<默认>}  docker-ce: ${BOOTSTRAP_DOCKER_MIRROR:-<不适用>}  registry: ${BOOTSTRAP_DOCKER_REGISTRY_MIRRORS:-<无>}  GH_PROXY: ${GH_PROXY:-<直连>}"
+  if [ -n "${BS_GH_PENDING:-}" ]; then _ghs="<装好 git 后选择>"; else _ghs=${GH_PROXY:-<直连>}; fi
+  bs_log "apt: ${BOOTSTRAP_APT_MIRROR:-<默认>}  docker-ce: ${BOOTSTRAP_DOCKER_MIRROR:-<不适用>}  registry: ${BOOTSTRAP_DOCKER_REGISTRY_MIRRORS:-<无>}  GH_PROXY: $_ghs"
 }
