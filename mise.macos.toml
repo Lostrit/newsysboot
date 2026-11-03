@@ -1,10 +1,10 @@
 # mise.macos.toml — macOS（⚠️ 未在真机测试，docs/progress.md）
 #
 # Homebrew 由 stage-0 经清华镜像安装（lib/macos.sh）。不安装 Docker（D-005）。
-# mihomo：Homebrew 安装，以当前用户的 LaunchAgent 运行（只监听本机，系统代理模式）；
-#   配置渲染到 ~/.config/mihomo/config.yaml（0600，模板与机密同 Linux，D-008）。
-#   macOS 上 mise 的系统服务（[bootstrap.services] 的 system 级）不可用，因此不加载 mise.mihomo.toml。
-#   TUN 模式需要 root 的 LaunchDaemon，mise 不管理，暂不支持。
+# mihomo（D-028）：官方二进制（锁定版本 + sha256）装到 /opt/mihomo/bin，以 root 的 LaunchDaemon 运行，默认 TUN 模式；
+#   配置渲染到 /opt/mihomo/config/config.yaml（root 0600，模板与机密同 Linux，D-008、D-027）。
+#   mise 只管理用户级 LaunchAgent，LaunchDaemon 由 post-dotfiles hook（scripts/macos-mihomo-daemon.sh）加载 / 重启。
+#   写入 /opt 与 /Library 需要 sudo（macOS 上通常要输入登录密码）。
 
 [vars]
 # 分流场景：desktop（国区商店直连、海外生活与开发走代理、屏蔽广告，D-027）
@@ -18,22 +18,33 @@ mihomo_lan_allowed_ips = "127.0.0.0/8"
 env = "MIHOMO_PROXIES"
 description = "mihomo 节点（fnox 解密；部署时输入 age 私钥）"
 
-[bootstrap.packages]
-"brew:mihomo" = "latest"
+[bootstrap.hooks.post-packages]
+description = "安装 mihomo（/opt/mihomo/bin）"
+run = "sh {{ config_root }}/scripts/install-mihomo.sh"
 
-[bootstrap.directories."~/.config/mihomo"]
+[bootstrap.directories."/opt/mihomo"]
+owner = "root"
+group = "wheel"
+mode = "0755"
+
+[bootstrap.directories."/opt/mihomo/config"]
+owner = "root"
+group = "wheel"
 mode = "0700"
-[bootstrap.directories."~/Library/Logs"]
 
-[dotfiles."~/.config/mihomo/config.yaml"]
+[bootstrap.files."/opt/mihomo/config/config.yaml"]
 source = "files/mihomo/config.yaml.tera"
-mode = "template"
-permissions = "0600"
+template = true
+owner = "root"
+group = "wheel"
+mode = "0600"
 
-[bootstrap.macos.launchd.agents.mihomo]
-program = "{{ env.HOMEBREW_PREFIX | default(value='/opt/homebrew') }}/bin/mihomo"
-args = ["-d", "{{ env.HOME }}/.config/mihomo"]
-run_at_load = true
-keep_alive_on_failure = true
-stdout_path = "~/Library/Logs/mihomo.log"
-stderr_path = "~/Library/Logs/mihomo.err.log"
+[bootstrap.files."/Library/LaunchDaemons/bootstrap.mihomo.plist"]
+source = "files/mihomo/bootstrap.mihomo.plist"
+owner = "root"
+group = "wheel"
+mode = "0644"
+
+[bootstrap.hooks.post-dotfiles]
+description = "加载 / 重启 mihomo 的 LaunchDaemon"
+run = "sh {{ config_root }}/scripts/macos-mihomo-daemon.sh"

@@ -80,6 +80,15 @@ docker run --add-host host.docker.internal:host-gateway \
 
 按场景分流（D-027）：Linux 主机 `server`、SteamOS `steamos`、macOS `desktop`，部署时自动选择。
 
+代理接入方式（D-028）：
+
+| 环境 | 方式 |
+| --- | --- |
+| Linux 远程主机 | 不开 TUN；`env.sh` 中的 `http_proxy` 等环境变量；Docker 容器注入 `http_proxy=http://host.docker.internal:7890` |
+| SteamOS | TUN（系统服务） |
+| macOS | TUN；root 的 LaunchDaemon `bootstrap.mihomo`（`/opt/mihomo`），日志 `/var/log/mihomo.log`；部署时 sudo 可能要求输入登录密码 |
+| Windows | TUN；导出 desktop 配置导入客户端，并在客户端中开启服务模式 |
+
 ```sh
 # Windows（bootstrap 不部署 mihomo）：在已部署的 Linux / macOS 上导出 desktop 配置，导入 Clash Verge Rev 等客户端
 FNOX_AGE_KEY=… sh ~/.local/share/bootstrap/scripts/render-mihomo.sh desktop ~/mihomo-desktop.yaml

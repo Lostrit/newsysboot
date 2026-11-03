@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- macOS：mihomo 以 root 的 LaunchDaemon 运行（TUN 需要 root，D-028）；由 mise.macos.toml 写入 /Library/LaunchDaemons -->
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>bootstrap.mihomo</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/opt/mihomo/bin/mihomo</string>
+    <string>-d</string>
+    <string>/opt/mihomo/config</string>
+  </array>
+  <key>RunAtLoad</key>
+  <true/>
+  <key>KeepAlive</key>
+  <true/>
+  <key>StandardOutPath</key>
+  <string>/var/log/mihomo.log</string>
+  <key>StandardErrorPath</key>
+  <string>/var/log/mihomo.log</string>
+</dict>
+</plist>

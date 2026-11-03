@@ -260,7 +260,7 @@ SteamOS 的根分区只读，不能用 pacman，也不能写 `/usr`。二进制�
 unit 文件写入 `/etc/systemd/system/mihomo.service`（`/etc` 是 overlay，升级后保留），其余与 Linux 主机的 mihomo 模块共用。
 SteamOS 不声明任何包；git / curl / zsh 依赖系统自带（待在真机核实）。
 
-## D-021 macOS：mihomo 以用户 LaunchAgent 运行 🟡（未在真机验证）
+## D-021 macOS：mihomo 以用户 LaunchAgent 运行 ⛔（已被 D-028 取代）
 
 **日期**：2026-10-29
 
@@ -342,3 +342,23 @@ Linux 主机为 server（`allow-lan: true`，只放行本机和 Docker 网段）
   blackmatrix7 的 Steam 列表把商店与下载 CDN 混在一起，meta-rules-dat 拆得更细（steam@cn、category-ai-!cn、apple-cn、microsoft@cn）。
 - **验证**：`tests/mihomo-rules.sh` 用假节点渲染三个场景、启动临时实例，按清单访问并从日志核对实际使用的策略（dev 主机上全部通过）。
 - **备选方案**：三份独立模板（重复太多）；继续使用 ACL4SSR / blackmatrix7 文本规则（体积大、分类粗）。
+
+## D-028 代理接入方式：Linux 主机用环境变量，本地个人设备默认 TUN 🟡（macOS / Windows / SteamOS 未在真机验证）
+
+**日期**：2026-11-03
+
+- **决策**（用户确认）：
+  - **Linux 远程主机（server）**：不开 TUN，经环境变量使用代理——bootstrap 在 mihomo 可用后把 `http_proxy` 等写入 `env.sh`，
+    dockerd 经 systemd drop-in 使用代理，Docker 容器由编排注入 `http_proxy=http://host.docker.internal:7890`（mihomo 放行 Docker 网段）。
+  - **本地个人设备默认 TUN**：
+    - SteamOS：已是 TUN（D-027）。
+    - Windows：desktop 配置中 `tun.enable: true`；客户端（如 Clash Verge Rev）需开启服务模式。
+    - macOS：mihomo 改为 **root 的 LaunchDaemon**（`/Library/LaunchDaemons/bootstrap.mihomo.plist`），取代 D-021 的用户 LaunchAgent；
+      二进制为官方独立文件（锁定版本 + sha256，与 GitHub Release digest 核对）装到 root 所有的 `/opt/mihomo/bin`，
+      配置在 `/opt/mihomo/config`（root 0700 / 0600）；mise 只管理用户 LaunchAgent，因此由 post-dotfiles hook
+      （`scripts/macos-mihomo-daemon.sh`）加载，配置 / plist / 二进制变化时 `kickstart -k` 重启。
+  - desktop 的 TUN 排除局域网段；不排除国内 IP 段（部分国内广告域名解析到国内 IP，绕过 TUN 就无法拦截）。
+- **原因**：远程主机上 TUN 会接管整机路由，影响 SSH、内网与容器网络，环境变量方式影响面可控；
+  本地设备上很多程序（Steam、游戏、部分桌面应用）不读系统代理，TUN 才能完整接管。
+- **不用 Homebrew 的 mihomo**：Homebrew 目录当前用户可写，以 root 运行用户可改写的程序等于把 root 权限交给任何能以该用户身份运行代码的程序。
+- **备选方案**：macOS 继续用户 LaunchAgent + 系统代理（无法 TUN）；Homebrew mihomo + LaunchDaemon（上述提权风险）。

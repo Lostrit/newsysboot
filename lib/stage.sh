@@ -395,9 +395,9 @@ bs_run_mise() {
 
   # 有 mihomo 模块时分两次执行（plan.md）：先装好代理（只依赖国内镜像与 GH_PROXY），确认可用后切到代理再跑完整流程
   if bs_wants_mihomo && [ "$BS_MODE" != dotfiles ] && [ -z "$BS_DRY_RUN" ]; then
-    # macOS 的 mihomo 由 dotfiles（配置）与 LaunchAgent 组成
+    # macOS 的 mihomo 是 root 的 LaunchDaemon：files 写配置与 plist，post-dotfiles hook 加载（D-028）
     _first=accounts,files,packages,services
-    [ "$BOOTSTRAP_OS" = macos ] && _first=files,packages,dotfiles,macos-launchd-agents
+    [ "$BOOTSTRAP_OS" = macos ] && _first=files,packages,dotfiles
     bs_log "第一次：mise -E $_envs bootstrap --only $_first"
     bs_mise_retry "$_envs" bootstrap --yes --only "$_first" || bs_die "mise bootstrap（第一次）失败"
     _px="http://127.0.0.1:$BOOTSTRAP_MIHOMO_PORT"

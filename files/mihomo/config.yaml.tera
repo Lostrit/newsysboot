@@ -2,9 +2,10 @@
 # 节点（proxies）为机密，来自 secret "mihomo_proxies"；监听设置与场景来自各模块的 [vars]（D-023、D-027）
 #
 # 场景（vars.mihomo_profile）：
-#   server  —— Linux 主机：开发网站原站必须走代理；镜像 / 加速站与国内 IP 必须直连；不屏蔽广告
-#   desktop —— macOS / Windows：国区 App Store / 微软商店直连；国内服务优先直连；海外生活服务与开发网站走代理；屏蔽广告
-#   steamos —— SteamOS：Steam 商店优先代理、不可用时回退直连；游戏下载、局域网与国内远程串流直连（TUN 模式）
+#   server  —— Linux 主机：不开 TUN，经环境变量（http_proxy 等）使用代理，Docker 容器经注入的环境变量使用；
+#              开发网站原站必须走代理；镜像 / 加速站与国内 IP 必须直连；不屏蔽广告
+#   desktop —— macOS / Windows（TUN）：国区 App Store / 微软商店直连；国内服务优先直连；海外生活服务与开发网站走代理；屏蔽广告
+#   steamos —— SteamOS（TUN）：Steam 商店优先代理、不可用时回退直连；游戏下载、局域网与国内远程串流直连
 #
 # 规则集统一来自 MetaCubeX/meta-rules-dat（geosite / geoip，mrs 格式），经 jsDelivr 下载、每天更新；
 # 本仓库维护的名单（加速站、开发网站补充、Steam 下载）以 inline 规则集写在下方。
@@ -68,15 +69,23 @@ dns:
 {%- if p == "desktop" %}
 
 # ============ TUN ============
-# macOS 上 mihomo 以用户 LaunchAgent 运行（系统代理模式），无法创建 utun，因此默认关闭；
-# Windows 客户端（如 Clash Verge Rev）可直接开启这里预设好的 TUN
+# 本地个人设备默认 TUN 模式（D-028）：macOS 上 mihomo 以 root 的 LaunchDaemon 运行；
+# Windows 客户端（如 Clash Verge Rev）需开启「服务模式」才能创建 TUN 网卡
 tun:
-  enable: false
+  enable: true
   stack: mixed
   auto-route: true
   auto-detect-interface: true
   dns-hijack:
     - any:53
+  # 局域网（打印机、NAS、投屏）不进入 TUN；国内 IP 不排除：部分国内广告域名解析到国内 IP，绕过 TUN 就拦截不到了
+  route-exclude-address:
+    - 10.0.0.0/8
+    - 100.64.0.0/10
+    - 169.254.0.0/16
+    - 172.16.0.0/12
+    - 192.168.0.0/16
+    - 224.0.0.0/4
 {%- elif p == "steamos" %}
 
 # ============ TUN ============
