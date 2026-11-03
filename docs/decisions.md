@@ -440,3 +440,19 @@ Linux 主机为 server（`allow-lan: true`，只放行本机和 Docker 网段）
 - **原因**：公共加速代理数量多、质量差异大且经常变化；只测 release 的旧做法选出过不支持 clone / archive 的代理；
   mihomo 节点流量有限，GitHub 大文件更适合经国内可直连的加速代理。
 - **首次结果**（2026-11-03，开发机，腾讯云）：75 个候选中 39 个通过；部署时选择耗时约 30 秒。
+
+## D-032 真机版本矩阵测试：经腾讯云 API 重装测试主机 ✅
+
+**日期**：2026-11-03
+
+- **决策**：`scripts/tccloud.py`（Python 标准库实现 TC3-HMAC-SHA256 签名，不依赖 tccli）调用轻量应用服务器与自动化助手（TAT）接口；
+  `tests/run-cloud.sh <BlueprintId> <默认用户> [--as-root]` 完成「重装 → 清除旧主机指纹 → 注入 age 私钥 → 一键部署 → 主机检查与真实节点分流检查」。
+- **机密**：子账号密钥在开发机的 `~/.config/tencentcloud/dev.env`（600，不在仓库）；脚本只用于签名，不输出。
+  注入私钥的 TAT 命令（含私钥明文）由用户预先创建，脚本只执行（`InvokeCommand`），不查询内容，结果经 SSH 检查。
+- **子账号权限**（用户配置）：实例级的 `ResetInstance`、`AssociateInstancesKeyPairs`、`tat:InvokeCommand`；`DescribeInstances`、`DescribeBlueprints`（只读）；
+  拒绝改密码、建密钥、防火墙、销毁、查询 / 修改 TAT 命令等。`tat:DescribeAutomationAgentStatus` 校验资源为 `instance/*`，
+  实例级授权不生效，因此注入时改为直接执行并在失败时重试。
+- **镜像**（2026-11-03 查询，北京地域）：Debian 12 `lhbp-mxml4cnq`、Debian 13 `lhbp-36w1bvaq`、Ubuntu 22.04 `lhbp-qnuz61zs`、
+  Ubuntu 24.04 `lhbp-1l4ptuvm`、Ubuntu 26.04 `lhbp-qg4ymn4o`（另有 Debian 10 / 11、Ubuntu 20.04，已不在支持范围）。
+- **矩阵**：Debian 12 / 13 以 root 运行；Ubuntu 22.04 / 24.04 以 ubuntu 运行；Ubuntu 26.04 两种都测（`--as-root` 验证 sudo-rs 下的 root 流程）。
+- **原因**：容器测试无法覆盖真实的 systemd、sshd、云镜像预置文件与 sudo 实现差异；手工重装耗时且需要用户参与。

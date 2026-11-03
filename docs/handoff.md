@@ -88,10 +88,8 @@ ssh <user>@<dev> 'cd ~/bstest && (nohup sh tests/run.sh debian:13 > ~/bstest.log
 
 ## 6. 待办（按优先级）
 
-1. **腾讯云 API 重装 dev 做版本矩阵真机测试**：用户提供 API 密钥后实现。建议：
-   - 密钥只放在开发机的环境变量或权限 600 的本地文件中，**不提交**（如需进仓库，用 fnox 加密）；
-   - dev 是轻量应用服务器（实例中有 `lighthouse` 用户），重装接口为 Lighthouse 的 `ResetInstance`（按镜像 / BlueprintId），先用 `DescribeBlueprints` 查可用的 Debian / Ubuntu 镜像；
-   - 重装后主机密钥会变，需要 `ssh-keygen -R`；默认用户与是否允许 root 登录随镜像不同。
+1. **真机版本矩阵测试**（D-032）：`sh tests/run-cloud.sh <BlueprintId> <默认用户> [--as-root]`，镜像 ID 与权限说明见 D-032。
+   密钥在开发机 `~/.config/tencentcloud/dev.env`（不在仓库）；新开发机上需要用户重新提供该文件。
 2. **版本矩阵测试**（建议范围：Debian 12 / 13，Ubuntu 22.04 / 24.04 / 26.04）：容器完整流程 + 主机测试改为可指定镜像（目前 `tests/systemd/Dockerfile` 固定 `debian:13`）。重点风险（详见对话结论，已记录在 research R-014）：
    - Ubuntu 25.10+ 的 **sudo-rs** 与「以 root 运行 → `sudo -u <用户> -H --preserve-env=…` 切换用户」的流程**尚未验证**；
    - Ubuntu 25.10+ 的 **uutils coreutils**（`stat -c`、`install -o`、`mktemp`、`cp -R` 等）；
