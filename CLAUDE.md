@@ -5,7 +5,8 @@
 
 ## 必读
 
-- 开始任何工作前先读 `docs/README.md`，再按需读 `docs/plan.md`（计划与架构）、`docs/progress.md`（当前进度）。
+- 开始任何工作前先读 `docs/README.md` 与 `docs/handoff.md`（开发交接：环境、机密、测试方法、待办），
+  再按需读 `docs/plan.md`（计划与架构）、`docs/progress.md`（当前进度）。
 - 所有项目文档放在 `docs/` 下，使用简体中文。
 - 每次工作结束前更新文档：
   - 进度变化 → `docs/progress.md`

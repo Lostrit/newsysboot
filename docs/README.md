@@ -2,6 +2,7 @@
 
 | 文档 | 内容 |
 | --- | --- |
+| [handoff.md](handoff.md) | **开发交接**：仓库与推送、机密约束、开发机与测试主机、测试方法、待办（新环境 / 新 agent 先读） |
 | [plan.md](plan.md) | 目标、总体架构、分阶段开发计划、待确认问题 |
 | [progress.md](progress.md) | 当前进度与下一步 |
 | [decisions.md](decisions.md) | 决策记录（编号、原因、备选方案） |

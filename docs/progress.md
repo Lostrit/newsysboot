@@ -31,12 +31,17 @@
 - **测试**：`tests/run.sh`、`run-dotfiles.sh`、`run-pipe.sh`、`run-host.sh`（含 `TEST_SUDO_USER`、`TEST_REAL_SECRETS`）、
   `mihomo-rules.sh`（63 项分流）、`run-windows-config.sh`、`run-macos-clt.sh`、`run-tidy.sh`（见 [usage.md](usage.md)）
 
-## 三、需要用户参与
+## 三、下一步
+
+- 版本矩阵测试（Debian 12 / 13，Ubuntu 22.04 / 24.04 / 26.04）：容器流程 + 主机测试改为可指定镜像；
+  通过腾讯云 API 重装 dev 做真机测试（用户正在准备 API 密钥）。详见 [handoff.md](handoff.md) 第 6 节。
+
+## 四、需要用户参与
 
 1. **SteamOS / macOS / Windows 真机验证**：按三份验证清单执行（暂缓）
 2. **其他云的真机**：阿里云、华为云（可选火山引擎）各一台全新主机跑一次（验证内网源探测与内网域名）
 
-## 四、已知限制
+## 五、已知限制
 
 - Windows 的 mihomo 服务只支持 x64；ARM64 跳过
 - 主机上完整重新运行需要再次提供私钥（缺少时 mise 拒绝渲染 mihomo 配置并中止，不会覆盖现有配置）
