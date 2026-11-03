@@ -77,6 +77,13 @@ end
 -- ---------------------------------------------------------------------------
 local function step_treesitter()
   -- 计算 nvim-treesitter 的 opts：lua/plugins/bootstrap.lua 会把 ensure_installed 存入 vim.g.bootstrap_ts_langs
+  -- tree-sitter CLI 无法运行时（官方 Linux 版需要 glibc ≥ 2.39，Debian 12 / Ubuntu 22.04 不满足，P-043）跳过：
+  -- 这是环境限制而不是网络问题，重试也无济于事；没有语法解析器时 nvim 仍可使用（回退为正则高亮）
+  local ts_out = vim.fn.system({ "tree-sitter", "--version" })
+  if vim.v.shell_error ~= 0 then
+    io.stderr:write("bootstrap.lua: WARNING: tree-sitter CLI 无法运行，跳过语法解析器：" .. vim.trim(ts_out):sub(1, 160) .. "\n")
+    return
+  end
   LazyVim.opts("nvim-treesitter")
   local langs = vim.g.bootstrap_ts_langs or {}
   if #langs == 0 then

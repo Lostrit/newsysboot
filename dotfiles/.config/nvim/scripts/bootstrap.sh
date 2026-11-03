@@ -39,6 +39,11 @@ trap 'rm -rf "$shim"' EXIT
 } >"$shim/curl"
 chmod +x "$shim/curl"
 path0=$PATH
+# 失败的尝试中 lazy.nvim 可能改写 lazy-lock.json（部分插件 clone 失败时按最新提交记录），
+# 每次尝试前恢复原文件，保证始终按锁定的版本安装（P-043）
+lock=$cfg/lazy-lock.json
+cp "$lock" "$shim/lazy-lock.json.orig"
+trap 'cp "$shim/lazy-lock.json.orig" "$lock"; rm -rf "$shim"' EXIT
 i=1
 while :; do
   if [ "$i" = 1 ] && [ -n "$gh" ]; then
@@ -51,6 +56,7 @@ while :; do
     export GH_PROXY= PATH="$path0"
     unset GIT_CONFIG_COUNT GIT_CONFIG_KEY_0 GIT_CONFIG_VALUE_0
   fi
+  cp "$shim/lazy-lock.json.orig" "$lock"
   if nvim --headless -c "luafile $cfg/scripts/bootstrap.lua"; then
     echo "bootstrap.sh: 完成"
     exit 0

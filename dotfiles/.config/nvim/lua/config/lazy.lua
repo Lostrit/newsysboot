@@ -67,6 +67,8 @@ require("lazy").setup({
   -- 首次安装插件时使用的临时主题（插件版本以 lazy-lock.json 为准）
   -- 不使用 luarocks 安装插件（本配置没有插件需要它），避免 :checkhealth 报告缺少 luarocks
   rocks = { enabled = false },
+  -- 预装时（NVIM_BOOTSTRAP）限制同时 clone 的插件数：公共 GitHub 加速代理遇到并发请求会返回 429（P-043）
+  concurrency = vim.env.NVIM_BOOTSTRAP and 4 or nil,
   install = { colorscheme = { "catppuccin-mocha", "habamax" } },
   checker = {
     enabled = false, -- 关闭后台检查插件更新：版本已锁定，升级走 docs/03 中的流程

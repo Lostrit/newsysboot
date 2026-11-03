@@ -96,8 +96,14 @@ version = "1.4.4"
 # cli tools
 # ---------------------------------------------------------------------------
 
-[tools."aqua:atuinsh/atuin"]
+# atuin：Linux 上用 musl 静态链接版（aqua 选的是 gnu 版，需要 glibc ≥ 2.39，Debian 12 / Ubuntu 22.04 上无法运行，P-043）；
+# github 后端用 GitHub API 的 digest 校验文件；其他平台自动选择
+[tools."github:atuinsh/atuin"]
 version = "18.21.0"
+[tools."github:atuinsh/atuin".platforms.linux-x64]
+asset_pattern = "atuin-x86_64-unknown-linux-musl.tar.gz"
+[tools."github:atuinsh/atuin".platforms.linux-arm64]
+asset_pattern = "atuin-aarch64-unknown-linux-musl.tar.gz"
 
 [tools."aqua:sharkdp/bat"]
 version = "0.26.1"
@@ -141,6 +147,8 @@ version = "0.61.1"
 [tools."aqua:neovim/neovim"]
 version = "0.12.2"
 
+# tree-sitter CLI：官方 Linux 版都需要 glibc ≥ 2.39（没有 musl 版）；Debian 12 / Ubuntu 22.04 上无法运行，
+# nvim 预装会跳过语法解析器并给出 WARNING（P-043）
 [tools."aqua:tree-sitter/tree-sitter"]
 version = "0.27.0"
 # 注意：taplo / lefthook / prettier 是仅开发本仓库时需要的工具，放在仓库根目录的 mise.dev.toml 中。

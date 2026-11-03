@@ -311,3 +311,22 @@
 - **原因**：treesitter 默认按 CPU 数并行编译几十个语法解析器，单个 cc1 可占数百 MB；Mason 也会并行执行 npm 安装。
 - **解决**：`bootstrap.lua` 按 min(CPU 核数, 总内存 GB / 1.5)（至少 1）限制 treesitter 的 `max_jobs` 与 Mason 的
   `max_concurrent_installers`，可用 `NVIM_BOOTSTRAP_JOBS` 覆盖。较重的测试改在 dev 主机（7.5G）上运行。
+
+## P-043 Debian 12 / Ubuntu 22.04 上 atuin 与 tree-sitter 无法运行（glibc 版本）；预装时加速代理大量 429
+
+- **现象**（真机矩阵测试，Debian 12，glibc 2.36）：
+  - nvim 预装的语法解析器全部失败：`tree-sitter: /lib/x86_64-linux-gnu/libc.so.6: version 'GLIBC_2.39' not found`；
+  - `atuin --version` 同样报 glibc 版本不足；zsh 启动时生成 atuin 初始化脚本失败只记了失败标记，没有报错，atuin 静默失效；
+  - 第 1 次预装经 gh.qninq.cn 时，lazy.nvim 同时 clone 几十个插件，大量返回 429，部分插件「clone 成功但 checkout 失败」，
+    并且 lazy.nvim 改写了 `lazy-lock.json`（仓库检出变脏）。
+- **原因**：
+  - tree-sitter CLI 0.26.x / 0.27.x 的官方 Linux 预编译版（`.gz` 与 `.zip`）都链接了 glibc 2.39，没有 musl 版；
+    nvim-treesitter（锁定版本）要求 tree-sitter CLI ≥ 0.26.1。glibc 2.39 对应 Ubuntu 24.04+、Debian 13+。
+  - aqua 为 atuin 选择 gnu 版（同样需要较新的 glibc），而 atuin 也发布了 musl 静态版。
+  - 公共加速代理有频率限制，并发 clone 很快触发。
+- **解决**：
+  - atuin 改用 mise 的 github 后端，Linux 上指定 musl 资源（`platforms.linux-x64.asset_pattern`），GitHub API digest 校验；
+  - nvim 预装检测到 tree-sitter CLI 无法运行时跳过语法解析器并输出 WARNING（不算失败；nvim 回退为正则高亮）；
+  - 预装时 lazy.nvim 的 `concurrency = 4`；每次尝试前恢复 `lazy-lock.json`，结束后也恢复；
+  - `tests/cloud/verify-host.zsh` 检查全部 mise 工具都能运行，sshd 改用绝对路径（该镜像中 sudo 的 PATH 不含 /usr/sbin）。
+- **以后**：如需在旧系统上使用 treesitter，可考虑从源码构建 tree-sitter CLI（需要 Rust 工具链，编译耗内存），暂不做。

@@ -117,13 +117,25 @@ def wait_instance(cfg, timeout=900):
 
 def cmd_reset(cfg, blueprint):
     params = {"InstanceId": cfg["INSTANCE_ID"], "BlueprintId": blueprint}
-    if cfg.get("SSH_PUBKEY_ID"):
-        params["LoginConfiguration"] = {"AutoGeneratePassword": "NO", "KeyIds": [cfg["SSH_PUBKEY_ID"]]}
-    call(cfg, "lighthouse", "ResetInstance", params)
+    key = cfg.get("SSH_PUBKEY_ID")
+    bound = False
+    try:
+        # 重装时直接绑定 SSH 密钥（不设置密码）
+        call(cfg, "lighthouse", "ResetInstance", dict(params, LoginConfiguration={"KeyIds": [key]}) if key else params)
+        bound = bool(key)
+    except RuntimeError as e:
+        if not key or "InvalidParameter" not in str(e):
+            raise
+        print(f"tccloud: 重装时不能直接绑定密钥（{str(e)[:100]}），改为重装后再绑定", flush=True)
+        call(cfg, "lighthouse", "ResetInstance", params)
     print(f"tccloud: 已提交重装：{blueprint}", flush=True)
     time.sleep(20)
     i = wait_instance(cfg)
-    print(f"tccloud: 重装完成：{i.get('OsName')}（{i.get('BlueprintId')}）")
+    if key and not bound:
+        call(cfg, "lighthouse", "AssociateInstancesKeyPairs", {"KeyIds": [key], "InstanceIds": [cfg["INSTANCE_ID"]]})
+        time.sleep(10)
+        i = wait_instance(cfg)
+    print(f"tccloud: 重装完成：{i.get('OsName')}（{i.get('BlueprintId')}），密钥：{(i.get('LoginSettings') or {}).get('KeyIds')}")
 
 
 def cmd_inject(cfg):

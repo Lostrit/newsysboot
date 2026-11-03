@@ -16,7 +16,7 @@ check "docker active + mirror + pull"  "systemctl is-active docker && docker inf
 check "dockerd proxy drop-in"          "systemctl show docker -p Environment | grep -q HTTP_PROXY=http://127.0.0.1:7890"
 check "sudo nopasswd / docker group"   "sudo -n true && id -nG $u | grep -qw docker"
 check "login shell zsh"                "getent passwd $u | grep -q zsh"
-check "sshd root/password off"         "sudo sshd -T | grep -qx 'permitrootlogin no' && sudo sshd -T | grep -qx 'passwordauthentication no'"
+check "sshd root/password off"         "sudo /usr/sbin/sshd -T | grep -qx 'permitrootlogin no' && sudo /usr/sbin/sshd -T | grep -qx 'passwordauthentication no'"
 check "root keys removed"              "! sudo test -s /root/.ssh/authorized_keys"
 check "sudoers !admin_flag (or skipped)" "sudo test -f /etc/sudoers.d/00-bootstrap-no-admin-flag || ! sudo -V | grep -q 'Sudo version'"
 check "home tidy"                      "[[ \"$(ls -A ~ | tr '\n' ' ')\" == '.cache .config .local .ssh .zshenv ' ]]"
@@ -24,6 +24,13 @@ check "no root-owned files in home"    "[[ -z \"$(sudo find ~ -xdev -user 0 | he
 check "checkout clean"                 "[[ -z \"$(git -C ~/.local/share/bootstrap status --porcelain)\" ]]"
 check "zsh plugin origin canonical"    "git -C ~/.local/share/zsh/plugins/zsh-defer remote get-url origin | grep -qx 'https://github.com/romkatv/zsh-defer'"
 check "nvim plugin origin canonical"   "git -C ~/.local/share/nvim/lazy/lazy.nvim remote get-url origin | grep -q '^https://github.com/'"
+# 所有 mise 工具都能运行（捕获 glibc 版本不兼容等问题，P-043；tree-sitter 在 glibc < 2.39 上已知无法运行，单独列出）
+bad=()
+for t in node bun atuin bat claude delta eza fd fzf herdr micro rg starship vivid lazygit nvim; do
+  out=$($t --version 2>&1 | head -1); [[ $out == *GLIBC* || $out == *"error while loading"* ]] && bad+=($t)
+done
+check "all mise tools run${bad:+ (FAIL: $bad)}" "(( ${#bad} == 0 ))"
+print "tree-sitter: $(tree-sitter --version 2>&1 | head -1 | cut -c1-100)"
 check "nvim preinstalled"              "(( $(ls ~/.local/share/nvim/lazy | wc -l) >= 30 )) && (( $(ls ~/.local/share/nvim/mason/packages | wc -l) == 12 ))"
 check "zsh startup clean (pty)"        "[[ -z \"$(script -qc 'zsh -i -c exit' /dev/null </dev/null | sed $'s/\x1b\\[[0-9;?]*[a-zA-Z]//g; s/\x1b\\][^\x07]*\x07//g' | tr -d '\r')\" ]]"
 check "no key material on system"      "[[ -z \"$(sudo grep -rlsaE 'AGE-SECRET-KEY-1[0-9A-Z]{50,}' /home /var/log /tmp /dev/shm /root /run/log /etc 2>/dev/null | grep -v /age-keygen)\" ]]"
