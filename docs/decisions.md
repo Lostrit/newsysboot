@@ -269,7 +269,7 @@ mise 的系统服务只支持 Linux，所以 macOS 不加载 `mise.mihomo.toml`�
 只监听本机（系统代理 / 环境变量方式）；TUN 模式需要 root 的 LaunchDaemon，暂不支持。
 Homebrew 由 stage-0 经清华大学镜像安装（`lib/macos.sh`）。
 
-## D-022 Windows 第一版只部署 dotfiles 与工具 🟡（未在真机验证）
+## D-022 Windows 第一版只部署 dotfiles 与工具 ⛔（mihomo 部分已被 D-029 取代）
 
 **日期**：2026-10-29
 
@@ -337,7 +337,7 @@ Linux 主机为 server（`allow-lan: true`，只放行本机和 Docker 网段）
     TUN 模式（Steam 客户端不读系统代理），局域网与国内 IP 段通过 `route-exclude-address(-set)` 不进入 TUN，
     局域网串流与国内远程串流 / 联机不经过 mihomo；其他 UDP 直连；未知流量默认直连。
     代理与直连的健康检查都失败时，fallback 选第一个成员（代理，P-036）。
-- **Windows**：bootstrap 仍不部署 mihomo（D-022），用 `scripts/render-mihomo.sh desktop <文件>` 在已部署的机器上导出配置，导入客户端（如 Clash Verge Rev，TUN 已预设）。
+- **Windows**：（已被 D-029 取代）最初为导出配置导入客户端；现由 bootstrap.ps1 部署 WinSW 系统服务，配置为预渲染的 desktop 场景。
 - **原因**：三类机器的用途不同；旧模板（移植自 rules.ini）各环境共用一套规则，无法满足「加速站直连 / 原站代理」「Steam 商店回退直连 / 下载直连」等要求。
   blackmatrix7 的 Steam 列表把商店与下载 CDN 混在一起，meta-rules-dat 拆得更细（steam@cn、category-ai-!cn、apple-cn、microsoft@cn）。
 - **验证**：`tests/mihomo-rules.sh` 用假节点渲染三个场景、启动临时实例，按清单访问并从日志核对实际使用的策略（dev 主机上全部通过）。
@@ -362,3 +362,24 @@ Linux 主机为 server（`allow-lan: true`，只放行本机和 Docker 网段）
   本地设备上很多程序（Steam、游戏、部分桌面应用）不读系统代理，TUN 才能完整接管。
 - **不用 Homebrew 的 mihomo**：Homebrew 目录当前用户可写，以 root 运行用户可改写的程序等于把 root 权限交给任何能以该用户身份运行代码的程序。
 - **备选方案**：macOS 继续用户 LaunchAgent + 系统代理（无法 TUN）；Homebrew mihomo + LaunchDaemon（上述提权风险）。
+
+## D-029 Windows：bootstrap 部署 mihomo 系统服务（WinSW） 🟡（未在真机验证）
+
+**日期**：2026-11-03
+
+- **决策**（用户确认）：`bootstrap.ps1` 以管理员身份运行时部署 mihomo 系统服务，取代「导出配置、导入 GUI 客户端」的做法（D-027 中的 Windows 部分）：
+  - 程序：mihomo 官方 `windows-amd64-compatible` 包（锁定 v1.19.33，sha256 与 GitHub digest 一致）与 **WinSW v2.12.0**（`WinSW-x64.exe`，
+    发布时 GitHub 尚无 digest，经两个加速代理下载核对，大小与 API 记录一致），装到 `%ProgramFiles%\mihomo`；
+  - 配置：`%ProgramData%\mihomo\config`，ACL 只允许 SYSTEM 与 Administrators（包含节点）；
+    内容为预渲染的 `files/mihomo/windows-desktop.yaml`（desktop 场景，TUN），节点占位行由 fnox 解密的节点替换（私钥只在本进程环境变量中，用完即删）；
+  - 服务：WinSW 以 LocalSystem 运行，**普通自动启动**（不用延迟启动），依赖 Tcpip / Dnscache，崩溃 5 秒 / 15 秒后重启；
+    配置、服务定义或程序有变化时重启；`-NoMihomo` / `BOOTSTRAP_NO_MIHOMO=1` 跳过；非管理员时给出警告并跳过。
+  - 暂不开放网页面板（external-controller）。
+- **原因**：
+  - 「登录后要等一段时间代理才生效」：「自动（延迟启动）」的服务会在开机后约 2 分钟才启动；GUI 客户端的服务模式也要等客户端随登录自启后才拉起内核。
+    普通自动启动在登录前就运行。
+  - 配置由 bootstrap 统一管理，与 Linux（systemd）、macOS（LaunchDaemon）一致；不依赖 GUI 客户端覆盖配置。
+- **Windows 上不渲染模板**：mise 的 `[bootstrap.files]` 在 Windows 上不可用；预渲染文件由 `scripts/gen-windows-mihomo.sh` 生成，
+  `--check` 检查与模板一致（lefthook 与 `tests/run-windows-config.sh`）。
+- **WinSW 的维护状态**：最后一个稳定版 v2.12.0（2023-01），v3 一直是 alpha；v2.12.0 稳定、使用广泛，锁定该版本。
+- **备选方案**：GUI 客户端服务模式（有启动延迟、配置不受管）；NSSM（多年未发布新版）；Windows 上用 tera CLI 渲染模板（多一个工具，且需改造 `secret()`）。

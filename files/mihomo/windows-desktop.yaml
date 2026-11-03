@@ -1,0 +1,303 @@
+# 由 scripts/gen-windows-mihomo.sh 从 files/mihomo/config.yaml.tera（desktop 场景）生成，勿直接编辑（D-029）
+# mihomo 配置模板（mise bootstrap 以 Tera 渲染；由 files/mihomo/config.yaml.tera 生成，勿直接编辑渲染结果）
+# 节点（proxies）为机密，来自 secret "mihomo_proxies"；监听设置与场景来自各模块的 [vars]（D-023、D-027）
+#
+# 场景（vars.mihomo_profile）：
+#   server  —— Linux 主机：不开 TUN，经环境变量（http_proxy 等）使用代理，Docker 容器经注入的环境变量使用；
+#              开发网站原站必须走代理；镜像 / 加速站与国内 IP 必须直连；不屏蔽广告
+#   desktop —— macOS / Windows（TUN）：国区 App Store / 微软商店直连；国内服务优先直连；海外生活服务与开发网站走代理；屏蔽广告
+#   steamos —— SteamOS（TUN）：Steam 商店优先代理、不可用时回退直连；游戏下载、局域网与国内远程串流直连
+#
+# 规则集统一来自 MetaCubeX/meta-rules-dat（geosite / geoip，mrs 格式），经 jsDelivr 下载、每天更新；
+# 本仓库维护的名单（加速站、开发网站补充、Steam 下载）以 inline 规则集写在下方。
+
+mixed-port: 7890
+# server：允许 Docker 容器经网桥访问，但只放行本机与 Docker 网段；desktop / steamos 只监听本机
+allow-lan: false
+bind-address: "127.0.0.1"
+lan-allowed-ips:
+  - 127.0.0.0/8
+mode: rule
+log-level: info
+ipv6: false
+unified-delay: true
+tcp-concurrent: true
+geodata-mode: false
+find-process-mode: off
+profile:
+  store-selected: true
+
+# ============ DNS ============
+# server 不启用：使用系统解析（云主机的内网 DNS，镜像源解析到内网地址）
+dns:
+  enable: true
+  ipv6: false
+  enhanced-mode: fake-ip
+  fake-ip-range: 198.18.0.1/16
+  # 国内、局域网与游戏下载域名返回真实 IP（steamos 的 TUN 会把国内 IP 排除在路由之外）
+  fake-ip-filter:
+    - "rule-set:private"
+    - "rule-set:cn"
+    - "rule-set:steam-download"
+    - "+.lan"
+    - "+.local"
+    - "+.msftconnecttest.com"
+    - "+.msftncsi.com"
+    - "time.*.com"
+    - "ntp.*.com"
+  default-nameserver:
+    - 223.5.5.5
+    - 119.29.29.29
+  nameserver:
+    - https://doh.pub/dns-query
+    - https://dns.alidns.com/dns-query
+  proxy-server-nameserver:
+    - https://doh.pub/dns-query
+    - https://dns.alidns.com/dns-query
+  # 海外域名经代理向海外 DoH 查询，避免污染（respect-rules：DNS 连接本身也按规则分流）
+  respect-rules: true
+  nameserver-policy:
+    "rule-set:geolocation-!cn":
+      - https://dns.google/dns-query
+      - https://1.1.1.1/dns-query
+
+# ============ TUN ============
+# 本地个人设备默认 TUN 模式（D-028）：macOS 上 mihomo 以 root 的 LaunchDaemon 运行；
+# Windows 客户端（如 Clash Verge Rev）需开启「服务模式」才能创建 TUN 网卡
+tun:
+  enable: true
+  stack: mixed
+  auto-route: true
+  auto-detect-interface: true
+  dns-hijack:
+    - any:53
+  # 局域网（打印机、NAS、投屏）不进入 TUN；国内 IP 不排除：部分国内广告域名解析到国内 IP，绕过 TUN 就拦截不到了
+  route-exclude-address:
+    - 10.0.0.0/8
+    - 100.64.0.0/10
+    - 169.254.0.0/16
+    - 172.16.0.0/12
+    - 192.168.0.0/16
+    - 224.0.0.0/4
+
+# ============ 节点（机密，fnox 解密后整体注入）============
+# @@MIHOMO_PROXIES@@
+# ============ 策略组 ============
+x-test: &test
+  url: https://www.gstatic.com/generate_204
+  interval: 300
+  timeout: 5000
+  lazy: true
+proxy-groups:
+  # 「节点」自动引入全部出站代理，节点增减无需改模板
+  - name: 节点
+    type: select
+    include-all-proxies: true
+  - name: 自动选择
+    type: url-test
+    include-all-proxies: true
+    <<: *test
+  # 开发网站与 AI 平台：必须走代理，因此不提供 DIRECT
+  - name: 开发
+    type: select
+    proxies: [节点, 自动选择]
+    include-all-proxies: true
+  - name: AI
+    type: select
+    proxies: [节点, 自动选择]
+    include-all-proxies: true
+  # 视频、直播、聊天、新闻、社交网站、搜索引擎
+  - name: 海外服务
+    type: select
+    proxies: [节点, 自动选择, DIRECT]
+  - name: PROXY
+    type: select
+    proxies: [节点, 自动选择, DIRECT]
+  # 广告：默认拦截；误拦时切到 DIRECT
+  - name: AD
+    type: select
+    proxies: [REJECT, DIRECT]
+
+# ============ 规则集 ============
+x-geosite: &geosite
+  type: http
+  behavior: domain
+  format: mrs
+  interval: 86400
+x-geoip: &geoip
+  type: http
+  behavior: ipcidr
+  format: mrs
+  interval: 86400
+rule-providers:
+  # ---- 本仓库维护的名单 ----
+  # 加速线路（各云内网 / 公网镜像、GitHub 加速、Docker 加速、Go / npm 国内代理）：一律直连。
+  # 与 lib/mirrors.sh 中的候选地址、lib/stage.sh 的 bs_no_proxy 保持一致
+  accelerators:
+    type: inline
+    behavior: classical
+    payload:
+      - DOMAIN-SUFFIX,tencentyun.com
+      - DOMAIN-SUFFIX,mirrors.tencent.com
+      - DOMAIN-SUFFIX,mirrors.cloud.tencent.com
+      - DOMAIN-SUFFIX,aliyuncs.com
+      - DOMAIN-SUFFIX,mirrors.aliyun.com
+      - DOMAIN-SUFFIX,myhuaweicloud.com
+      - DOMAIN-SUFFIX,mirrors.huaweicloud.com
+      - DOMAIN-SUFFIX,repo.huaweicloud.com
+      - DOMAIN-SUFFIX,ivolces.com
+      - DOMAIN-SUFFIX,mirrors.volces.com
+      - DOMAIN-SUFFIX,mirrors.ustc.edu.cn
+      - DOMAIN-SUFFIX,mirrors.tuna.tsinghua.edu.cn
+      - DOMAIN-SUFFIX,mirrors.bfsu.edu.cn
+      - DOMAIN-SUFFIX,npmmirror.com
+      - DOMAIN-SUFFIX,goproxy.cn
+      - DOMAIN-SUFFIX,goproxy.io
+      - DOMAIN-SUFFIX,daocloud.io
+      - DOMAIN-SUFFIX,1ms.run
+      - DOMAIN-SUFFIX,gh-proxy.com
+      - DOMAIN-SUFFIX,gh-proxy.org
+      - DOMAIN-SUFFIX,ghfast.top
+      - DOMAIN,gh.qninq.cn
+      - DOMAIN,github.cnxiaobai.com
+      - DOMAIN-SUFFIX,tvv.tw
+      - DOMAIN,cdn.jsdelivr.net
+      - DOMAIN,fastly.jsdelivr.net
+      - DOMAIN,gcore.jsdelivr.net
+      - IP-CIDR,169.254.0.0/16,no-resolve
+  # 开发网站原站：geosite 未覆盖的部分（容器镜像仓库、语言包管理器等）
+  dev-extra:
+    type: inline
+    behavior: classical
+    payload:
+      - DOMAIN-SUFFIX,quay.io
+      - DOMAIN-SUFFIX,gcr.io
+      - DOMAIN-SUFFIX,pkg.dev
+      - DOMAIN-SUFFIX,registry.k8s.io
+      - DOMAIN,mcr.microsoft.com
+      - DOMAIN-SUFFIX,data.mcr.microsoft.com
+      - DOMAIN-SUFFIX,nvcr.io
+      - DOMAIN-SUFFIX,yarnpkg.com
+      - DOMAIN-SUFFIX,nodejs.org
+      - DOMAIN-SUFFIX,bun.sh
+      - DOMAIN-SUFFIX,deno.land
+      - DOMAIN-SUFFIX,jsr.io
+      - DOMAIN-SUFFIX,astral.sh
+      - DOMAIN-SUFFIX,anaconda.org
+      - DOMAIN-SUFFIX,anaconda.com
+      - DOMAIN-SUFFIX,maven.org
+      - DOMAIN-SUFFIX,repo.maven.apache.org
+      - DOMAIN-SUFFIX,gradle.org
+      - DOMAIN-SUFFIX,jdx.dev
+      - DOMAIN-SUFFIX,sum.golang.org
+      - DOMAIN-SUFFIX,proxy.golang.org
+  # Steam 游戏下载与中继：不走代理。steam@cn 只有国内 CDN，这里补上海外下载 CDN（behavior: domain，供 fake-ip-filter 使用）
+  steam-download:
+    type: inline
+    behavior: domain
+    payload:
+      - "+.steamcontent.com"
+      - "+.steampipe.akamaized.net"
+      - "steampipe.akamaized.net"
+      - "steampipe-kr.akamaized.net"
+      - "steampipe-partner.akamaized.net"
+      - "+.steamserver.net"
+      - "+.steamchina.com"
+      - "+.wmsjsteam.com"
+  # ---- geosite / geoip ----
+  private: { <<: *geosite, url: "https://cdn.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@meta/geo/geosite/private.mrs" }
+  cn: { <<: *geosite, url: "https://cdn.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@meta/geo/geosite/cn.mrs" }
+  geolocation-!cn: { <<: *geosite, url: "https://cdn.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@meta/geo/geosite/geolocation-!cn.mrs" }
+  gfw: { <<: *geosite, url: "https://cdn.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@meta/geo/geosite/gfw.mrs" }
+  private-ip: { <<: *geoip, url: "https://cdn.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@meta/geo/geoip/private.mrs" }
+  cn-ip: { <<: *geoip, url: "https://cdn.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@meta/geo/geoip/cn.mrs" }
+  # 开发
+  github: { <<: *geosite, url: "https://cdn.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@meta/geo/geosite/github.mrs" }
+  gitlab: { <<: *geosite, url: "https://cdn.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@meta/geo/geosite/gitlab.mrs" }
+  huggingface: { <<: *geosite, url: "https://cdn.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@meta/geo/geosite/huggingface.mrs" }
+  docker: { <<: *geosite, url: "https://cdn.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@meta/geo/geosite/docker.mrs" }
+  npmjs: { <<: *geosite, url: "https://cdn.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@meta/geo/geosite/npmjs.mrs" }
+  golang: { <<: *geosite, url: "https://cdn.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@meta/geo/geosite/golang.mrs" }
+  python: { <<: *geosite, url: "https://cdn.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@meta/geo/geosite/python.mrs" }
+  rust: { <<: *geosite, url: "https://cdn.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@meta/geo/geosite/rust.mrs" }
+  jetbrains: { <<: *geosite, url: "https://cdn.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@meta/geo/geosite/jetbrains.mrs" }
+  # AI 平台
+  ai: { <<: *geosite, url: "https://cdn.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@meta/geo/geosite/category-ai-!cn.mrs" }
+  openai: { <<: *geosite, url: "https://cdn.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@meta/geo/geosite/openai.mrs" }
+  anthropic: { <<: *geosite, url: "https://cdn.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@meta/geo/geosite/anthropic.mrs" }
+  google-gemini: { <<: *geosite, url: "https://cdn.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@meta/geo/geosite/google-gemini.mrs" }
+  # 广告
+  ads: { <<: *geosite, url: "https://cdn.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@meta/geo/geosite/category-ads-all.mrs" }
+  # 国区商店
+  apple-cn: { <<: *geosite, url: "https://cdn.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@meta/geo/geosite/apple-cn.mrs" }
+  apple: { <<: *geosite, url: "https://cdn.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@meta/geo/geosite/apple.mrs" }
+  microsoft-cn: { <<: *geosite, url: "https://cdn.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@meta/geo/geosite/microsoft@cn.mrs" }
+  microsoft: { <<: *geosite, url: "https://cdn.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@meta/geo/geosite/microsoft.mrs" }
+  # 海外生活：视频、直播、聊天、新闻、社交网站、搜索引擎
+  google: { <<: *geosite, url: "https://cdn.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@meta/geo/geosite/google.mrs" }
+  youtube: { <<: *geosite, url: "https://cdn.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@meta/geo/geosite/youtube.mrs" }
+  netflix: { <<: *geosite, url: "https://cdn.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@meta/geo/geosite/netflix.mrs" }
+  disney: { <<: *geosite, url: "https://cdn.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@meta/geo/geosite/disney.mrs" }
+  twitch: { <<: *geosite, url: "https://cdn.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@meta/geo/geosite/twitch.mrs" }
+  spotify: { <<: *geosite, url: "https://cdn.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@meta/geo/geosite/spotify.mrs" }
+  tiktok: { <<: *geosite, url: "https://cdn.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@meta/geo/geosite/tiktok.mrs" }
+  telegram: { <<: *geosite, url: "https://cdn.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@meta/geo/geosite/telegram.mrs" }
+  telegram-ip: { <<: *geoip, url: "https://cdn.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@meta/geo/geoip/telegram.mrs" }
+  discord: { <<: *geosite, url: "https://cdn.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@meta/geo/geosite/discord.mrs" }
+  twitter: { <<: *geosite, url: "https://cdn.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@meta/geo/geosite/twitter.mrs" }
+  facebook: { <<: *geosite, url: "https://cdn.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@meta/geo/geosite/facebook.mrs" }
+  instagram: { <<: *geosite, url: "https://cdn.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@meta/geo/geosite/instagram.mrs" }
+  reddit: { <<: *geosite, url: "https://cdn.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@meta/geo/geosite/reddit.mrs" }
+  social: { <<: *geosite, url: "https://cdn.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@meta/geo/geosite/category-social-media-!cn.mrs" }
+
+# ============ 规则（自上而下，先匹配先生效）============
+rules:
+  # 1. 加速线路与局域网：直连
+  - RULE-SET,accelerators,DIRECT
+  - RULE-SET,private,DIRECT
+  - RULE-SET,private-ip,DIRECT,no-resolve
+  # 2. 广告
+  - RULE-SET,ads,AD
+  # 3. 开发网站与 AI 平台：必须走代理（microsoft 中包含 GitHub，因此放在国区商店之前）
+  - RULE-SET,github,开发
+  - RULE-SET,gitlab,开发
+  - RULE-SET,huggingface,开发
+  - RULE-SET,docker,开发
+  - RULE-SET,npmjs,开发
+  - RULE-SET,golang,开发
+  - RULE-SET,python,开发
+  - RULE-SET,rust,开发
+  - RULE-SET,jetbrains,开发
+  - RULE-SET,dev-extra,开发
+  - RULE-SET,ai,AI
+  - RULE-SET,openai,AI
+  - RULE-SET,anthropic,AI
+  - RULE-SET,google-gemini,AI
+  # 4. 国区 App Store / 微软商店：直连
+  - RULE-SET,apple-cn,DIRECT
+  - RULE-SET,apple,DIRECT
+  - RULE-SET,microsoft-cn,DIRECT
+  - RULE-SET,microsoft,DIRECT
+  # 5. 海外生活服务
+  - RULE-SET,youtube,海外服务
+  - RULE-SET,google,海外服务
+  - RULE-SET,netflix,海外服务
+  - RULE-SET,disney,海外服务
+  - RULE-SET,twitch,海外服务
+  - RULE-SET,spotify,海外服务
+  - RULE-SET,tiktok,海外服务
+  - RULE-SET,telegram,海外服务
+  - RULE-SET,telegram-ip,海外服务,no-resolve
+  - RULE-SET,discord,海外服务
+  - RULE-SET,twitter,海外服务
+  - RULE-SET,facebook,海外服务
+  - RULE-SET,instagram,海外服务
+  - RULE-SET,reddit,海外服务
+  - RULE-SET,social,海外服务
+  # 6. 国内服务：直连
+  - RULE-SET,cn,DIRECT
+  - RULE-SET,cn-ip,DIRECT
+  # 7. 其余海外（新闻网站等多在 gfw / geolocation-!cn 中）
+  - RULE-SET,gfw,PROXY
+  - RULE-SET,geolocation-!cn,PROXY
+  - MATCH,PROXY

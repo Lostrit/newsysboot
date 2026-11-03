@@ -87,11 +87,13 @@ docker run --add-host host.docker.internal:host-gateway \
 | Linux 远程主机 | 不开 TUN；`env.sh` 中的 `http_proxy` 等环境变量；Docker 容器注入 `http_proxy=http://host.docker.internal:7890` |
 | SteamOS | TUN（系统服务） |
 | macOS | TUN；root 的 LaunchDaemon `bootstrap.mihomo`（`/opt/mihomo`），日志 `/var/log/mihomo.log`；部署时 sudo 可能要求输入登录密码 |
-| Windows | TUN；导出 desktop 配置导入客户端，并在客户端中开启服务模式 |
+| Windows | TUN；`bootstrap.ps1`（以管理员身份运行）部署 WinSW 系统服务 `mihomo`：程序在 `%ProgramFiles%\mihomo`，配置与日志在 `%ProgramData%\mihomo`，开机即启动（D-029） |
 
 ```sh
-# Windows（bootstrap 不部署 mihomo）：在已部署的 Linux / macOS 上导出 desktop 配置，导入 Clash Verge Rev 等客户端
+# 单独导出一份配置（如给其他客户端使用）
 FNOX_AGE_KEY=… sh ~/.local/share/bootstrap/scripts/render-mihomo.sh desktop ~/mihomo-desktop.yaml
+# 修改模板后重新生成 Windows 用的预渲染配置（lefthook 会检查是否同步）
+sh scripts/gen-windows-mihomo.sh
 # 验证三个场景的分流（需要 mihomo，使用假节点）
 sh tests/mihomo-rules.sh
 ```
@@ -104,6 +106,17 @@ sh tests/mihomo-rules.sh
   不会用空节点覆盖现有配置。
 - 只更新 dotfiles / 工具时用 `--dotfiles`，不需要私钥；它会沿用环境中（或本机 mihomo 的）代理。
 
+## Windows
+
+```powershell
+# 以管理员身份运行 PowerShell（部署 mihomo 服务需要管理员；-NoMihomo 跳过）
+irm https://gh-proxy.com/https://raw.githubusercontent.com/Lostrit/newsysboot/main/bootstrap.ps1 | iex
+# 服务管理
+& "$env:ProgramFiles\mihomo\mihomo-service.exe" status   # start / stop / restart
+```
+
+注意不要同时开启其他代理客户端或 VPN 的 TUN，避免路由冲突。
+
 ## 测试
 
 ```sh
@@ -113,4 +126,6 @@ tests/run-dotfiles.sh debian:13      # --dotfiles 模式（无 sudo 用户）
 tests/run-pipe.sh ubuntu:24.04       # 管道模式（curl | sh 入口，没有 git、没有终端）
 tests/run-host.sh                    # 主机流程（systemd 特权容器：mihomo、docker、SSH 加固；测试密钥 + 假节点）
 TEST_SUDO_USER=1 tests/run-host.sh   # 同上，以已有的免密 sudo 普通用户运行（D-025）
+sh tests/mihomo-rules.sh             # 三个场景的分流（需要 mihomo）
+sh tests/run-windows-config.sh       # Windows 预渲染配置与模板同步、mihomo -t
 ```

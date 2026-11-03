@@ -25,3 +25,7 @@ version = "2.1.12"
 
 [tools.prettier]
 version = "3.9.6"
+
+# prettier 需要 node：开发机的全局 mise 配置不一定有 node，这里显式声明（与 dotfiles 中锁定的版本一致）
+[tools.node]
+version = "24.19.0"

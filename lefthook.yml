@@ -28,6 +28,9 @@ pre-commit:
       glob:
         - "*.{json,jsonc,yaml,yml}"
         - "**/*.{json,jsonc,yaml,yml}"
+      # 生成文件不格式化，否则会与模板不一致（scripts/gen-windows-mihomo.sh）
+      exclude:
+        - "files/mihomo/windows-desktop.yaml"
       run: prettier --write {staged_files}
       stage_fixed: true
 
@@ -58,3 +61,10 @@ pre-commit:
         - "scripts/*.sh"
         - "tests/*.sh"
       run: for f in {staged_files}; do sh -n "$f" || exit 1; done
+
+    # ---- Windows 用 mihomo 配置必须与模板同步（D-029） ----
+    windows-mihomo-sync:
+      glob:
+        - "files/mihomo/config.yaml.tera"
+        - "files/mihomo/windows-desktop.yaml"
+      run: sh scripts/gen-windows-mihomo.sh --check
