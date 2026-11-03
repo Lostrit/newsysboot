@@ -120,6 +120,8 @@ compdef() { _zrc_deferred_compdefs+=("${(j: :)${(q)@}}") }
 #    LS_COLORS 必须在下面的 completion zstyle 之前生成
 # ------------------------------------------------------------
 (( $+commands[less] )) && export PAGER=less
+# 交互式 bash 的历史写进 XDG 目录（只对这个 bash 进程设置：zsh 不用 HISTFILE，历史由 atuin 管理，D-030）
+alias bash='HISTFILE="$XDG_STATE_HOME/bash/history" bash'
 
 # 工具清单：生成（或命中缓存）补全与 init 脚本；补全目录在 compinit 之前加入 fpath
 source "$ZDOTDIR/lib/zcache.zsh"

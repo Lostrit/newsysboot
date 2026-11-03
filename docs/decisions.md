@@ -389,3 +389,22 @@ Linux 主机为 server（`allow-lan: true`，只放行本机和 Docker 网段）
   `--check` 检查与模板一致（lefthook 与 `tests/run-windows-config.sh`）。
 - **WinSW 的维护状态**：最后一个稳定版 v2.12.0（2023-01），v3 一直是 alpha；v2.12.0 稳定、使用广泛，锁定该版本。
 - **备选方案**：GUI 客户端服务模式（有启动延迟、配置不受管）；NSSM（多年未发布新版）；Windows 上用 tera CLI 渲染模板（多一个工具，且需改造 `secret()`）。
+
+## D-030 保持 HOME 整洁：清理预置文件、其余放进 XDG 目录 ✅
+
+**日期**：2026-11-03
+
+- **决策**（用户确认）：部署时整理当前用户的 HOME（`lib/tidy.sh`，user 阶段执行，`--dotfiles` 也执行；`BOOTSTRAP_NO_TIDY=1` 跳过）：
+  - 腾讯云镜像预置的 `~/.pip/pip.conf`、`~/.pydistutils.cfg`、`~/.npmrc`：内容与已知默认值完全一致时删除；
+    镜像源改由 `env.sh` 提供（新增 `PIP_INDEX_URL` / `UV_DEFAULT_INDEX`，内网 http 镜像同时设置 `PIP_TRUSTED_HOST` / `UV_INSECURE_HOST`）；
+  - `.bashrc`、`.bash_logout`、`.profile`：与 `/etc/skel` 完全相同时删除（用户选择一并删除；登录 shell 为 zsh）；
+  - `.bash_history`、`.lesshst`、`.python_history`、`.docker`、`.terminfo`：移到 XDG 目录；
+    `~/.zshenv` 设置 `LESSHISTFILE`、`PYTHON_HISTORY`、`DOCKER_CONFIG`、`TERMINFO_DIRS`，zsh 的 `bash` 别名设置 `HISTFILE`；
+  - `.sudo_as_admin_successful`：删除，并在 root 阶段写入 `/etc/sudoers.d/00-bootstrap-no-admin-flag`（`Defaults !admin_flag`，visudo 校验通过才写入）。
+- **不误删**：只删除内容可确认的文件；内容不同的保留并提示；移动时目标已存在则保留原文件并提示。
+- **为什么 bash 的 HISTFILE 用别名而不是在 .zshenv 中导出**：zsh 也读取 `HISTFILE`；导出后 zsh 启动时会去加载 bash 的历史文件。
+  zsh 本身不设置 `HISTFILE`（历史由 atuin 管理），因此只对启动的 bash 进程设置。
+- **来源核实**（dev 主机，腾讯云 Ubuntu 24.04）：`.pip`、`.npmrc`、`.pydistutils.cfg` 与 `.ssh` 同为实例创建时写入（早于部署）；
+  bash 三个文件与 `/etc/skel` 相同；`.terminfo` 来自 Ghostty 终端的 SSH 集成（登录时的「Setting up xterm-ghostty terminfo」）；
+  `.sudo_as_admin_successful` 来自 Ubuntu 的 sudo；`bs-run*`、`ct-*` 是测试时手动留下的文件，不是 bootstrap 生成的。
+- **备选方案**：只清理不移动（会丢失历史）；用 `/etc/zsh/zshenv` 设置 `ZDOTDIR` 以去掉 `~/.zshenv`（需要 root，且 macOS / SteamOS 不适用，维持 D-003）。

@@ -57,6 +57,8 @@ sh ~/.local/share/bootstrap/bootstrap.sh --dotfiles
 | `FNOX_AGE_KEY` | age 私钥（解密 mihomo 配置）；不设置时交互输入 |
 | `BOOTSTRAP_APT_MIRROR` / `BOOTSTRAP_DOCKER_MIRROR` / `BOOTSTRAP_DOCKER_REGISTRY_MIRRORS` / `GH_PROXY` | 手动指定选源结果（GH_PROXY 设为空表示直连） |
 | `BOOTSTRAP_REPO` | 仓库地址（本地测试可用路径） |
+| `BOOTSTRAP_PYPI_INDEX` | 手动指定 pip / uv 的 PyPI 镜像（默认：腾讯云内网时用内网地址，否则用腾讯云公网镜像） |
+| `BOOTSTRAP_NO_TIDY=1` | 不整理 HOME（D-030） |
 | `BS_DEBUG=1` | 显示测速明细和完整的 apt 输出 |
 
 ## Dockerfile 中使用
@@ -100,6 +102,20 @@ sh tests/mihomo-rules.sh
 
 导出的文件包含节点信息（明文），用完请删除，不要提交或分享。
 
+## HOME 整理（D-030）
+
+部署时自动整理当前用户的 HOME，最终只保留 `.cache`、`.config`、`.local`、`.ssh` 与 `.zshenv`：
+
+| 内容 | 处理 |
+| --- | --- |
+| 云镜像预置的镜像源配置（腾讯云的 `~/.pip/pip.conf`、`~/.pydistutils.cfg`、`~/.npmrc`） | 内容与已知默认值一致时删除，镜像源改由 `env.sh`（`PIP_INDEX_URL`、`NPM_CONFIG_REGISTRY` 等）提供；内容不同时保留并提示 |
+| `.bashrc`、`.bash_logout`、`.profile` | 与 `/etc/skel` 完全相同时删除（登录 shell 为 zsh）；被修改过时保留并提示 |
+| `.bash_history`、`.lesshst`、`.python_history`、`.docker/`、`.terminfo/` | 移到 XDG 目录（`~/.local/state/…`、`~/.config/docker`、`~/.local/share/terminfo`）；目标已存在时保留原文件并提示 |
+| `.sudo_as_admin_successful` | 删除；sudoers 中加入 `Defaults !admin_flag`，以后不再生成 |
+
+之后由 `~/.zshenv`（`LESSHISTFILE`、`PYTHON_HISTORY`、`DOCKER_CONFIG`、`TERMINFO_DIRS`）与 zsh 的 `bash` 别名（`HISTFILE`）
+让这些工具继续使用 XDG 目录。`~/.ssh` 必须保留在 HOME（sshd 只认这里）。
+
 ## 重新运行与机密
 
 - 主机上完整重新运行（`bootstrap.sh`）需要再次提供 age 私钥：缺少机密时 mise 会拒绝渲染 mihomo 配置并中止，
@@ -129,4 +145,5 @@ TEST_SUDO_USER=1 tests/run-host.sh   # 同上，以已有的免密 sudo 普通�
 sh tests/mihomo-rules.sh             # 三个场景的分流（需要 mihomo）
 sh tests/run-windows-config.sh       # Windows 预渲染配置与模板同步、mihomo -t
 sh tests/run-macos-clt.sh            # macOS 管道模式等待 Xcode 命令行工具安装（容器中模拟）
+sh tests/run-tidy.sh                 # HOME 整理（按腾讯云 Ubuntu 主机的预置文件模拟）
 ```

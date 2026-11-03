@@ -20,6 +20,13 @@ typeset -U path fpath
 path=("$HOME/.local/bin" "$XDG_DATA_HOME/mise/shims" $path)
 # shell 自身使用的变量（git commit 等会读取），shim 带不过来，与 mise 配置 [env] 保持一致
 export EDITOR=micro VISUAL=micro
+
+# 让常见工具把文件放进 XDG 目录，保持 HOME 整洁（D-030；目录由 mise.toml 的 [tasks.bootstrap] 创建）
+export LESSHISTFILE="$XDG_STATE_HOME/less/history"
+export PYTHON_HISTORY="$XDG_STATE_HOME/python/history"   # Python 3.13+
+export DOCKER_CONFIG="$XDG_CONFIG_HOME/docker"
+# 终端经 SSH 安装的 terminfo（如 Ghostty）：末尾的「:」表示之后继续搜索系统默认目录
+export TERMINFO_DIRS="$XDG_DATA_HOME/terminfo:"
 fpath=("$XDG_DATA_HOME/zsh/site-functions" $fpath)
 
 # bootstrap 写入的环境（GH_PROXY、MISE_URL_REPLACEMENTS 等），见 lib/env.sh

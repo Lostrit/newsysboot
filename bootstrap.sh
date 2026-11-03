@@ -128,6 +128,7 @@ BS_SRC=$(bs_self_dir)
 . "$BS_SRC/lib/user.sh"
 . "$BS_SRC/lib/ssh.sh"
 . "$BS_SRC/lib/macos.sh"
+. "$BS_SRC/lib/tidy.sh"
 . "$BS_SRC/lib/stage.sh"
 
 BS_MODE=full

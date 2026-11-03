@@ -56,8 +56,8 @@ login_shell = "zsh"
 [tasks.bootstrap]
 description = "用户目录；bat 主题缓存；预热 zsh（克隆插件、生成补全 / init 缓存，D-010）"
 run = [
-  # node 不会自己创建 REPL 历史所在的目录（dotfiles mise 配置中的 NODE_REPL_HISTORY）
-  "mkdir -p ~/.config ~/.local/bin ~/.local/share/zsh/site-functions ~/.local/share/zsh/plugins ~/.local/state/zsh ~/.cache/zsh ~/.local/state/node",
+  # node / bash / less / python 不会自己创建历史文件所在的目录（NODE_REPL_HISTORY、bash 别名、LESSHISTFILE、PYTHON_HISTORY，D-030）
+  "mkdir -p ~/.config ~/.local/bin ~/.local/share/zsh/site-functions ~/.local/share/zsh/plugins ~/.local/state/zsh ~/.cache/zsh ~/.local/state/node ~/.local/state/bash ~/.local/state/less ~/.local/state/python",
   "if command -v bat >/dev/null 2>&1; then bat cache --build >/dev/null; fi",
   "if command -v zsh >/dev/null 2>&1; then zsh -i -c exit </dev/null >/dev/null 2>&1 || true; fi",
 ]

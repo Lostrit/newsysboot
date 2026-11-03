@@ -57,6 +57,8 @@
    ⏳ steamos 的 TUN 与 Steam 客户端、macOS 的 LaunchDaemon + TUN、Windows 服务（开机时机、TUN、ACL）需要真机验证
      （详细验证步骤：verify-windows.md、verify-macos.md、verify-steamos.md，暂缓执行）
    ✅ macOS 没有 Xcode 命令行工具时首次部署失败的问题已修复（P-038）：管道模式先触发安装并等待完成；容器中模拟测试通过，真机待验证
+8. ✅ HOME 整理（2026-11-03，D-030）：清理腾讯云预置的镜像源配置与 bash 默认文件，历史 / terminfo / docker 配置移到 XDG 目录，
+   pip 镜像改由 env.sh 提供；`tests/run-tidy.sh` 与主机测试覆盖，dev 主机实测
 7. ✅ nvim 预装规则（2026-11-02，D-026）：网络检测通过时默认预装，否则 WARNING 跳过；`--no-nvim` 关闭、`--nvim` 强制。
    dev 主机（自动预装）、dev 上的容器（注入代理 → 预装；屏蔽 GitHub → WARNING）、本地主机测试（WARNING，20 项通过）均已验证
 6. ✅ dotconfig 评审剩余 5 项已全部处理（2026-11-02）：herdr 配置、nvim 预装脚本（`--nvim`，D-026）、.themes 精简、

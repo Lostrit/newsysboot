@@ -69,6 +69,8 @@ bs_stage_root() {
     # user 阶段之前就需要的包（mise 的 apt 包列表在 mise.debian.toml 中）
     bs_apt_install git sudo zsh curl ca-certificates
   fi
+  # 关闭 Ubuntu sudo 的 admin_flag（不再在 HOME 中创建 .sudo_as_admin_successful，D-030）
+  bs_sudo_no_admin_flag
 
   if [ "$(id -u)" != 0 ]; then
     # 已有 sudo 的普通用户：不新建用户，对当前用户执行 SSH 加固（经 sudo，条件与 root 时相同，D-025）
@@ -190,6 +192,8 @@ bs_stage_user() {
   bs_detect_proxy
 
   bs_ensure_checkout
+  # 整理 HOME：清理已由 bootstrap 接管的预置文件，可移动的放进 XDG 目录（D-030）
+  bs_tidy_home
   bs_ensure_mise
   bs_mihomo_profile
   bs_write_env
@@ -285,6 +289,24 @@ bs_write_env() {
     fi
     bs_env_line NPM_CONFIG_REGISTRY "$_npm"
     bs_env_line BUN_CONFIG_REGISTRY "$_npm"
+    # pip / uv 的 PyPI 镜像（腾讯云内网时用内网地址，内网镜像为 http，需要 trusted-host；取代云镜像预置的 ~/.pip/pip.conf，D-030）
+    _pypi=${BOOTSTRAP_PYPI_INDEX:-}
+    if [ -z "$_pypi" ]; then
+      case "${BOOTSTRAP_APT_MIRROR:-}" in
+        *mirrors.tencentyun.com*) _pypi=http://mirrors.tencentyun.com/pypi/simple ;;
+        *) _pypi=https://mirrors.cloud.tencent.com/pypi/simple ;;
+      esac
+    fi
+    bs_env_line PIP_INDEX_URL "$_pypi"
+    bs_env_line UV_DEFAULT_INDEX "$_pypi"
+    case "$_pypi" in
+      http://*)
+        _ph=${_pypi#http://}
+        bs_env_line PIP_TRUSTED_HOST "${_ph%%/*}"
+        bs_env_line UV_INSECURE_HOST "${_ph%%/*}"
+        ;;
+      *) echo "unset PIP_TRUSTED_HOST UV_INSECURE_HOST" ;;
+    esac
   } >"$BS_STATE_DIR/env.sh"
   . "$BS_STATE_DIR/env.sh"
 }
