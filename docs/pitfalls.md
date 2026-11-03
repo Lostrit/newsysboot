@@ -261,3 +261,10 @@
   所有成员都不可用时，fallback 按顺序选第一个（节点）。
 - **结论**：配置符合需求——家庭网络中 Steam 商店通常可以直连，代理不可用时会回退 DIRECT；两者都不通时用代理也无妨。
   测试中把健康检查地址换成可直连的地址来模拟这种情况，并核对组内实际选中的成员（`Steam商店[DIRECT]`）。
+
+## P-037 开发环境的 prettier 缺少 node；lefthook 钩子会被自动安装
+
+- **现象**：提交时 pre-commit 钩子报 `No version is set for shim: prettier` / `exec: node: not found`，提交被拒。
+- **原因**：`mise.dev.toml` 只声明了 prettier，它依赖的 node 来自开发者的全局 mise 配置；这台开发机的全局配置没有 node。
+  另外，执行 `MISE_ENV=dev mise …` 时，`mise.dev.toml` 的 postinstall 会自动 `lefthook install`（设计如此），之后所有提交都会经过钩子。
+- **解决**：`mise.dev.toml` 显式声明 node（与 dotfiles 中锁定的版本一致）；提交在开发环境中进行：`MISE_ENV=dev mise exec -- git commit …`。
