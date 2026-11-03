@@ -15,7 +15,7 @@
 | --- | --- |
 | 系统 | 记录 macOS 版本与芯片：`sw_vers; uname -m`（arm64 / x86_64 都支持） |
 | 用户 | 管理员账户（需要 sudo，部署中会要求输入登录密码） |
-| **Xcode 命令行工具** | **先手动安装**：`xcode-select --install`，装完再运行 bootstrap（见第 13 节风险 1） |
+| Xcode 命令行工具 | **不要预先安装**，用全新状态验证 P-038 的修复：bootstrap 应弹出安装窗口并在装好后自动继续（第 1 节） |
 | 私钥 | age 私钥（`AGE-SECRET-KEY-…`），运行时按提示输入 |
 | 其他代理 | 退出其他代理客户端（ClashX、Clash Verge、Surge 等），并关闭它们的「增强模式 / TUN」与系统代理 |
 | 系统代理 | 「系统设置 → 网络 → 详细信息 → 代理」中不要残留其他客户端设置的代理 |
@@ -38,6 +38,9 @@ curl -fsSL https://gh-proxy.com/https://raw.githubusercontent.com/Lostrit/newsys
 
 预期：
 
+- [ ] 没有命令行工具时（P-038）：输出「安装 Xcode 命令行工具（提供 git）…」并弹出系统安装窗口；点击「安装」后，
+      每分钟输出一次等待提示，装好后输出「Xcode 命令行工具已安装：…」并**自动继续**拉取仓库，不需要重新运行
+- [ ] 在安装窗口中点击「取消」：等待 30 分钟后报「尚未安装完成…请重新运行」并退出（可选验证，耗时长）
 - [ ] 识别为 macOS：模块为 `macos`（不安装 Docker、不做 SSH 加固、不新建用户）
 - [ ] Homebrew 经清华镜像安装（已安装则跳过）；`brew config` 中的 API / bottle 域名为镜像地址
 - [ ] 需要 sudo 的步骤提示输入登录密码
@@ -205,7 +208,7 @@ rm -f ~/.local/state/bootstrap/mihomo-daemon.sha256
 
 | # | 风险 | 说明 |
 | --- | --- | --- |
-| 1 | **没有命令行工具时首次部署会失败（待修复）** | macOS 自带的 `/usr/bin/git` 只是占位程序：`command -v git` 能找到它，管道模式因此不会先安装命令行工具，`git clone` 失败并弹出安装对话框；`lib/macos.sh` 中安装命令行工具的逻辑要在检出仓库之后才执行。临时做法：先 `xcode-select --install` |
+| 1 | 命令行工具的安装等待（P-038，已修复，未在真机验证） | 依赖 `xcode-select -p` 在安装完成后返回成功；系统更新等情况下若 `xcode-select -p` 指向失效的路径，需要 `sudo xcode-select --reset` |
 | 2 | sudo 次数 | 写入 `/opt`、`/Library` 与加载 LaunchDaemon 都要 sudo；密码缓存过期后可能多次询问 |
 | 3 | 后台项目提示 | macOS 13+ 会提示「已添加后台项目」，需要允许 |
 | 4 | DNS 劫持 | TUN 的 `dns-hijack: any:53` 能否接管系统 DNS（mDNSResponder）；fake-ip 是否影响 iCloud、AirDrop 等 |

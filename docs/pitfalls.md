@@ -268,3 +268,12 @@
 - **原因**：`mise.dev.toml` 只声明了 prettier，它依赖的 node 来自开发者的全局 mise 配置；这台开发机的全局配置没有 node。
   另外，执行 `MISE_ENV=dev mise …` 时，`mise.dev.toml` 的 postinstall 会自动 `lefthook install`（设计如此），之后所有提交都会经过钩子。
 - **解决**：`mise.dev.toml` 显式声明 node（与 dotfiles 中锁定的版本一致）；提交在开发环境中进行：`MISE_ENV=dev mise exec -- git commit …`。
+
+## P-038 macOS 的 /usr/bin/git 是占位程序，没有命令行工具时首次部署失败
+
+- **现象**（编写 macOS 验证清单时发现，未在真机复现）：全新 macOS 上运行管道模式，`command -v git` 能找到 `/usr/bin/git`，
+  于是不安装命令行工具，直接 `git clone`；没有 Xcode 命令行工具时这个占位程序只会弹出安装对话框并失败。
+  `lib/macos.sh` 中检查命令行工具的逻辑要在检出仓库之后才执行。
+- **解决**：管道模式在拉取仓库之前，若为 macOS 且 `xcode-select -p` 失败，执行 `xcode-select --install` 触发系统安装窗口，
+  每 5 秒检查一次、最多等待 30 分钟（`BS_CLT_POLL` / `BS_CLT_TIMEOUT` 可覆盖），装好后自动继续；超时则报错退出。
+  `tests/run-macos-clt.sh` 在 Linux 容器中用假的 `uname` / `xcode-select` 模拟：等待后继续、超时退出、已安装时不触发安装。

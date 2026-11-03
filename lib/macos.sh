@@ -1,7 +1,8 @@
 #!/bin/sh
 # lib/macos.sh — macOS 的 stage-0 准备（⚠️ 未在真机测试）
 #
-#   1. Xcode Command Line Tools（提供 git）：缺失时触发安装并退出，装完后重新运行
+#   1. Xcode Command Line Tools（提供 git）：管道模式已在拉取仓库前等待安装完成（bootstrap.sh，P-038）；
+#      在已有的检出中直接运行时，缺失则触发安装并退出，装完后重新运行
 #   2. Homebrew：经清华大学镜像安装（国内无法稳定访问 GitHub），镜像变量同时写入 env.sh 供以后使用
 
 BS_BREW_MIRROR=${BS_BREW_MIRROR:-https://mirrors.tuna.tsinghua.edu.cn}

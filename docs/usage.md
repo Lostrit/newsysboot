@@ -128,4 +128,5 @@ tests/run-host.sh                    # 主机流程（systemd 特权容器：mih
 TEST_SUDO_USER=1 tests/run-host.sh   # 同上，以已有的免密 sudo 普通用户运行（D-025）
 sh tests/mihomo-rules.sh             # 三个场景的分流（需要 mihomo）
 sh tests/run-windows-config.sh       # Windows 预渲染配置与模板同步、mihomo -t
+sh tests/run-macos-clt.sh            # macOS 管道模式等待 Xcode 命令行工具安装（容器中模拟）
 ```

@@ -54,6 +54,26 @@ if [ ! -f "$(bs_self_dir)/lib/common.sh" ]; then
   fi
   export BOOTSTRAP_SOURCE
 
+  # macOS：/usr/bin/git 只是占位程序，没有 Xcode 命令行工具时 `command -v git` 也能找到它，但无法使用（P-038）。
+  # 先触发系统的安装窗口，并等待安装完成（最多 30 分钟），之后继续，不需要重新运行
+  if [ "$(uname -s)" = Darwin ] && ! xcode-select -p >/dev/null 2>&1; then
+    _say "安装 Xcode 命令行工具（提供 git）：请在弹出的系统窗口中点击「安装」，完成后会自动继续"
+    xcode-select --install >/dev/null 2>&1 || true
+    # 轮询间隔与最长等待时间（秒）可以覆盖，供测试使用
+    _poll=${BS_CLT_POLL:-5}
+    _max=$((${BS_CLT_TIMEOUT:-1800} / _poll))
+    _every=$((60 / _poll))
+    [ "$_every" -ge 1 ] || _every=1
+    _i=0
+    while ! xcode-select -p >/dev/null 2>&1; do
+      [ "$_i" -lt "$_max" ] || _die "Xcode 命令行工具尚未安装完成；安装完成后请重新运行本命令"
+      _i=$((_i + 1))
+      [ $((_i % _every)) -ne 0 ] || _say "等待 Xcode 命令行工具安装完成（已等待 $((_i * _poll / 60)) 分钟）…"
+      sleep "$_poll"
+    done
+    _say "Xcode 命令行工具已安装：$(xcode-select -p)"
+  fi
+
   # 需要 git：Debian / Ubuntu 上先把默认源的域名换成国内镜像（http，不依赖 CA 证书）再安装
   if ! command -v git >/dev/null 2>&1; then
     command -v apt-get >/dev/null 2>&1 || _die "需要 git，请先安装"
