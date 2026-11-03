@@ -6,7 +6,7 @@
 
 | 环境 | 实现 | 验证 |
 | --- | --- | --- |
-| Debian / Ubuntu 主机（root 运行，新建用户） | ✅ 完整 | ✅ 腾讯云 Debian 13 真机（dev，22 项）；本地 systemd 容器（`tests/run-host.sh`，23 项） |
+| Debian / Ubuntu 主机（root 运行，新建用户） | ✅ 完整 | ✅ 腾讯云 Debian 13 真机（dev，22 项；2026-11-03 全新系统重新部署：新配置 22 项主机检查 + 真实节点 server 分流 23 项全部通过）；本地 systemd 容器（`tests/run-host.sh`，23 项） |
 | Debian / Ubuntu 主机（已有 sudo 用户） | ✅ 完整（D-025） | ✅ 腾讯云 Ubuntu 24.04 真机（dev，`ubuntu` 用户，22 项）；`TEST_SUDO_USER=1 tests/run-host.sh` |
 | Docker 容器（Debian / Ubuntu） | ✅ 完整（不装 mihomo / Docker，使用注入的宿主机代理） | ✅ debian 12 / 13、ubuntu 22.04 / 24.04；dev 上的容器（注入代理 / 无代理 / 屏蔽 GitHub） |
 | `--dotfiles` 模式 | ✅ | ✅ 无 sudo 用户；dev 主机重复运行 |
@@ -33,10 +33,8 @@
 
 ## 三、需要用户参与
 
-1. **dev 主机切换到新的 mihomo 配置**：dev 上运行的仍是旧版（D-027 之前）的配置；需要再放一次 age 私钥，由 Claude 完整重跑部署，
-   并用真实节点验证 server 场景（GitHub 走代理、镜像源直连、国内 IP 直连）
-2. **SteamOS / macOS / Windows 真机验证**：按三份验证清单执行（暂缓）
-3. **其他云的真机**：阿里云、华为云（可选火山引擎）各一台全新主机跑一次（验证内网源探测与内网域名）
+1. **SteamOS / macOS / Windows 真机验证**：按三份验证清单执行（暂缓）
+2. **其他云的真机**：阿里云、华为云（可选火山引擎）各一台全新主机跑一次（验证内网源探测与内网域名）
 
 ## 四、已知限制
 

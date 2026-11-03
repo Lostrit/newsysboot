@@ -95,13 +95,19 @@ if [ ! -f "$(bs_self_dir)/lib/common.sh" ]; then
     BOOTSTRAP_REPO=$BOOTSTRAP_REPO_CNB
     git clone -q --depth 1 "$BOOTSTRAP_REPO" "$_tmp/repo" || _die "clone 失败：$BOOTSTRAP_REPO"
   else
-    # GitHub：直连与常用加速代理依次尝试（此时还没有测速结果）
+    # GitHub：直连与常用加速代理依次尝试（此时还没有测速结果）；
+    # 跳过重复的候选（GH_PROXY 为空时与直连相同，P-039）；直连在国内常常卡住，只给 30 秒
     BOOTSTRAP_REPO=$BOOTSTRAP_REPO_GITHUB
+    _tried=
     for _p in "${GH_PROXY:-}" "" https://gh-proxy.com/ https://ghfast.top/ https://gh.qninq.cn/ https://github.cnxiaobai.com/; do
+      case "$_tried" in *"[$_p]"*) continue ;; esac
+      _tried="$_tried[$_p]"
       _say "clone ${_p}$BOOTSTRAP_REPO"
       # macOS 默认没有 timeout 命令
       _to=
-      command -v timeout >/dev/null 2>&1 && _to="timeout 120"
+      if command -v timeout >/dev/null 2>&1; then
+        if [ -z "$_p" ]; then _to="timeout 30"; else _to="timeout 120"; fi
+      fi
       if $_to git clone -q --depth 1 "${_p}$BOOTSTRAP_REPO" "$_tmp/repo" 2>/dev/null; then break; fi
       rm -rf "$_tmp/repo"
     done
