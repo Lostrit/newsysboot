@@ -162,6 +162,22 @@ fnox 是 mise 作者开发的机密管理工具：在 `fnox.toml` 中声明机�
 - mihomo 生效后 GitHub 下载仍经 GH_PROXY：mihomo 日志中整个部署期间只有 2 次 github.com（代理可用性检查与手动测试）
   与 1 次 raw.githubusercontent.com（后来确认为 mise 安装 fnox 时下载其 skill 文件 SKILL.md，P-046；现已在部署时关闭）。
 
+## R-015 真机版本矩阵测试结果（2026-11-03，dev 主机经腾讯云 API 重装，D-032）
+
+| 系统 | 运行方式 | sudo / coreutils / git / glibc | 结果 | 期间发现并修复 |
+| --- | --- | --- | --- | --- |
+| Debian 12 | root → 新建 lostrit | sudo 1.9.13 / GNU 9.1 / git 2.39 / glibc 2.36 | ✅ 40/40 | atuin、tree-sitter 需要 glibc 2.39（P-043）；lazy.nvim 并发 clone 触发 429、锁文件被改写（P-043） |
+| Debian 13 | root → 新建 lostrit | sudo 1.9.16 / GNU 9.7 / git 2.47 / glibc 2.41 | ✅ 40/40 | 第一次运行时 Docker Hub 镜像拉取偶发失败，重跑通过 |
+| Ubuntu 22.04 | 已有 ubuntu 用户 | sudo 1.9.9 / GNU 8.32 / git 2.34 / glibc 2.35 | ✅ 41/41 | `zdiff3` 需要 git 2.35（P-045）；fnox skill 下载依赖 raw（P-046） |
+| Ubuntu 24.04 | 已有 ubuntu 用户 | sudo 1.9.15 / GNU 9.4 / git 2.43 / glibc 2.39 | ✅ 40/40 | — |
+| Ubuntu 26.04 | ubuntu 经 sudo 以 root 运行 → 新建 lostrit | **sudo-rs 0.2.13 / uutils 0.8.0** / glibc 2.43 | ✅ 40/40 | root 没有公钥时改为复制 SUDO_USER 的公钥；sudo -i 下的 terminfo 警告（P-044） |
+| Ubuntu 26.04 | 已有 ubuntu 用户（R-014） | 同上 | ✅ 22 + 17 项（旧版检查脚本） | — |
+
+- 检查内容：`tests/cloud/verify-host.zsh`（mihomo、env.sh 代理与 GH_PROXY、Docker、sudo、登录 shell、SSH 加固、HOME 整理、
+  仓库检出干净、插件 origin、全部工具可运行、git 设置、nvim 预装、zsh 启动、私钥无残留）与 `verify-route.zsh`（真实节点分流）。
+- glibc < 2.39 的系统（Debian 12、Ubuntu 22.04）上 tree-sitter CLI 无法运行，nvim 预装跳过语法解析器并 WARNING（已知限制）。
+- 加速代理：同一 IP 当天测试频繁，gh.qninq.cn 在部署中途多次返回 429；mihomo 生效后回退直连（经 mihomo）完成部署。
+
 ## R-009 Docker Hub 镜像加速（2026-10-29，在腾讯云内网主机上，`--noproxy`，请求 `/v2/`）
 
 | 地址 | 结果 | 说明 |

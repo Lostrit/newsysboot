@@ -13,6 +13,7 @@
 | SteamOS | 🟡 第一版（D-020、D-027、D-028） | ⏳ 真机未验证，清单：[verify-steamos.md](verify-steamos.md) |
 | macOS | 🟡 第一版（D-028 root LaunchDaemon + TUN、P-038） | ⏳ 真机未验证，清单：[verify-macos.md](verify-macos.md)；命令行工具等待逻辑已在容器中模拟 |
 | Windows | 🟡 第一版（D-029 WinSW 系统服务 + TUN） | ⏳ 真机未验证，清单：[verify-windows.md](verify-windows.md)；PowerShell 7 语法解析通过 |
+| **真机版本矩阵**（D-032，R-015） | ✅ | ✅ Debian 12 / 13（root）、Ubuntu 22.04 / 24.04（ubuntu 用户）、Ubuntu 26.04（root，sudo-rs）全部通过；`sh tests/run-cloud.sh` 可随时重跑 |
 | 阿里云 / 华为云 / 火山引擎 | 🟡 内网源探测已实现（D-006） | ⏳ 未在真机验证（华为云、火山引擎的内网域名待核实） |
 
 ## 二、已完成的功能
@@ -33,8 +34,8 @@
 
 ## 三、下一步
 
-- 版本矩阵测试（Debian 12 / 13，Ubuntu 22.04 / 24.04 / 26.04）：容器流程 + 主机测试改为可指定镜像；
-  通过腾讯云 API 重装 dev 做真机测试（用户正在准备 API 密钥）。详见 [handoff.md](handoff.md) 第 6 节。
+- ✅ 真机版本矩阵测试已完成（R-015）。
+- 待决定：所选 GitHub 加速代理在部署中途被限流、且尚无 mihomo 时，回退直连在国内同样失败（P-046 遗留）——是否增加备用加速代理。
 
 ## 四、需要用户参与
 
@@ -47,6 +48,7 @@
 - 主机上完整重新运行需要再次提供私钥（缺少时 mise 拒绝渲染 mihomo 配置并中止，不会覆盖现有配置）
 - 云镜像预置文件的识别目前只收录腾讯云的默认内容（D-030）
 - 暂不提供 mihomo 网页面板（external-controller）
+- glibc < 2.39（Debian 12、Ubuntu 22.04）上 tree-sitter CLI 无法运行，nvim 没有 treesitter 语法解析器（P-043）
 
 ## 说明
 

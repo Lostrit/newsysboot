@@ -46,7 +46,7 @@
 | --- | --- |
 | 开发机 | 腾讯云，**2 核 2G、无 swap**（2026-11-03 曾因测试容器中并行编译 treesitter 解析器内存耗尽而重启，P-042）。只适合编辑、提交、轻量测试；**较重的测试（完整容器流程、主机测试、PowerShell 测试）放到 dev 上跑** |
 | dev（测试主机） | 腾讯云轻量应用服务器，`62.234.97.210`，2 核 7.5G；本机 `~/.ssh/config` 中 `Host dev`。用户会按需重装为不同系统，重装后要更新 `known_hosts`，`User` 随系统变化（Debian 镜像默认 root，Ubuntu 镜像默认 ubuntu） |
-| dev 当前状态 | Ubuntu 26.04 LTS，以 `ubuntu` 用户完成部署（真实节点 mihomo、Docker、SSH 加固：root 不能 SSH 登录、密码登录关闭）；私钥文件已删除；HOME 只剩 `.cache .config .local .ssh .zshenv` |
+| dev 当前状态 | 由 `tests/run-cloud.sh` 管理（经腾讯云 API 重装，D-032）；最近一次为 Ubuntu 22.04、ubuntu 用户部署完成 |
 | 计划 | 用户正在注册可以通过腾讯云 API 重装 dev 的密钥，供 agent 把 dev 重装为不同系统版本做真机测试（见第 6 节待办 1） |
 
 在 dev 上跑重型测试的方法（不经 GitHub，直接传工作区快照）：
@@ -90,12 +90,8 @@ ssh <user>@<dev> 'cd ~/bstest && (nohup sh tests/run.sh debian:13 > ~/bstest.log
 
 1. **真机版本矩阵测试**（D-032）：`sh tests/run-cloud.sh <BlueprintId> <默认用户> [--as-root]`，镜像 ID 与权限说明见 D-032。
    密钥在开发机 `~/.config/tencentcloud/dev.env`（不在仓库）；新开发机上需要用户重新提供该文件。
-2. **版本矩阵测试**（建议范围：Debian 12 / 13，Ubuntu 22.04 / 24.04 / 26.04）：容器完整流程 + 主机测试改为可指定镜像（目前 `tests/systemd/Dockerfile` 固定 `debian:13`）。重点风险（详见对话结论，已记录在 research R-014）：
-   - Ubuntu 25.10+ 的 **sudo-rs** 与「以 root 运行 → `sudo -u <用户> -H --preserve-env=…` 切换用户」的流程**尚未验证**；
-   - Ubuntu 25.10+ 的 **uutils coreutils**（`stat -c`、`install -o`、`mktemp`、`cp -R` 等）；
-   - nvim 预装用的 `GIT_CONFIG_COUNT` 需要 git ≥ 2.31（Debian 11 不满足，已不在支持范围）；
-   - 新系统发布初期 Docker 官方源可能还没有对应代号；apt 源格式、密钥文件名、`non-free-firmware`、glibc 版本等。
-3. 部署期间有 1 次未定位来源的 `raw.githubusercontent.com` 请求经过了 mihomo（R-014），可在版本矩阵测试时顺便用 `MISE_VERBOSE=1` 排查。
+2. ✅ **版本矩阵测试已完成**（R-015）：5 个版本全部通过。修改部署链路后用 `tests/run-cloud.sh` 重跑（每个版本约 15 分钟）。
+3. 待用户决定：是否增加「备用 GitHub 加速代理」——所选代理在部署中途被限流、且尚无 mihomo 时，回退直连在国内也会失败（P-046 遗留）。
 4. SteamOS / macOS / Windows 真机验证：按 [verify-steamos.md](verify-steamos.md)、[verify-macos.md](verify-macos.md)、[verify-windows.md](verify-windows.md) 执行（用户暂缓）。
 5. 阿里云 / 华为云真机测试（验证内网源探测，华为云、火山引擎的内网域名未核实）。
 6. 定期运行 `scripts/update-gh-proxies.sh` 更新加速代理候选（候选质量变化快）。
