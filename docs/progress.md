@@ -51,7 +51,8 @@
      本地对应测试：`TEST_SUDO_USER=1 tests/run-host.sh`。
    - ⏳ 阿里云 / 华为云（验证内网源探测，以及华为云、火山引擎的内网域名）
 4. SteamOS / macOS / Windows 真机测试
-5. 整理各环境的 mihomo 配置（目前只有 server 场景的模板）
+5. ✅ 各环境 mihomo 配置（2026-11-03，D-027）：server / desktop / steamos 三个场景，`tests/mihomo-rules.sh` 在 dev 上验证分流；
+   ⏳ steamos 的 TUN 与 Steam 客户端、desktop 在 macOS / Windows 客户端中的表现需要真机验证
 7. ✅ nvim 预装规则（2026-11-02，D-026）：网络检测通过时默认预装，否则 WARNING 跳过；`--no-nvim` 关闭、`--nvim` 强制。
    dev 主机（自动预装）、dev 上的容器（注入代理 → 预装；屏蔽 GitHub → WARNING）、本地主机测试（WARNING，20 项通过）均已验证
 6. ✅ dotconfig 评审剩余 5 项已全部处理（2026-11-02）：herdr 配置、nvim 预装脚本（`--nvim`，D-026）、.themes 精简、

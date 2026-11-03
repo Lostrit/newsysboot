@@ -319,3 +319,26 @@ Linux 主机为 server（`allow-lan: true`，只放行本机和 Docker 网段）
   都经当前环境的代理，不经 `GH_PROXY`（lazy.nvim / Mason 不使用它）。
 - **原因**：首次打开 nvim 时，插件、语法解析器、Mason 工具都直接从 GitHub 下载，国内无代理时会失败；预装后离线可用，也适合镜像构建。
 - **备选方案**：删除相关引用，只保留首次启动自动安装（用户选择补写）；默认不执行、只在 `--nvim` 时执行（第一版，用户改为默认执行）。
+
+## D-027 mihomo 按场景分流：server / desktop / steamos ✅
+
+**日期**：2026-11-03
+
+- **决策**：`files/mihomo/config.yaml.tera` 一个模板按 `vars.mihomo_profile` 分支（Linux 主机 server、macOS / Windows desktop、SteamOS steamos），
+  规则集统一改用 MetaCubeX/meta-rules-dat 的 geosite / geoip（mrs 格式，经 jsDelivr），本仓库维护的名单以 inline 规则集写在模板中。
+  按用户需求（2026-11-03）：
+  - **server**：加速线路（各云内网 / 公网镜像、GitHub 加速、Docker 加速、goproxy.cn、npmmirror）与国内 IP 必须直连，放在最前；
+    开发网站原站（GitHub、HuggingFace、AI 平台、npm、Go、Docker、PyPI、crates 等）必须走代理（「开发」组不含 DIRECT）；不屏蔽广告；使用系统 DNS（云内网 DNS）。
+  - **desktop**：国区 App Store / 微软商店直连（apple、microsoft 规则集）；国内服务直连；视频、直播、聊天、社交、搜索走「海外服务」组；
+    开发网站与 AI 平台必须走代理；广告默认 REJECT（AD 组可切 DIRECT）；海外域名经代理向海外 DoH 查询。
+    `microsoft` 规则集包含 GitHub，因此「开发」规则放在国区商店之前。
+  - **steamos**：Steam 商店 / 社区走 `fallback` 组 [节点, DIRECT]（健康检查 store.steampowered.com，5 秒超时即回退直连）；
+    游戏下载（steam@cn 国内 CDN + 海外 steamcontent / steampipe）与 Steam 中继（steamserver.net）直连，放在商店规则之前；
+    TUN 模式（Steam 客户端不读系统代理），局域网与国内 IP 段通过 `route-exclude-address(-set)` 不进入 TUN，
+    局域网串流与国内远程串流 / 联机不经过 mihomo；其他 UDP 直连；未知流量默认直连。
+    代理与直连的健康检查都失败时，fallback 选第一个成员（代理，P-036）。
+- **Windows**：bootstrap 仍不部署 mihomo（D-022），用 `scripts/render-mihomo.sh desktop <文件>` 在已部署的机器上导出配置，导入客户端（如 Clash Verge Rev，TUN 已预设）。
+- **原因**：三类机器的用途不同；旧模板（移植自 rules.ini）各环境共用一套规则，无法满足「加速站直连 / 原站代理」「Steam 商店回退直连 / 下载直连」等要求。
+  blackmatrix7 的 Steam 列表把商店与下载 CDN 混在一起，meta-rules-dat 拆得更细（steam@cn、category-ai-!cn、apple-cn、microsoft@cn）。
+- **验证**：`tests/mihomo-rules.sh` 用假节点渲染三个场景、启动临时实例，按清单访问并从日志核对实际使用的策略（dev 主机上全部通过）。
+- **备选方案**：三份独立模板（重复太多）；继续使用 ACL4SSR / blackmatrix7 文本规则（体积大、分类粗）。

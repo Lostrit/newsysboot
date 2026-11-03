@@ -127,6 +127,19 @@ fnox 是 mise 作者开发的机密管理工具：在 `fnox.toml` 中声明机�
   因此，要在国内固定一个「非内置」版本，校验这一步就要访问 GitHub → 改为锁定脚本本身（D-012）。
 - 其他变量：`MISE_INSTALL_PATH`（默认 `~/.local/bin/mise`）、`MISE_INSTALL_SKIP_IF_EXISTS=1`、`MISE_INSTALL_MUSL`、`MISE_QUIET`。
 
+## R-012 mihomo 分流规则集与相关特性（2026-11-03，mihomo v1.19.33）
+
+- MetaCubeX/meta-rules-dat（`meta` 分支 `geo/geosite/*.mrs`、`geo/geoip/*.mrs`）经 jsDelivr 可直接访问（dev 主机直连 200）。
+  已确认存在：private、cn、geolocation-!cn、gfw、category-ads-all、github、gitlab、huggingface、docker、npmjs、golang、python、rust、jetbrains、
+  category-ai-!cn、openai、anthropic、google-gemini、apple、apple-cn、microsoft、microsoft@cn、google、youtube、netflix、disney、twitch、spotify、
+  tiktok、telegram、discord、twitter、facebook、instagram、reddit、category-social-media-!cn、steam、steam@cn、geoip cn / private / telegram。
+  不存在：category-news-!cn（404）；bitbucket 返回 403。
+- 内容要点：`microsoft` 包含 31 条 GitHub 相关条目与 bing；`steam` 同时包含商店与下载 CDN（steamcontent、steampipe）；
+  `steam@cn` 只有国内下载 CDN 与 steamserver.net；`docker` 覆盖 docker.io / docker.com，不含 quay.io、gcr.io、mcr.microsoft.com。
+- mihomo v1.19.33 支持 `type: inline` 规则集、`tun.route-exclude-address-set`（ipcidr 规则集）、`dns.respect-rules`、
+  `fake-ip-filter` 中的 `rule-set:`、`fallback` 组（二进制中字段均存在，并经 `mihomo -t` 与实际分流测试验证）。
+- 腾讯云 npm 镜像根路径返回 404、不支持 Range（P-033）。
+
 ## R-009 Docker Hub 镜像加速（2026-10-29，在腾讯云内网主机上，`--noproxy`，请求 `/v2/`）
 
 | 地址 | 结果 | 说明 |

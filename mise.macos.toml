@@ -7,6 +7,8 @@
 #   TUN 模式需要 root 的 LaunchDaemon，mise 不管理，暂不支持。
 
 [vars]
+# 分流场景：desktop（国区商店直连、海外生活与开发走代理、屏蔽广告，D-027）
+mihomo_profile = "desktop"
 mihomo_mixed_port = "{{ env.BOOTSTRAP_MIHOMO_PORT | default(value='7890') }}"
 mihomo_allow_lan = "false"
 mihomo_bind_address = "127.0.0.1"

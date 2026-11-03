@@ -14,13 +14,20 @@ bs_is_debian_like() {
   return 1
 }
 
-# mihomo 场景（mise.mihomo.toml 的 [vars]）：主机是 server，SteamOS / macOS 是 desktop（只监听本机）
+# mihomo 场景（mise.mihomo.toml 的 [vars]，D-023、D-027）：Linux 主机是 server；SteamOS 是 steamos；macOS 是 desktop
+# （macOS 的场景写在 mise.macos.toml）。steamos / desktop 只监听本机
 bs_mihomo_profile() {
   case "$BOOTSTRAP_DISTRO" in
     steamos | macos)
       : "${BOOTSTRAP_MIHOMO_ALLOW_LAN:=false}" "${BOOTSTRAP_MIHOMO_BIND:=127.0.0.1}" "${BOOTSTRAP_MIHOMO_LAN_IPS:=127.0.0.0/8}"
       ;;
   esac
+  case "$BOOTSTRAP_DISTRO" in
+    steamos) : "${BOOTSTRAP_MIHOMO_PROFILE:=steamos}" ;;
+    macos) : "${BOOTSTRAP_MIHOMO_PROFILE:=desktop}" ;;
+    *) : "${BOOTSTRAP_MIHOMO_PROFILE:=server}" ;;
+  esac
+  export BOOTSTRAP_MIHOMO_PROFILE
   export BOOTSTRAP_MIHOMO_PORT="${BOOTSTRAP_MIHOMO_PORT:-7890}" BOOTSTRAP_MIHOMO_ALLOW_LAN="${BOOTSTRAP_MIHOMO_ALLOW_LAN:-true}" \
     BOOTSTRAP_MIHOMO_BIND="${BOOTSTRAP_MIHOMO_BIND:-*}" BOOTSTRAP_MIHOMO_LAN_IPS="${BOOTSTRAP_MIHOMO_LAN_IPS:-127.0.0.0/8,172.16.0.0/12}"
 }

@@ -7,6 +7,8 @@
 #   desktop（SteamOS / macOS）：只监听本机
 
 [vars]
+# 分流场景：server（Linux 主机，默认）/ steamos，由 stage-0 的 bs_mihomo_profile 设置（D-027）
+mihomo_profile = "{{ env.BOOTSTRAP_MIHOMO_PROFILE | default(value='server') }}"
 mihomo_mixed_port = "{{ env.BOOTSTRAP_MIHOMO_PORT | default(value='7890') }}"
 mihomo_allow_lan = "{{ env.BOOTSTRAP_MIHOMO_ALLOW_LAN | default(value='true') }}"
 mihomo_bind_address = "{{ env.BOOTSTRAP_MIHOMO_BIND | default(value='*') }}"

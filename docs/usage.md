@@ -76,6 +76,19 @@ docker run --add-host host.docker.internal:host-gateway \
 
 宿主机的 mihomo 需要允许 Docker 网段（server 场景默认放行 `172.16.0.0/12`）。
 
+## mihomo 配置
+
+按场景分流（D-027）：Linux 主机 `server`、SteamOS `steamos`、macOS `desktop`，部署时自动选择。
+
+```sh
+# Windows（bootstrap 不部署 mihomo）：在已部署的 Linux / macOS 上导出 desktop 配置，导入 Clash Verge Rev 等客户端
+FNOX_AGE_KEY=… sh ~/.local/share/bootstrap/scripts/render-mihomo.sh desktop ~/mihomo-desktop.yaml
+# 验证三个场景的分流（需要 mihomo，使用假节点）
+sh tests/mihomo-rules.sh
+```
+
+导出的文件包含节点信息（明文），用完请删除，不要提交或分享。
+
 ## 重新运行与机密
 
 - 主机上完整重新运行（`bootstrap.sh`）需要再次提供 age 私钥：缺少机密时 mise 会拒绝渲染 mihomo 配置并中止，

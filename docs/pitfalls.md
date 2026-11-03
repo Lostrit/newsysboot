@@ -239,3 +239,25 @@
 - **原因**：检测请求的是 `NPM_CONFIG_REGISTRY` 的根路径，`https://mirrors.tencentyun.com/npm/` 根路径返回 404；
   该镜像也不支持 Range（取 1KB 会返回整个 1MB 的元数据）。
 - **解决**：改为对一个包的元数据发 HEAD 请求（`${NPM_CONFIG_REGISTRY}prettier`）。
+
+## P-034 mise 渲染文件时父目录必须已存在；`mihomo -t` 会自己生成默认配置
+
+- **现象**：`scripts/render-mihomo.sh` 第一次在 dev 上运行时 mise 报错，但随后的 `mihomo -t` 却显示「test is successful」，
+  文件只有 16 字节（`mixed-port: 7890`）。
+- **原因**：mise 的 `[bootstrap.files]` 要求目标的父目录已存在（`managed file parent does not exist`）；
+  `mihomo -t -d <目录>` 在目录或文件不存在时会创建并写入默认配置，于是校验了一份空配置。
+- **解决**：渲染脚本先 `mkdir -p` 父目录；校验前确认渲染成功（脚本 `set -e`，测试中检查渲染的退出码）。
+
+## P-035 测试 mihomo 分流时环境中的 no_proxy 让请求绕过了测试实例
+
+- **现象**：`tests/mihomo-rules.sh` 中 `*.tencentyun.com` 的请求在 mihomo 日志中没有记录。
+- **原因**：bootstrap 写入的 `no_proxy` 包含 `.tencentyun.com`，curl 即使指定了 `-x` 也对这些主机直连。
+- **解决**：测试中 curl 加 `--noproxy ""`。另外不可达地址（如 443 端口不开放的内网镜像）要等 mihomo 拨号超时才写日志，测试中最多等 12 秒。
+
+## P-036 fallback 组在代理与直连都不可用时选第一个成员
+
+- **现象**：`tests/mihomo-rules.sh` 中假节点不可用，Steam 商店组却仍然经假节点拨号。
+- **原因**：健康检查对组内每个成员都访问 `store.steampowered.com`；dev（国内云主机）直连 Steam 商店会超时，DIRECT 也被判为不可用。
+  所有成员都不可用时，fallback 按顺序选第一个（节点）。
+- **结论**：配置符合需求——家庭网络中 Steam 商店通常可以直连，代理不可用时会回退 DIRECT；两者都不通时用代理也无妨。
+  测试中把健康检查地址换成可直连的地址来模拟这种情况，并核对组内实际选中的成员（`Steam商店[DIRECT]`）。
