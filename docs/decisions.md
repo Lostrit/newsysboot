@@ -503,3 +503,4 @@ Linux 主机为 server（`allow-lan: true`，只放行本机和 Docker 网段）
 - **重测**（修复 P-048 后）：Ubuntu 22.04 与 Debian 13 上 terminfo、zsh 回退、HOME 整理全部通过。其余两项失败与本决定无关，已修正测试：
   节点偶发连接失败（HTTP 000）时分流检查重试一次；Debian 13 部署中主代理 gh.qninq.cn 被限流、mise 已切换到备用代理（D-033 按设计生效），
   主机检查改为同时接受「主 + 备」与「已切换到备用」两种状态。
+- **用户确认**（2026-11-04）：用户用真实 Ghostty 客户端登录 dev（Debian 13）的 lostrit，显示与行编辑正常。
