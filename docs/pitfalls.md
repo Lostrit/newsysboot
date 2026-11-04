@@ -367,3 +367,12 @@
   用户自建镜像的做法（`infocmp -x ghostty` 改名后 `tic`）依赖系统已有 `ghostty` 条目，在旧版本上会失败；
   回退脚本放在 `/etc/profile.d` 与 `/etc/bash.bashrc`，登录 shell 为 zsh 时不生效。
 - **解决**：D-034——仓库自带 terminfo 源，root 阶段编译到 `/etc/terminfo`；`.zshrc` 中 TERM 无对应 terminfo 时回退。
+
+## P-048 Mason 的 curl 失败后改用 wget：绕过加速代理，并在 HOME 中生成 `.wget-hsts`
+
+- **现象**：Ubuntu 22.04 真机测试（2026-11-04）中 HOME 多出 `.wget-hsts`，「home tidy」检查失败。
+- **原因**：主加速代理 gh.qninq.cn 对 dev 的 IP 返回 429，Mason 用 curl 下载失败后按 `curl():or_else(wget)` 改用 wget；
+  nvim 预装只包装了 curl，wget 直接访问 GitHub（经 mihomo），并写入 `~/.wget-hsts`。Ubuntu 云镜像自带 wget，Debian 镜像没有，所以只在 Ubuntu 上出现。
+  这次第 2 次尝试已改用备用代理 gh.padao.fun 并全部完成（D-033 在真实限流中生效）。
+- **解决**：nvim 预装同时包装 curl 和 wget；`dotfiles/.config/wget/wgetrc` 设置 `hsts-file = ~/.cache/wget-hsts`，
+  `.zshenv` 与部署期间都设置 `WGETRC`；HOME 整理把已有的 `~/.wget-hsts` 移到 `~/.cache/wget-hsts`。

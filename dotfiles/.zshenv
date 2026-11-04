@@ -25,6 +25,7 @@ export EDITOR=micro VISUAL=micro
 export LESSHISTFILE="$XDG_STATE_HOME/less/history"
 export PYTHON_HISTORY="$XDG_STATE_HOME/python/history"   # Python 3.13+
 export DOCKER_CONFIG="$XDG_CONFIG_HOME/docker"
+export WGETRC="$XDG_CONFIG_HOME/wget/wgetrc"   # HSTS 记录不写 ~/.wget-hsts（P-048）
 # 终端经 SSH 安装的 terminfo（如 Ghostty）：末尾的「:」表示之后继续搜索系统默认目录
 # 赋值时 zsh 会重新初始化终端；TERM 没有对应的 terminfo（如 Ghostty 首次登录、sudo -i 的 TERM=unknown）时会报警告，屏蔽它（P-044）
 { export TERMINFO_DIRS="$XDG_DATA_HOME/terminfo:"; } 2>/dev/null

@@ -23,24 +23,27 @@ export NVIM_BOOTSTRAP=1
 # GitHub 加速代理（D-031、D-033）：第 1 次经 GH_PROXY，第 2 次经 GH_PROXY_BACKUP（没有就直连），
 # 之后回退直连（有代理环境变量时即经代理）。
 #   git：GIT_CONFIG_*（url.<GH_PROXY>.insteadOf），仓库中记录的 origin 仍是原始地址
-#   curl：PATH 最前面放一个包装脚本，把 https://github.com/、https://raw.githubusercontent.com/ 开头的参数加上前缀
+#   curl / wget：PATH 最前面放包装脚本，把 https://github.com/、https://raw.githubusercontent.com/ 开头的参数加上前缀
 #         （treesitter 每次安装都会重新加载解析器表，无法在 Lua 中改它的地址，P-041；Mason、blink.cmp 也都用 curl 下载）
 gh=${GH_PROXY:-}
 ghb=${GH_PROXY_BACKUP:-}
-real_curl=$(command -v curl)
 shim=$(mktemp -d)
 trap 'rm -rf "$shim"' EXIT
-# 包装脚本从 BS_NVIM_GH 读取前缀（每次尝试可以换不同的加速代理）
-{
-  echo '#!/bin/sh'
-  echo 'for a do'
-  echo '  case "$a" in https://github.com/* | https://raw.githubusercontent.com/*) a="${BS_NVIM_GH:-}$a" ;; esac'
-  echo '  set -- "$@" "$a"'
-  echo '  shift'
-  echo 'done'
-  echo "exec \"$real_curl\" \"\$@\""
-} >"$shim/curl"
-chmod +x "$shim/curl"
+# 包装脚本从 BS_NVIM_GH 读取前缀（每次尝试可以换不同的加速代理）。
+# wget 也包装：Mason 用 curl 下载失败时会改用 wget（P-048），否则它会绕过加速代理
+for tool in curl wget; do
+  real=$(command -v "$tool") || continue
+  {
+    echo '#!/bin/sh'
+    echo 'for a do'
+    echo '  case "$a" in https://github.com/* | https://raw.githubusercontent.com/*) a="${BS_NVIM_GH:-}$a" ;; esac'
+    echo '  set -- "$@" "$a"'
+    echo '  shift'
+    echo 'done'
+    echo "exec \"$real\" \"\$@\""
+  } >"$shim/$tool"
+  chmod +x "$shim/$tool"
+done
 path0=$PATH
 # 失败的尝试中 lazy.nvim 可能改写 lazy-lock.json（部分插件 clone 失败时按最新提交记录），
 # 每次尝试前恢复原文件，保证始终按锁定的版本安装（P-043）

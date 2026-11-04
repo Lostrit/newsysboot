@@ -498,3 +498,5 @@ Linux 主机为 server（`allow-lan: true`，只放行本机和 Docker 网段）
   - 写入 `/usr/share/terminfo`：ncurses 软件包管理的目录。
   - Ghostty 客户端开启 `shell-integration-features = ssh-terminfo`：只对 Ghostty 有效，而且每台客户端都要配置；可以和本方案同时使用（安装到 `~/.terminfo`，HOME 整理时移动到 `$XDG_DATA_HOME/terminfo`，`TERMINFO_DIRS` 包含它）。
   - 不设置 `COLORTERM`：查不到 terminfo 不能说明终端支持真彩色。
+- **验证**（2026-11-04，`tests/run-cloud.sh`）：Ubuntu 22.04（ncurses 6.3）、Debian 12（6.4）、Debian 13（6.5）上 `TERM=xterm-ghostty tput colors` 为 256，
+  zsh 对未知 TERM 回退、对 `xterm-ghostty` 保持原样；Debian 12 / 13 全部通过，Ubuntu 22.04 只有 HOME 整理一项失败（P-048，已修复后重测）。

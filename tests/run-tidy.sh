@@ -16,9 +16,10 @@ printf "[easy_install]\nindex-url = http://mirrors.tencentyun.com/pypi/simple   
 printf "registry=https://mirrors.tencentyun.com/npm\n" >$H/.npmrc
 printf "exit\n" >$H/.bash_history
 : >$H/.sudo_as_admin_successful
+printf "# HSTS\n" >$H/.wget-hsts
 mkdir -p $H/.terminfo/x && printf x >$H/.terminfo/x/xterm-ghostty
 chown -R u:u $H
-run() { su u -s /bin/sh -c "cd; export HOME=$H XDG_CONFIG_HOME=$H/.config XDG_DATA_HOME=$H/.local/share XDG_STATE_HOME=$H/.local/state BOOTSTRAP_OS=linux; . /src/lib/common.sh; . /src/lib/tidy.sh; bs_tidy_home" 2>&1 | sed "s/\x1b\[[0-9;]*m//g"; }
+run() { su u -s /bin/sh -c "cd; export HOME=$H XDG_CONFIG_HOME=$H/.config XDG_DATA_HOME=$H/.local/share XDG_STATE_HOME=$H/.local/state XDG_CACHE_HOME=$H/.cache BOOTSTRAP_OS=linux; . /src/lib/common.sh; . /src/lib/tidy.sh; bs_tidy_home" 2>&1 | sed "s/\x1b\[[0-9;]*m//g"; }
 echo "--- tencent"; run
 echo "--- HOME:"; ls -A $H | tr "\n" " "; echo
 f=0
@@ -29,6 +30,7 @@ chk ".npmrc 已删除"                  "[ ! -e $H/.npmrc ]"
 chk "bash 默认文件已删除"            "[ ! -e $H/.bashrc ] && [ ! -e $H/.profile ] && [ ! -e $H/.bash_logout ]"
 chk "bash 历史已移到 XDG"            "[ ! -e $H/.bash_history ] && grep -qx exit $H/.local/state/bash/history"
 chk "terminfo 已移到 XDG"            "[ ! -e $H/.terminfo ] && [ -f $H/.local/share/terminfo/x/xterm-ghostty ]"
+chk "wget HSTS 已移到 XDG"           "[ ! -e $H/.wget-hsts ] && [ -f $H/.cache/wget-hsts ]"
 chk ".sudo_as_admin_successful 已删除" "[ ! -e $H/.sudo_as_admin_successful ]"
 echo "--- 重复执行（应无输出）"; run
 echo "--- modified"

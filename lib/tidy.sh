@@ -69,6 +69,7 @@ bs_tidy_home() {
   bs_tidy_move "$HOME/.lesshst" "$XDG_STATE_HOME/less/history"
   bs_tidy_move "$HOME/.python_history" "$XDG_STATE_HOME/python/history"
   bs_tidy_move "$HOME/.docker" "$XDG_CONFIG_HOME/docker"
+  bs_tidy_move "$HOME/.wget-hsts" "$XDG_CACHE_HOME/wget-hsts"
   # Ghostty 等终端经 SSH 安装的 terminfo：TERMINFO_DIRS 包含新位置，之后终端检查时能找到，不会再写 ~/.terminfo
   bs_tidy_move "$HOME/.terminfo" "$XDG_DATA_HOME/terminfo"
 
