@@ -500,3 +500,6 @@ Linux 主机为 server（`allow-lan: true`，只放行本机和 Docker 网段）
   - 不设置 `COLORTERM`：查不到 terminfo 不能说明终端支持真彩色。
 - **验证**（2026-11-04，`tests/run-cloud.sh`）：Ubuntu 22.04（ncurses 6.3）、Debian 12（6.4）、Debian 13（6.5）上 `TERM=xterm-ghostty tput colors` 为 256，
   zsh 对未知 TERM 回退、对 `xterm-ghostty` 保持原样；Debian 12 / 13 全部通过，Ubuntu 22.04 只有 HOME 整理一项失败（P-048，已修复后重测）。
+- **重测**（修复 P-048 后）：Ubuntu 22.04 与 Debian 13 上 terminfo、zsh 回退、HOME 整理全部通过。其余两项失败与本决定无关，已修正测试：
+  节点偶发连接失败（HTTP 000）时分流检查重试一次；Debian 13 部署中主代理 gh.qninq.cn 被限流、mise 已切换到备用代理（D-033 按设计生效），
+  主机检查改为同时接受「主 + 备」与「已切换到备用」两种状态。

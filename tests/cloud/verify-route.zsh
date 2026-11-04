@@ -2,10 +2,15 @@
 fail=0
 gh=$(sed -n "s/^export GH_PROXY='\(.*\)'$/\1/p" ~/.local/state/bootstrap/env.sh); ghhost=${${gh#https://}%%/*}
 check() { # <主机> <预期组 | DIRECT | BYPASS> [url]
-  local host=$1 want=$2 url=${3:-https://$1/} t0=$(date '+%Y-%m-%d %H:%M:%S')
-  local code=$(curl -s -o /dev/null -m 15 -w '%{http_code}' "$url"); sleep 1
-  local line=$(sudo journalctl -u mihomo --since "$t0" --no-pager -o cat | grep -F -- "--> ${host}:" | tail -1) got
-  if [[ -z $line ]]; then got=BYPASS; else got=$(print -r -- "$line" | sed -n 's/.* using \([^[" ]*\).*/\1/p'); fi
+  local host=$1 want=$2 url=${3:-https://$1/} t0 code line got i
+  # 节点偶尔连接失败（HTTP 000，mihomo 只记录错误、没有 using），重试一次
+  for i in 1 2; do
+    t0=$(date '+%Y-%m-%d %H:%M:%S')
+    code=$(curl -s -o /dev/null -m 15 -w '%{http_code}' "$url"); sleep 1
+    line=$(sudo journalctl -u mihomo --since "$t0" --no-pager -o cat | grep -F -- "--> ${host}:" | tail -1)
+    if [[ -z $line ]]; then got=BYPASS; else got=$(print -r -- "$line" | sed -n 's/.* using \([^[" ]*\).*/\1/p'); fi
+    [[ -n $got && $code != 000 ]] && break
+  done
   if [[ $got == $want ]]; then print "PASS $host → $got（HTTP $code）"; else print "FAIL $host → ${got:-?}，预期 $want（HTTP $code）"; fail=1; fi
 }
 for h in github.com huggingface.co registry.npmjs.org proxy.golang.org registry-1.docker.io pypi.org api.openai.com api.anthropic.com; do check $h 开发; done

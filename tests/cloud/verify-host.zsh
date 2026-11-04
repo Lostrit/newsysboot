@@ -12,7 +12,10 @@ check "config: server profile, no tun" "sudo grep -q 'RULE-SET,accelerators,DIRE
 check "env.sh: http_proxy + GH_PROXY"  "grep -q 'http_proxy=' $st/env.sh && grep -q \"^export GH_PROXY='https\" $st/env.sh"
 check "env.sh: MISE_URL_REPLACEMENTS"  "[[ -n $ghhost ]] && grep -q 'MISE_URL_REPLACEMENTS=.*$ghhost' $st/env.sh"
 check "no_proxy contains GH_PROXY host" "grep -q 'no_proxy=.*$ghhost' $st/env.sh"
-check "GH_PROXY_BACKUP selected (D-033)" "[[ -n $ghbhost && $ghb != $gh ]] && grep -q 'no_proxy=.*$ghbhost' $st/env.sh && grep -q \"^export GH_PROXY_BACKUP='https\" ~/.local/state/bootstrap/mirrors.env"
+# 选源缓存中有主 / 备两个代理；env.sh 中为备用代理时（部署中主代理失败、已切换，D-033）备用为空
+mp=$(sed -n "s/^export GH_PROXY='\(.*\)'$/\1/p" $st/mirrors.env | tail -n 1); mb=$(sed -n "s/^export GH_PROXY_BACKUP='\(.*\)'$/\1/p" $st/mirrors.env | tail -n 1)
+[[ $gh == $mb ]] && print "（部署中主代理 $mp 失败，已切换到备用代理 $mb）"
+check "GH_PROXY_BACKUP selected (D-033)" "[[ -n \$mb && \$mb != \$mp ]] && { [[ \$gh == \$mp && \$ghb == \$mb ]] && grep -q \"no_proxy=.*\$ghbhost\" $st/env.sh || [[ \$gh == \$mb && -z \$ghb ]]; }"
 check "env.sh: PIP_INDEX_URL intranet" "grep -q 'PIP_INDEX_URL=.http://mirrors.tencentyun.com' $st/env.sh"
 check "docker active + mirror + pull"  "systemctl is-active docker && docker info 2>/dev/null | grep -q mirror.ccs.tencentyun.com && docker pull -q hello-world"
 check "dockerd proxy drop-in"          "systemctl show docker -p Environment | grep -q HTTP_PROXY=http://127.0.0.1:7890"
