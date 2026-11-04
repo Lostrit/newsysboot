@@ -18,6 +18,8 @@ check "docker active + mirror + pull"  "systemctl is-active docker && docker inf
 check "dockerd proxy drop-in"          "systemctl show docker -p Environment | grep -q HTTP_PROXY=http://127.0.0.1:7890"
 check "sudo nopasswd / docker group"   "sudo -n true && id -nG $u | grep -qw docker"
 check "login shell zsh"                "getent passwd $u | grep -q zsh"
+check "terminfo xterm-ghostty (D-034)" "[[ -e /etc/terminfo/x/xterm-ghostty ]] && TERM=xterm-ghostty tput colors | grep -qx 256 && dpkg -s ncurses-term"
+check "zsh TERM fallback (D-034)"      "[[ \$(TERM=no-such-term zsh -i -c 'print -r -- \$TERM' 2>/dev/null | tail -n 1) == xterm-256color ]] && [[ \$(TERM=xterm-ghostty zsh -i -c 'print -r -- \$TERM' 2>/dev/null | tail -n 1) == xterm-ghostty ]]"
 check "sshd root/password off"         "sudo /usr/sbin/sshd -T | grep -qx 'permitrootlogin no' && sudo /usr/sbin/sshd -T | grep -qx 'passwordauthentication no'"
 check "root keys removed"              "! sudo test -s /root/.ssh/authorized_keys"
 check "sudoers !admin_flag (or skipped)" "sudo test -f /etc/sudoers.d/00-bootstrap-no-admin-flag || ! sudo -V | grep -q 'Sudo version'"

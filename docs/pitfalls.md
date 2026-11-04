@@ -358,3 +358,12 @@
   这也是 R-014 中那次「来源未定位」的 raw 请求。所选加速代理当天被同一 IP 的大量测试请求限流。
 - **解决**：bootstrap 运行期间设置 `MISE_SKILLS_FETCH=false`（不写入 env.sh，日常使用不受影响）；在 dev 上验证 fnox 可正常安装。
 - **遗留**：所选加速代理在部署中途被限流、且尚无 mihomo 时，回退直连在国内同样失败 → 已增加备用加速代理（D-033）。
+
+## P-047 Ghostty 经 SSH 登录：`xterm-ghostty` 没有 terminfo
+
+- **现象**：用 Ghostty 登录 dev 的 lostrit（Debian 13）后行编辑、nvim、tmux 显示异常；`tput colors` 报 `unknown terminal "xterm-ghostty"`。
+- **原因**：Ghostty 默认 `TERM=xterm-ghostty`。各发行版 ncurses 都没有这个名字；ncurses 6.5 起只有 `ghostty` 条目
+  （Debian 13、Ubuntu 26.04 有；Debian 12 的 6.4、Ubuntu 22.04 的 6.3、Ubuntu 24.04 的 6.4 都没有，2026-11-04 实测）。
+  用户自建镜像的做法（`infocmp -x ghostty` 改名后 `tic`）依赖系统已有 `ghostty` 条目，在旧版本上会失败；
+  回退脚本放在 `/etc/profile.d` 与 `/etc/bash.bashrc`，登录 shell 为 zsh 时不生效。
+- **解决**：D-034——仓库自带 terminfo 源，root 阶段编译到 `/etc/terminfo`；`.zshrc` 中 TERM 无对应 terminfo 时回退。

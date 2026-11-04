@@ -96,6 +96,7 @@ docker exec -e TEST_REAL_SECRETS="${TEST_REAL_SECRETS:-}" "$name" sh -c '
   fail=0
   check() { if eval "$2" >/dev/null 2>&1; then echo "PASS $1"; else echo "FAIL $1"; fail=1; fi; }
   st=/home/tester/.local/state/bootstrap
+  check "terminfo xterm-ghostty"         "TERM=xterm-ghostty tput colors | grep -qx 256"
   check "mihomo active"                  "systemctl is-active mihomo"
   check "mihomo enabled"                 "systemctl is-enabled mihomo"
   check "mihomo config 0600 root"        "[ \"\$(stat -c %a:%U /etc/mihomo/config.yaml)\" = 600:root ]"

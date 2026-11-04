@@ -478,3 +478,23 @@ Linux 主机为 server（`allow-lan: true`，只放行本机和 Docker 网段）
 - **备选方案**：失败时重新测速选择（违反 D-031「只选一次」，且耗时约 30 秒）；保留多个备用代理（收益递减，失败时等待时间更长）。
 - **验证**（2026-11-04）：真机 Debian 13（`tests/run-cloud.sh`）42/42 通过，选出主代理 `git.yylx.win`、备用 `gh.qninq.cn`；
   主代理失败时的切换（mise 重试、Windows 下载回退）用打桩与 PowerShell 容器单独验证。
+
+## D-034 终端 terminfo：仓库自带 Ghostty 条目，编译到 /etc/terminfo；zsh 中兜底回退 ✅
+
+**日期**：2026-11-04
+
+- **决策**：
+  1. `files/terminfo/xterm-ghostty.ti`：Debian 13 ncurses-term 6.5 的 `ghostty` 条目（`infocmp -x`），名字改为 `xterm-ghostty|ghostty|…`。
+  2. root 阶段（`lib/terminfo.sh` 的 `bs_terminfo_install`，在基础包之后）对 `files/terminfo/*.ti` 执行 `tic -x -o /etc/terminfo`，
+     每次运行都重新编译；主机、已有 sudo 用户与容器都适用。
+  3. `mise.debian.toml` 安装 `ncurses-term`（kitty、alacritty 等其他终端的条目）。
+  4. `.zshrc` 开头：交互式 shell 中 TERM 非空、不是 dumb / unknown，且 zsh 查不到它的 terminfo（`echoti cols` 失败，不启动子进程）时，
+     改为 `xterm-256color`。
+- **原因**：P-047。自带源文件不依赖系统 ncurses 版本（ncurses 6.3 的 tic 实测可编译，Smulx 等扩展能力保留）；
+  `/etc/terminfo` 是本机自定义条目的位置，搜索顺序在软件包管理的 `/usr/share/terminfo` 之前；
+  回退放在 zsh（用户的登录 shell）中，不改系统的 `/etc/bash.bashrc`；非交互场景（scp、`ssh host 命令`）不改 TERM。
+- **备选方案**：
+  - 用户镜像中的 `infocmp -x ghostty | tic`：依赖 ncurses ≥ 6.5。
+  - 写入 `/usr/share/terminfo`：ncurses 软件包管理的目录。
+  - Ghostty 客户端开启 `shell-integration-features = ssh-terminfo`：只对 Ghostty 有效，而且每台客户端都要配置；可以和本方案同时使用（安装到 `~/.terminfo`，HOME 整理时移动到 `$XDG_DATA_HOME/terminfo`，`TERMINFO_DIRS` 包含它）。
+  - 不设置 `COLORTERM`：查不到 terminfo 不能说明终端支持真彩色。

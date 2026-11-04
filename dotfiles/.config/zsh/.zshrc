@@ -7,6 +7,12 @@
 # ------------------------------------------------------------
 # 0. 目录与基础变量
 # ------------------------------------------------------------
+# TERM 没有对应的 terminfo（新终端首次 SSH 登录等）时回退到 xterm-256color，否则行编辑、nvim、tmux 都不正常（D-034）；
+# 只在 .zshrc（交互式 shell）中处理，TERM 为空或 dumb 时保持原样。Ghostty 的条目由 bootstrap 安装到 /etc/terminfo
+if [[ -n $TERM && $TERM != (dumb|unknown) ]] && ! { zmodload zsh/terminfo && echoti cols } &>/dev/null; then
+  export TERM=xterm-256color
+fi
+
 : ${ZPLUGINDIR:=$XDG_DATA_HOME/zsh/plugins}
 # 插件从 GitHub 克隆；GH_PROXY（形如 https://ghproxy.example/，带尾斜杠）非空时经 git 的 insteadOf 走加速代理，
 # 仓库中记录的 origin 仍是原始地址；加速代理失败时回退直连（D-031）

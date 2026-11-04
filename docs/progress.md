@@ -27,6 +27,7 @@
 - **Docker**（D-005、D-013）：只在 Linux 主机安装；镜像源 + Docker Hub 镜像 + docker 组 + dockerd 代理
 - **mise 工具与 dotfiles**：20 个工具；dotfiles 整目录链接；zsh 工具清单 + 缓存（启动约 0.07 秒，D-010）；非交互式 shell 经 shims（评审第 9 项）
 - **nvim 预装**（D-026）：网络检测通过时默认预装，否则 WARNING 跳过；`--no-nvim` / `--nvim`
+- **终端 terminfo**（D-034）：Ghostty（`xterm-ghostty`）条目编译到 `/etc/terminfo`，安装 ncurses-term；zsh 中 TERM 无对应 terminfo 时回退
 - **HOME 整理**（D-030）：清理云镜像预置配置与 bash 默认文件，历史 / terminfo / docker 配置移到 XDG 目录
 - **dotconfig 评审**：15 项全部处理（[dotconfig-review.md](dotconfig-review.md)）
 - **测试**：`tests/run.sh`、`run-dotfiles.sh`、`run-pipe.sh`、`run-host.sh`（含 `TEST_SUDO_USER`、`TEST_REAL_SECRETS`）、

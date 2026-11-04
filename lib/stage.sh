@@ -71,6 +71,8 @@ bs_stage_root() {
   fi
   # 关闭 Ubuntu sudo 的 admin_flag（不再在 HOME 中创建 .sudo_as_admin_successful，D-030）
   bs_sudo_no_admin_flag
+  # Ghostty 等终端的 terminfo（D-034）
+  bs_terminfo_install
   # 选源时还没有 git 的话，现在选择 GitHub 加速代理（P-040）
   bs_select_gh_proxy_pending
 
