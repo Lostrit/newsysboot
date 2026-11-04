@@ -105,10 +105,10 @@ sh tests/mihomo-rules.sh
 ## GitHub 加速代理（D-031）
 
 - 部署时在选源阶段选择一次：从 `lib/gh-proxies.txt` 的候选中，先测延时，再对最快的 5 个做 release / raw / archive / clone 的真实测试，
-  选出 release 下载最快的一个（缓存 7 天，`--reprobe` 重新选择）；都不可用时 WARNING 并直连。
+  选出 release 下载最快的一个作为 `GH_PROXY`、第二快的作为备用代理 `GH_PROXY_BACKUP`（缓存 7 天，`--reprobe` 重新选择）；都不可用时 WARNING 并直连。
 - mise 工具、zsh 插件、eza 补全、mihomo 二进制、nvim 预装（插件、语法解析器、Mason、blink.cmp）都经它获取 GitHub 内容；
-  有 mihomo 时也是如此。失败时回退直连（mise / mihomo 直连仍失败则报错；nvim 预装默认 WARNING）。
-- 手动指定：`GH_PROXY=https://… sh bootstrap.sh`；设为空表示直连。
+  有 mihomo 时也是如此。失败时先改用备用代理，再回退直连（D-033；mise / mihomo 直连仍失败则报错；nvim 预装默认 WARNING）。
+- 手动指定：`GH_PROXY=https://… [GH_PROXY_BACKUP=https://…] sh bootstrap.sh`；`GH_PROXY` 设为空表示直连。
 - Windows（`bootstrap.ps1`）使用同样的规则：拉取仓库后选择，结果缓存在 `%LOCALAPPDATA%\bootstrap\gh-proxy.txt`（`-Reprobe` 重新选择）。
 - 维护候选列表（在国内网络、不经代理的机器上运行，约 5 分钟）：
 

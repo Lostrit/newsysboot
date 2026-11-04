@@ -1,8 +1,8 @@
 # 开发交接（新的开发机 / 新的 agent 先读这里）
 
-更新时间：2026-11-03。本文档汇总**在仓库其他文档中不容易直接看出、但继续开发必须知道**的信息：开发环境、测试方法、工作约定与待办。
-功能与架构见 [plan.md](plan.md)、[usage.md](usage.md)；状态见 [progress.md](progress.md)；每个决定的原因见 [decisions.md](decisions.md)（D-001～D-031）；
-踩过的坑见 [pitfalls.md](pitfalls.md)（P-001～P-042）；调研结论见 [research.md](research.md)（R-001～R-014）。
+更新时间：2026-11-04。本文档汇总**在仓库其他文档中不容易直接看出、但继续开发必须知道**的信息：开发环境、测试方法、工作约定与待办。
+功能与架构见 [plan.md](plan.md)、[usage.md](usage.md)；状态见 [progress.md](progress.md)；每个决定的原因见 [decisions.md](decisions.md)（D-001～D-033）；
+踩过的坑见 [pitfalls.md](pitfalls.md)（P-001～P-046）；调研结论见 [research.md](research.md)（R-001～R-015）。
 
 ## 1. 仓库与推送
 
@@ -82,7 +82,7 @@ ssh <user>@<dev> 'cd ~/bstest && (nohup sh tests/run.sh debian:13 > ~/bstest.log
 
 - 入口 `bootstrap.sh`（POSIX sh）：管道模式 → root 阶段（选源、apt、建用户 / 加固 SSH、sudoers）→ user 阶段（检出到 `~/.local/share/bootstrap`、HOME 整理、mise、`mise bootstrap` 两次执行、nvim 预装）。Windows 为 `bootstrap.ps1`。
 - 模块（`mise.<名>.toml`）：debian、container、mihomo、docker、steamos、macos，由 `lib/detect.sh` 按环境选择。
-- 选源（D-006）与 GitHub 加速代理（D-031）：候选在 `lib/gh-proxies.txt`，由 `scripts/update-gh-proxies.sh` 从 github.xxlab.tech 维护（需在国内网络、不经代理的机器上运行，约 5 分钟）；部署时只选一次，缓存 7 天。
+- 选源（D-006）与 GitHub 加速代理（D-031）：候选在 `lib/gh-proxies.txt`，由 `scripts/update-gh-proxies.sh` 从 github.xxlab.tech 维护（需在国内网络、不经代理的机器上运行，约 5 分钟）；部署时只选一次（主代理 + 备用代理，D-033），缓存 7 天。
 - mihomo 三个场景（D-027）：server（Linux 主机，环境变量接入）、desktop（macOS root LaunchDaemon / Windows WinSW 服务，TUN）、steamos（TUN）。
 - 状态文件：`~/.local/state/bootstrap/{mirrors.env,env.sh}`；`~/.zshenv` 读取 `env.sh`。
 
@@ -91,7 +91,7 @@ ssh <user>@<dev> 'cd ~/bstest && (nohup sh tests/run.sh debian:13 > ~/bstest.log
 1. **真机版本矩阵测试**（D-032）：`sh tests/run-cloud.sh <BlueprintId> <默认用户> [--as-root]`，镜像 ID 与权限说明见 D-032。
    密钥在开发机 `~/.config/tencentcloud/dev.env`（不在仓库）；新开发机上需要用户重新提供该文件。
 2. ✅ **版本矩阵测试已完成**（R-015）：5 个版本全部通过。修改部署链路后用 `tests/run-cloud.sh` 重跑（每个版本约 15 分钟）。
-3. 待用户决定：是否增加「备用 GitHub 加速代理」——所选代理在部署中途被限流、且尚无 mihomo 时，回退直连在国内也会失败（P-046 遗留）。
+3. ✅ 备用 GitHub 加速代理（D-033）：失败链路为「主代理 → 备用代理 → 直连」。
 4. SteamOS / macOS / Windows 真机验证：按 [verify-steamos.md](verify-steamos.md)、[verify-macos.md](verify-macos.md)、[verify-windows.md](verify-windows.md) 执行（用户暂缓）。
 5. 阿里云 / 华为云真机测试（验证内网源探测，华为云、火山引擎的内网域名未核实）。
 6. 定期运行 `scripts/update-gh-proxies.sh` 更新加速代理候选（候选质量变化快）。

@@ -16,8 +16,8 @@ ztool starship  comp 'starship completions zsh'
 ztool taplo     comp 'taplo completions zsh'
 ztool lefthook  comp 'lefthook completion zsh'
 # eza 的发布包不带补全：从与 mise 中版本一致的 tag 下载（升级 eza 时同步修改 tag）
-# 先经 GH_PROXY，失败时直连（D-031）
-ztool eza       comp 'u=https://raw.githubusercontent.com/eza-community/eza/v0.23.5/completions/zsh/_eza; { [[ -n $GH_PROXY ]] && curl -fsSL -m 10 "$GH_PROXY$u"; } || curl -fsSL -m 10 "$u"'
+# 先经 GH_PROXY，再经备用代理，失败时直连（D-031、D-033）
+ztool eza       comp 'u=https://raw.githubusercontent.com/eza-community/eza/v0.23.5/completions/zsh/_eza; { [[ -n $GH_PROXY ]] && curl -fsSL -m 10 "$GH_PROXY$u"; } || { [[ -n $GH_PROXY_BACKUP ]] && curl -fsSL -m 10 "$GH_PROXY_BACKUP$u"; } || curl -fsSL -m 10 "$u"'
 
 # ---- compinit 之前加载 ----
 # LS_COLORS 必须在补全的 list-colors zstyle 之前生成

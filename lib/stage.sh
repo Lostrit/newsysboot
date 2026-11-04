@@ -159,17 +159,31 @@ bs_mise() {
 }
 
 # bs_mise_retry <envs> <mise 参数…>：经 GH_PROXY 执行失败时（第三方加速代理可能临时限流或失效），
-# 不再重新测速选择（D-031），而是关闭 GH_PROXY、直连 GitHub 重试一次（有 mihomo 时即经代理）；仍失败由调用方报错
+# 不再重新测速（D-031），而是依次：改用选择时保留的备用加速代理 GH_PROXY_BACKUP 重试（成功后本次部署的
+# 后续步骤都改用它，D-033）→ 关闭 GH_PROXY、直连 GitHub 重试（有 mihomo 时即经代理）；仍失败由调用方报错
 bs_mise_retry() {
   bs_mise "$@" && return 0
   [ -n "${GH_PROXY:-}" ] || return 1
+  if [ -n "${GH_PROXY_BACKUP:-}" ]; then
+    bs_warn "WARNING: mise 经 GitHub 加速代理 $GH_PROXY 执行失败，改用备用加速代理 $GH_PROXY_BACKUP 重试"
+    bs_gh_promote_backup
+    bs_mise "$@" && return 0
+  fi
   bs_warn "WARNING: mise 经 GitHub 加速代理 $GH_PROXY 执行失败，改为直连 GitHub 重试一次${BS_PROXY_URL:+（经 $BS_PROXY_URL）}"
   (
     unset MISE_URL_REPLACEMENTS GIT_CONFIG_COUNT GIT_CONFIG_KEY_0 GIT_CONFIG_VALUE_0
-    GH_PROXY=
-    export GH_PROXY
+    GH_PROXY= GH_PROXY_BACKUP=
+    export GH_PROXY GH_PROXY_BACKUP
     bs_mise "$@"
   )
+}
+
+# 主加速代理失败：本次部署的后续步骤改用备用代理（不再有备用），重写 env.sh（MISE_URL_REPLACEMENTS 等随之更新）。
+# 不改写选源缓存：限流通常是暂时的，下次运行仍按缓存的主 / 备顺序（D-033）
+bs_gh_promote_backup() {
+  GH_PROXY=$GH_PROXY_BACKUP GH_PROXY_BACKUP=
+  export GH_PROXY GH_PROXY_BACKUP
+  bs_write_env
 }
 
 # ---------------------------------------------------------------------------
@@ -261,6 +275,9 @@ bs_write_env() {
     bs_env_line GH_PROXY "$_gh"
     # 标记这是生成的值：之后重新运行时不把它当作用户指定（P-028）
     bs_env_line BOOTSTRAP_GENERATED_GH_PROXY "$_gh"
+    # 备用加速代理（D-033）：主代理失败时 install-mihomo.sh、nvim 预装、zsh 插件克隆先试它，再直连
+    bs_env_line GH_PROXY_BACKUP "${GH_PROXY_BACKUP:-}"
+    bs_env_line BOOTSTRAP_GENERATED_GH_PROXY_BACKUP "${GH_PROXY_BACKUP:-}"
     if [ -n "$_gh" ]; then
       # mise 的所有 GitHub 下载经加速代理（research R-010）；aqua 的签名校验不受影响
       bs_env_line MISE_URL_REPLACEMENTS "{\"https://github.com/\":\"${_gh}https://github.com/\",\"https://raw.githubusercontent.com/\":\"${_gh}https://raw.githubusercontent.com/\"}"
@@ -311,7 +328,7 @@ bs_write_env() {
 # 不走代理的地址：本机、各家云内网镜像、选中的 apt / docker 镜像、GitHub 加速代理
 bs_no_proxy() {
   _np="localhost,127.0.0.1,::1,.tencentyun.com,.aliyuncs.com,.myhuaweicloud.com,.ivolces.com"
-  for _u in "${BOOTSTRAP_APT_MIRROR:-}" "${BOOTSTRAP_DOCKER_MIRROR:-}" "${GH_PROXY:-}"; do
+  for _u in "${BOOTSTRAP_APT_MIRROR:-}" "${BOOTSTRAP_DOCKER_MIRROR:-}" "${GH_PROXY:-}" "${GH_PROXY_BACKUP:-}"; do
     [ -n "$_u" ] || continue
     _h=${_u#*://}
     _h=${_h%%/*}
@@ -324,10 +341,10 @@ bs_no_proxy() {
 # （预装时优先经 GH_PROXY，失败后直连，D-031），npm 类工具走 NPM_CONFIG_REGISTRY；
 # npm 镜像的根路径可能返回 404（腾讯云），且不支持 Range，因此对一个包的元数据发 HEAD 请求
 bs_nvim_net_ok() {
-  # GitHub：经 GH_PROXY（预装第 1 次使用）或直连（之后的尝试）任一可用即可（D-031）
+  # GitHub：经 GH_PROXY（预装第 1 次使用）、备用代理（第 2 次）或直连（第 3 次）任一可用即可（D-031、D-033）
   _ok=
-  for _pre in "${GH_PROXY:-}" ""; do
-    [ -n "$_pre" ] || [ -z "$_ok" ] || continue
+  for _pre in ${GH_PROXY:-} ${GH_PROXY_BACKUP:-} direct; do
+    [ "$_pre" != direct ] || _pre=
     curl -fsS -m 15 -o /dev/null "${_pre}https://github.com/folke/lazy.nvim.git/info/refs?service=git-upload-pack" 2>/dev/null &&
       curl -fsSL -m 20 -r 0-1023 -o /dev/null "${_pre}$BS_GH_PROBE_URL" 2>/dev/null && { _ok=1; break; }
   done

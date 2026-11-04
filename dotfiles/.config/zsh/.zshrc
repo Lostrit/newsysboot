@@ -33,13 +33,14 @@ export FAST_WORK_DIR="$XDG_CACHE_HOME/fsh"
 ## ? 用法: plugin-load [-d] <user/repo>[@<ref>] ...
 ## ?   -d        若 zsh-defer 可用则延迟加载（仅对纯 widget 类插件安全）
 ## ?   @<ref>    固定到某个 commit sha / tag / 分支，用于可重现构建
-# git 操作：先经 GH_PROXY（insteadOf），失败时清理半成品并直连重试
+# git 操作：先经 GH_PROXY（insteadOf），再经备用代理 GH_PROXY_BACKUP，失败时清理半成品并直连重试（D-033）
 function _zplug_git {
-  if [[ -n $GH_PROXY ]]; then
-    git -c "url.${GH_PROXY}https://github.com/.insteadOf=https://github.com/" "$@" && return 0
-    print -u2 "  经 GitHub 加速代理失败，改为直连：git $*"
+  local p
+  for p in $GH_PROXY $GH_PROXY_BACKUP; do
+    git -c "url.${p}https://github.com/.insteadOf=https://github.com/" "$@" && return 0
+    print -u2 "  经 GitHub 加速代理 $p 失败：git $*"
     [[ $1 == clone ]] && rm -rf -- "${@[-1]}"
-  fi
+  done
   git "$@"
 }
 

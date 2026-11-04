@@ -140,12 +140,14 @@ function Test-GhProxy($p, $t) {
   } finally { Remove-Item $tmp -Recurse -Force -ErrorAction SilentlyContinue }
 }
 
+# 返回 @(主代理, 备用代理)（D-033）；空字符串表示没有（直连）
 function Select-GhProxy($repoDir) {
-  if ($null -ne $env:GH_PROXY) { return $env:GH_PROXY }
+  if ($null -ne $env:GH_PROXY) { return @($env:GH_PROXY, "$env:GH_PROXY_BACKUP") }
   $cache = Join-Path $StateDir 'gh-proxy.txt'
   if (-not $Reprobe -and (Test-Path $cache) -and ((Get-Item $cache).LastWriteTime -gt (Get-Date).AddDays(-7))) {
     Say "使用缓存的 GitHub 加速代理：$cache（-Reprobe 重新选择）"
-    return (Get-Content $cache -Raw).Trim()
+    $l = @(Get-Content $cache | ForEach-Object { $_.Trim() }) + @('', '')
+    return @($l[0], $l[1])
   }
   Say '选择 GitHub 加速代理（测延时与 release / raw / archive / clone）…'
   $t = @{
@@ -158,25 +160,30 @@ function Select-GhProxy($repoDir) {
   $candidates = if (Test-Path $list) {
     Get-Content $list | Where-Object { $_ -match '^(https:[^\s#]*)' } | ForEach-Object { ($_ -split '\s')[0] }
   } else { $GhProxies }
-  $best = ''; $bestSpeed = 0
+  # 全部能力测试通过者按 release 下载速度排序：最快的为主代理，第二快的为备用代理
+  $ok = @()
   foreach ($c in (Get-GhByLatency $candidates | Select-Object -First 5)) {
     $sp = Test-GhProxy $c $t
-    if ($sp -gt $bestSpeed) { $best = $c; $bestSpeed = $sp }
+    if ($sp -gt 0) { $ok += [pscustomobject]@{ Proxy = $c; Speed = $sp } }
   }
+  $ranked = @($ok | Sort-Object Speed -Descending | ForEach-Object { $_.Proxy }) + @('', '')
+  $best = $ranked[0]; $backup = $ranked[1]
   if (-not $best) { Write-Warning '没有完整可用的 GitHub 加速代理，GitHub 下载将直连（国内可能很慢或失败）' }
+  elseif (-not $backup) { Write-Warning "只有一个完整可用的 GitHub 加速代理（$best），没有备用代理" }
   New-Item -ItemType Directory -Force -Path $StateDir | Out-Null
-  Set-Content -Path $cache -Value $best
-  return $best
+  Set-Content -Path $cache -Value @($best, $backup)
+  return @($best, $backup)
 }
 
 function Test-Admin {
   ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
 }
 
-# 下载并校验 sha256（经第三方加速代理下载的文件必须校验）；先经 GH_PROXY，失败回退直连（D-031），仍失败则报错
-function Get-VerifiedFile($gh, $url, $sha256, $out) {
-  foreach ($u in @("$gh$url", $url) | Select-Object -Unique) {
-    if (-not $u) { continue }
+# 下载并校验 sha256（经第三方加速代理下载的文件必须校验）；依次经主代理、备用代理（D-033），
+# 失败回退直连（D-031），仍失败则报错。$ghs 为 @(主代理, 备用代理)
+function Get-VerifiedFile($ghs, $url, $sha256, $out) {
+  $urls = @($ghs | Where-Object { $_ } | ForEach-Object { "$_$url" }) + @($url)
+  foreach ($u in $urls | Select-Object -Unique) {
     Say "下载 $u"
     try {
       Invoke-WebRequest -Uri $u -OutFile $out -UseBasicParsing -TimeoutSec 600
@@ -185,7 +192,7 @@ function Get-VerifiedFile($gh, $url, $sha256, $out) {
       Write-Warning "sha256 校验失败：$u（$got）"
     } catch { Write-Warning "下载失败：$u（$($_.Exception.Message)）" }
     Remove-Item $out -Force -ErrorAction SilentlyContinue
-    if ($u -ne $url) { Write-Warning '经 GitHub 加速代理下载失败，改为直连' }
+    if ($u -ne $url) { Write-Warning '经 GitHub 加速代理下载失败，改用下一个（备用代理或直连）' }
   }
   throw "下载失败：$url"
 }
@@ -200,7 +207,7 @@ function Get-FileSha256($path) {
 #   配置：$env:ProgramData\mihomo\config（只允许 SYSTEM 与 Administrators 访问：包含节点）
 #   启动：普通「自动」启动（不用「延迟启动」：它会在开机后约 2 分钟才启动，登录后的应用连不上网）
 # ---------------------------------------------------------------------------
-function Install-MihomoService($gh, $repoDir) {
+function Install-MihomoService($ghs, $repoDir) {
   if ($env:PROCESSOR_ARCHITECTURE -ne 'AMD64') {
     Write-Warning "mihomo 服务目前只支持 x64（当前为 $env:PROCESSOR_ARCHITECTURE），跳过"
     return
@@ -228,12 +235,12 @@ function Install-MihomoService($gh, $repoDir) {
   try {
     if ($needMihomo) {
       $zip = Join-Path $tmp $MihomoAsset
-      Get-VerifiedFile $gh "https://github.com/MetaCubeX/mihomo/releases/download/v$MihomoVersion/$MihomoAsset" $MihomoSha256 $zip
+      Get-VerifiedFile $ghs "https://github.com/MetaCubeX/mihomo/releases/download/v$MihomoVersion/$MihomoAsset" $MihomoSha256 $zip
       Expand-Archive -Path $zip -DestinationPath $tmp -Force
       Copy-Item (Join-Path $tmp 'mihomo-windows-amd64-compatible.exe') $exe -Force
     }
     if ($needWinsw) {
-      Get-VerifiedFile $gh "https://github.com/winsw/winsw/releases/download/v$WinswVersion/WinSW-x64.exe" $WinswSha256 (Join-Path $tmp 'WinSW-x64.exe')
+      Get-VerifiedFile $ghs "https://github.com/winsw/winsw/releases/download/v$WinswVersion/WinSW-x64.exe" $WinswSha256 (Join-Path $tmp 'WinSW-x64.exe')
       Copy-Item (Join-Path $tmp 'WinSW-x64.exe') $svcExe -Force
     }
   } finally { Remove-Item $tmp -Recurse -Force -ErrorAction SilentlyContinue }
@@ -351,15 +358,31 @@ if (Test-Path (Join-Path $Dir '.git')) {
   }
 }
 
-$gh = Select-GhProxy $Dir
-Say "GH_PROXY: $(if ($gh) { $gh } else { '<直连>' })"
+$ghs = Select-GhProxy $Dir
+$gh = $ghs[0]
+Say "GH_PROXY: $(if ($gh) { $gh } else { '<直连>' })  备用：$(if ($ghs[1]) { $ghs[1] } else { '<无>' })"
 
-# mise 的 GitHub 下载经加速代理（与 Linux 的 env.sh 一致），并持久化到用户环境变量
-if ($gh) {
-  $rep = (@{ 'https://github.com/' = "${gh}https://github.com/"; 'https://raw.githubusercontent.com/' = "${gh}https://raw.githubusercontent.com/" } | ConvertTo-Json -Compress)
+# mise 的 GitHub 下载经加速代理（与 Linux 的 env.sh 一致），并持久化到用户环境变量；$p 为空时取消
+function Set-MiseGhProxy($p) {
+  $rep = if ($p) { @{ 'https://github.com/' = "${p}https://github.com/"; 'https://raw.githubusercontent.com/' = "${p}https://raw.githubusercontent.com/" } | ConvertTo-Json -Compress } else { $null }
   $env:MISE_URL_REPLACEMENTS = $rep
   [Environment]::SetEnvironmentVariable('MISE_URL_REPLACEMENTS', $rep, 'User')
 }
+# mise 失败时依次改用备用代理、直连重试（D-031、D-033）；成功后之后的步骤沿用该前缀
+function Invoke-MiseRetry([scriptblock] $run) {
+  & $run
+  if ($LASTEXITCODE -eq 0) { return }
+  foreach ($p in @($ghs[1], '') | Select-Object -Unique) {
+    if ($p -eq $script:gh) { continue }
+    Write-Warning "mise 经 $(if ($script:gh) { "GitHub 加速代理 $($script:gh)" } else { '直连' }) 执行失败，改为$(if ($p) { "备用加速代理 $p" } else { '直连 GitHub' })重试"
+    $script:gh = $p
+    Set-MiseGhProxy $p
+    & $run
+    if ($LASTEXITCODE -eq 0) { return }
+  }
+  throw 'mise 执行失败'
+}
+if ($gh) { Set-MiseGhProxy $gh }
 $env:MISE_NODE_MIRROR_URL = 'https://mirrors.cloud.tencent.com/nodejs-release/'
 [Environment]::SetEnvironmentVariable('MISE_NODE_MIRROR_URL', $env:MISE_NODE_MIRROR_URL, 'User')
 [Environment]::SetEnvironmentVariable('NPM_CONFIG_REGISTRY', 'https://mirrors.cloud.tencent.com/npm/', 'User')
@@ -368,17 +391,17 @@ Push-Location $Dir
 try {
   mise trust -q (Join-Path $Dir 'mise.toml')
   # 仓库的工具（fnox、age）：解密 mihomo 节点需要 fnox
-  mise install -q
+  Invoke-MiseRetry { mise install -q }
 
   if ($NoMihomo) {
     Say '跳过 mihomo（-NoMihomo）'
   } elseif (-not (Test-Admin)) {
     Write-Warning '部署 mihomo 服务需要管理员权限：请在「以管理员身份运行」的 PowerShell 中重新执行（或加 -NoMihomo 跳过）'
   } else {
-    Install-MihomoService $gh $Dir
+    Install-MihomoService $ghs $Dir
   }
 
   Say 'mise bootstrap --yes --only dotfiles,tools'
-  mise bootstrap --yes --only dotfiles,tools
+  Invoke-MiseRetry { mise bootstrap --yes --only dotfiles,tools }
 } finally { Pop-Location }
 Say '完成。重新打开终端使环境变量生效。'

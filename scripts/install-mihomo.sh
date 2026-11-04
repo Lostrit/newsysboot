@@ -8,7 +8,7 @@
 #          不用 Homebrew 的 mihomo：其目录当前用户可写，以 root 运行用户可改写的程序等于交出 root 权限）
 #
 # 由 mise.mihomo.toml / mise.macos.toml 的 post-packages hook 调用；已是目标版本时什么都不做。
-# 下载经 GH_PROXY（mihomo 生效前无法直连 GitHub），并校验 sha256（防止代理篡改）。
+# 下载经 GH_PROXY / GH_PROXY_BACKUP（mihomo 生效前无法直连 GitHub），并校验 sha256（防止代理篡改）。
 set -eu
 
 VERSION=1.19.33
@@ -48,16 +48,16 @@ fi
 url="https://github.com/MetaCubeX/mihomo/releases/download/v$VERSION/$ASSET"
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
-# 先经 GH_PROXY；失败时回退直连（D-031）。mihomo 是必需的，直连也失败（含超时）则报错退出
-if [ -n "${GH_PROXY:-}" ]; then
-  echo "install-mihomo: 下载 ${GH_PROXY}$url"
-  curl -fsSL --retry 2 --connect-timeout 10 -m 300 -o "$tmp/$ASSET" "${GH_PROXY}$url" || {
-    echo "install-mihomo: WARNING: 经 GitHub 加速代理 $GH_PROXY 下载失败，改为直连" >&2
-    rm -f "$tmp/$ASSET"
-  }
-fi
+# 先经 GH_PROXY，失败时改用备用加速代理 GH_PROXY_BACKUP（D-033），再回退直连（D-031）。
+# mihomo 是必需的，直连也失败（含超时）则报错退出
+for p in ${GH_PROXY:-} ${GH_PROXY_BACKUP:-}; do
+  echo "install-mihomo: 下载 ${p}$url"
+  curl -fsSL --retry 2 --connect-timeout 10 -m 300 -o "$tmp/$ASSET" "${p}$url" && break
+  echo "install-mihomo: WARNING: 经 GitHub 加速代理 $p 下载失败" >&2
+  rm -f "$tmp/$ASSET"
+done
 if [ ! -s "$tmp/$ASSET" ]; then
-  echo "install-mihomo: 下载 $url"
+  echo "install-mihomo: 下载 $url（直连）"
   curl -fsSL --retry 2 --connect-timeout 10 -m 300 -o "$tmp/$ASSET" "$url" || {
     echo "install-mihomo: 直连下载失败（含超时），无法安装 mihomo" >&2
     exit 1

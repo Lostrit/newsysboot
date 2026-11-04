@@ -6,7 +6,7 @@
 # 所有探测都绕过代理（--noproxy '*'），测的是直连质量。
 #
 # 结果写入 $BS_STATE_DIR/mirrors.env，有效期 BS_MIRRORS_TTL 秒；环境变量可覆盖任一结果：
-#   BOOTSTRAP_APT_MIRROR  BOOTSTRAP_DOCKER_MIRROR  BOOTSTRAP_DOCKER_REGISTRY_MIRRORS  GH_PROXY
+#   BOOTSTRAP_APT_MIRROR  BOOTSTRAP_DOCKER_MIRROR  BOOTSTRAP_DOCKER_REGISTRY_MIRRORS  GH_PROXY  GH_PROXY_BACKUP
 
 : "${BS_SAMPLES:=2}"
 : "${BS_MIRRORS_TTL:=604800}"
@@ -196,7 +196,7 @@ bs_select_registry_mirrors() {
   done | sort -n | head -n 2 | cut -d' ' -f2 | paste -sd, -
 }
 
-# GitHub：直连与各代理一起测速，直连最快时 GH_PROXY 为空
+# GitHub：选出主代理与备用代理（D-031、D-033）。输出一行「主代理 备用代理」（备用代理可能没有）
 bs_select_gh_proxy() {
   # 1. 全部候选并行测延时，取最低的 BS_GH_FINALISTS 个
   _gd=$(mktemp -d)
@@ -208,14 +208,16 @@ bs_select_gh_proxy() {
   wait
   _finalists=$(cat "$_gd"/* 2>/dev/null | sort -n | head -n "$BS_GH_FINALISTS" | cut -d' ' -f2)
   rm -rf "$_gd"
-  # 2. 依次对入围者做真实请求测试（release / raw / archive / clone），全部通过者中取 release 下载最快的
-  _best= _bestsp=0
+  # 2. 依次对入围者做真实请求测试（release / raw / archive / clone），全部通过者按 release 下载速度排序，
+  #    最快的为主代理，第二快的为备用代理（主代理在部署中途被限流或失效时使用）
+  _ok=
   for _c in $_finalists; do
     _sp=$(bs_gh_test "$_c" 2>/dev/null) || continue
-    if [ "$_sp" -gt "$_bestsp" ]; then _best=$_c _bestsp=$_sp; fi
+    _ok="$_ok$_sp $_c
+"
   done
-  [ -n "$_best" ] || return 1
-  printf '%s\n' "$_best"
+  [ -n "$_ok" ] || return 1
+  printf '%s' "$_ok" | sort -rn | head -n 2 | cut -d' ' -f2 | paste -sd' ' -
 }
 
 # 读取缓存（同一发行版且未过期）或重新探测；结果导出为环境变量
@@ -224,7 +226,10 @@ bs_select_mirrors() {
   _key="$BOOTSTRAP_DISTRO-$BOOTSTRAP_CODENAME-$BOOTSTRAP_ARCH"
   # 从 env.sh 继承来的 GH_PROXY 是上次生成的结果，不是用户指定（P-028）
   if [ -n "${BOOTSTRAP_GENERATED_GH_PROXY+x}" ] && [ "${GH_PROXY-}" = "$BOOTSTRAP_GENERATED_GH_PROXY" ]; then
-    unset GH_PROXY
+    unset GH_PROXY GH_PROXY_BACKUP
+  fi
+  if [ -n "${BOOTSTRAP_GENERATED_GH_PROXY_BACKUP+x}" ] && [ "${GH_PROXY_BACKUP-}" = "$BOOTSTRAP_GENERATED_GH_PROXY_BACKUP" ]; then
+    unset GH_PROXY_BACKUP
   fi
   if [ -z "${BOOTSTRAP_REPROBE:-}" ] && [ -r "$_cache" ]; then
     _ts=$(sed -n "s/^export BS_MIRRORS_TS='\(.*\)'$/\1/p" "$_cache")
@@ -235,11 +240,13 @@ bs_select_mirrors() {
       _keep_docker=${BOOTSTRAP_DOCKER_MIRROR-}
       _keep_reg=${BOOTSTRAP_DOCKER_REGISTRY_MIRRORS-}
       _keep_gh=${GH_PROXY-__unset__}
+      _keep_ghb=${GH_PROXY_BACKUP-}
       . "$_cache"
       [ -n "$_keep_apt" ] && BOOTSTRAP_APT_MIRROR=$_keep_apt
       [ -n "$_keep_docker" ] && BOOTSTRAP_DOCKER_MIRROR=$_keep_docker
       [ -n "$_keep_reg" ] && BOOTSTRAP_DOCKER_REGISTRY_MIRRORS=$_keep_reg
-      [ "$_keep_gh" != __unset__ ] && GH_PROXY=$_keep_gh
+      # 用户指定了 GH_PROXY：备用代理也只用用户指定的（没有就不用）
+      [ "$_keep_gh" != __unset__ ] && GH_PROXY=$_keep_gh GH_PROXY_BACKUP=$_keep_ghb
       # 缓存中没有 GitHub 加速代理（上次选择被推迟，P-040）：有 git 时补选并写入缓存
       BS_GH_PENDING=
       if [ -z "${GH_PROXY+x}" ]; then
@@ -282,15 +289,20 @@ bs_select_mirrors() {
     bs_env_line BOOTSTRAP_APT_MIRROR "${BOOTSTRAP_APT_MIRROR:-}"
     bs_env_line BOOTSTRAP_DOCKER_MIRROR "${BOOTSTRAP_DOCKER_MIRROR:-}"
     bs_env_line BOOTSTRAP_DOCKER_REGISTRY_MIRRORS "${BOOTSTRAP_DOCKER_REGISTRY_MIRRORS:-}"
-    [ -n "$BS_GH_PENDING" ] || bs_env_line GH_PROXY "$GH_PROXY"
+    [ -n "$BS_GH_PENDING" ] || { bs_env_line GH_PROXY "$GH_PROXY"; bs_env_line GH_PROXY_BACKUP "${GH_PROXY_BACKUP:-}"; }
   } >"$_cache"
 }
 
 bs_select_gh_proxy_now() {
-  GH_PROXY=$(bs_select_gh_proxy) || {
+  if _sel=$(bs_select_gh_proxy); then
+    GH_PROXY=${_sel%% *}
+    GH_PROXY_BACKUP=
+    case "$_sel" in *' '*) GH_PROXY_BACKUP=${_sel#* } ;; esac
+    [ -n "$GH_PROXY_BACKUP" ] || bs_warn "WARNING: 只有一个完整可用的 GitHub 加速代理（$GH_PROXY），没有备用代理"
+  else
     bs_warn "WARNING: 没有完整可用的 GitHub 加速代理，GitHub 下载将直连（国内可能很慢或失败）"
-    GH_PROXY=
-  }
+    GH_PROXY= GH_PROXY_BACKUP=
+  fi
 }
 
 # 选源时还没有 git（无法测试 clone）的情况：装好 git 后再选择 GitHub 加速代理，并补写进缓存
@@ -300,16 +312,17 @@ bs_select_gh_proxy_pending() {
   BS_GH_PENDING=
   bs_log "选择 GitHub 加速代理（测延时与 release / raw / archive / clone）…"
   bs_select_gh_proxy_now
-  [ -w "$BS_STATE_DIR/mirrors.env" ] && bs_env_line GH_PROXY "$GH_PROXY" >>"$BS_STATE_DIR/mirrors.env"
-  export GH_PROXY
-  bs_log "GH_PROXY: ${GH_PROXY:-<直连>}"
+  [ -w "$BS_STATE_DIR/mirrors.env" ] &&
+    { bs_env_line GH_PROXY "$GH_PROXY"; bs_env_line GH_PROXY_BACKUP "$GH_PROXY_BACKUP"; } >>"$BS_STATE_DIR/mirrors.env"
+  export GH_PROXY GH_PROXY_BACKUP
+  bs_log "GH_PROXY: ${GH_PROXY:-<直连>}  备用：${GH_PROXY_BACKUP:-<无>}"
 }
 
 bs_export_mirrors() {
   export BOOTSTRAP_APT_MIRROR="${BOOTSTRAP_APT_MIRROR:-}" \
     BOOTSTRAP_DOCKER_MIRROR="${BOOTSTRAP_DOCKER_MIRROR:-}" \
     BOOTSTRAP_DOCKER_REGISTRY_MIRRORS="${BOOTSTRAP_DOCKER_REGISTRY_MIRRORS:-}" \
-    GH_PROXY="${GH_PROXY:-}"
-  if [ -n "${BS_GH_PENDING:-}" ]; then _ghs="<装好 git 后选择>"; else _ghs=${GH_PROXY:-<直连>}; fi
+    GH_PROXY="${GH_PROXY:-}" GH_PROXY_BACKUP="${GH_PROXY_BACKUP:-}"
+  if [ -n "${BS_GH_PENDING:-}" ]; then _ghs="<装好 git 后选择>"; else _ghs="${GH_PROXY:-<直连>}  备用：${GH_PROXY_BACKUP:-<无>}"; fi
   bs_log "apt: ${BOOTSTRAP_APT_MIRROR:-<默认>}  docker-ce: ${BOOTSTRAP_DOCKER_MIRROR:-<不适用>}  registry: ${BOOTSTRAP_DOCKER_REGISTRY_MIRRORS:-<无>}  GH_PROXY: $_ghs"
 }
