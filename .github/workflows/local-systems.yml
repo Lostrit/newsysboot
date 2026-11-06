@@ -42,20 +42,21 @@ jobs:
           if ((Get-FileHash $zip -Algorithm SHA256).Hash.ToLower() -ne $sha) { throw 'mise sha256 不符' }
           Expand-Archive $zip (Join-Path $env:RUNNER_TEMP 'mise')
           Add-Content $env:GITHUB_PATH (Join-Path $env:RUNNER_TEMP 'mise\mise\bin')
-      # 与用户一样在系统自带的 Windows PowerShell 5.1 中运行（以管理员身份：runner 默认即管理员）
+      # 与用户一样在系统自带的 Windows PowerShell 5.1 中运行（以管理员身份：runner 默认即管理员）。
+      # 与 irm | iex 一样按 UTF-8 读入后执行：5.1 按 ANSI 代码页读取无 BOM 的 .ps1，中文会破坏语法（P-050）。
+      # 同样的原因，shell: powershell 的步骤脚本（runner 写成临时 .ps1）中只能有 ASCII 字符。
       - name: bootstrap.ps1
         shell: powershell
         run: |
           $ErrorActionPreference = 'Continue'
-          # 与 irm | iex 一样按 UTF-8 读入后执行：Windows PowerShell 5.1 按 ANSI 代码页读取无 BOM 的 .ps1，中文会破坏语法（P-050）
           try { & ([scriptblock]::Create((Get-Content -Raw -Encoding UTF8 ./bootstrap.ps1))) *>&1 | Tee-Object -FilePath "$env:RUNNER_TEMP\bs-1.log" }
-          catch { "错误：$($_ | Out-String)" | Tee-Object -FilePath "$env:RUNNER_TEMP\bs-1.log" -Append; exit 1 }
+          catch { "ERROR: $($_ | Out-String)" | Tee-Object -FilePath "$env:RUNNER_TEMP\bs-1.log" -Append; exit 1 }
       - name: 再运行一次（幂等）
         shell: powershell
         run: |
           $ErrorActionPreference = 'Continue'
           try { & ([scriptblock]::Create((Get-Content -Raw -Encoding UTF8 ./bootstrap.ps1))) *>&1 | Tee-Object -FilePath "$env:RUNNER_TEMP\bs-2.log" }
-          catch { "错误：$($_ | Out-String)" | Tee-Object -FilePath "$env:RUNNER_TEMP\bs-2.log" -Append; exit 1 }
+          catch { "ERROR: $($_ | Out-String)" | Tee-Object -FilePath "$env:RUNNER_TEMP\bs-2.log" -Append; exit 1 }
       - name: 检查
         shell: pwsh
         run: ./tests/ci/verify-windows.ps1 *>&1 | Tee-Object -FilePath "$env:RUNNER_TEMP\bs-verify.log"; exit $LASTEXITCODE
@@ -105,9 +106,16 @@ jobs:
         if: always()
         shell: bash
         run: |
-          # 注解消息约 4 KB 就会被截断：末尾 120 行分成 30 行一段
-          for f in "$RUNNER_TEMP"/bs-*.log; do
-            [ -f "$f" ] || { echo "::warning title=no logs::RUNNER_TEMP 中没有 bs-*.log"; continue; }
-            tail -n 120 "$f" | LC_ALL=C sed $'s/\x1b\\[[0-9;]*[a-zA-Z]//g; s/%/%25/g; s/\r//g' | cut -c1-160 |
-              awk -v n="$(basename "$f")" '{ b = b $0 "%0A" } NR % 30 == 0 { print "::notice title=" n " #" NR / 30 "::" b; b = "" } END { if (b != "") print "::notice title=" n " #end::" b }'
-          done
+          # 注解消息约 4 KB 就会被截断：末尾 120 行分成 30 行一段（sh -x 的输出中有非 UTF-8 字节，awk 会报错，用 python）
+          python3 - "$RUNNER_TEMP" <<'PY'
+          import glob, os, re, sys
+          logs = sorted(glob.glob(os.path.join(sys.argv[1], "bs-*.log")))
+          if not logs:
+              print("::warning title=no logs::RUNNER_TEMP has no bs-*.log")
+          for f in logs:
+              text = open(f, "rb").read().decode("utf-8", "replace")
+              lines = [re.sub(r"\x1b\[[0-9;?]*[a-zA-Z]", "", l).replace("\r", "")[:160] for l in text.splitlines()[-120:]]
+              for i in range(0, len(lines), 30):
+                  msg = "%0A".join(l.replace("%", "%25") for l in lines[i:i + 30])
+                  print(f"::notice title={os.path.basename(f)} #{i // 30 + 1}::{msg}")
+          PY
