@@ -82,7 +82,7 @@ if [ ! -f "$(bs_self_dir)/lib/common.sh" ]; then
       [ -f "$_f" ] && _root sed -i -E \
         "s#https?://(deb|security)\.debian\.org#$_m#g; s#https?://(archive|security|ports)\.ubuntu\.com#$_m#g" "$_f"
     done
-    _say "安装 git（临时源：$_m）"
+    _say "安装 git（临时源：${_m}）"
     _root apt-get update -q
     _root env DEBIAN_FRONTEND=noninteractive apt-get install -y -q --no-install-recommends git ca-certificates
   fi

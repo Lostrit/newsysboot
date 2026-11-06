@@ -31,7 +31,7 @@ if [ "${TEST_SKIP_RESET:-}" != 1 ]; then
   python3 "$repo/scripts/tccloud.py" reset "$bp"
 fi
 ssh-keygen -R "$ip" >/dev/null 2>&1 || true
-log "等待 SSH（$login@$ip）"
+log "等待 SSH（$login@${ip}）"
 i=0
 until rsh "$login" true 2>/dev/null; do
   i=$((i + 1)); [ "$i" -lt 60 ] || { echo "SSH 不可用" >&2; exit 1; }
@@ -52,7 +52,7 @@ fi
 rsh "$login" "$sudo_ stat -c '私钥文件：%n %s 字节 %a %U' /dev/shm/bootstrap-age.key"
 
 # 3. 一键部署（后台运行，写日志）
-log "部署（模式：$mode，来源：$src，最终用户：$final）"
+log "部署（模式：${mode}，来源：${src}，最终用户：${final}）"
 if [ "$mode" = root ]; then
   hash=$(openssl rand -base64 18 | openssl passwd -6 -stdin)
   envs="BOOTSTRAP_USER=$final BOOTSTRAP_PASSWORD_HASH='$hash'"
@@ -96,7 +96,7 @@ for f in verify-host verify-route; do
     if timeout 60 scp -q $so "$repo/tests/cloud/$f.zsh" "$_u@$ip:/tmp/$f.zsh" 2>/dev/null; then rsh_ok=$_u; break; fi
   done
   [ -n "$rsh_ok" ] || { echo "无法复制检查脚本" >&2; exit 1; }
-  log "$f（经 $rsh_ok）"
+  log "${f}（经 ${rsh_ok}）"
   if [ "$rsh_ok" = "$final" ]; then
     rsh "$final" "zsh /tmp/$f.zsh; rm -f /tmp/$f.zsh"
   else
@@ -104,5 +104,5 @@ for f in verify-host verify-route; do
   fi
 done | tee "$out"
 nfail=$(grep -c '^FAIL' "$out" || true)
-log "检查结果：PASS $(grep -c '^PASS' "$out" || true)，FAIL $nfail（$out）"
+log "检查结果：PASS $(grep -c '^PASS' "$out" || true)，FAIL ${nfail}（${out}）"
 [ "$nfail" = 0 ]

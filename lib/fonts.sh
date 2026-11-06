@@ -53,7 +53,7 @@ bs_fonts_install() {
   # 主代理 → 备用代理 → 直连（有 mihomo 时经代理，D-031、D-033）；约 150 MB，按速度判断超时
   for _p in ${GH_PROXY:-} ${GH_PROXY_BACKUP:-} direct; do
     [ "$_p" != direct ] || _p=
-    bs_log "下载字体 Maple Mono $BS_FONT_VERSION（约 150 MB）：${_p}$_url"
+    bs_log "下载字体 Maple Mono ${BS_FONT_VERSION}（约 150 MB）：${_p}$_url"
     if curl -fsSL --connect-timeout 10 --speed-limit 20480 --speed-time 60 -o "$_t/f.zip" "${_p}$_url" &&
       [ "$(bs_sha256 <"$_t/f.zip")" = "$BS_FONT_SHA256" ]; then
       _ok=1
@@ -78,7 +78,7 @@ bs_fonts_install() {
     printf '%s\n' "$_want" >"$_mark"
     # Linux：刷新 fontconfig 缓存（macOS 放进 ~/Library/Fonts 即可使用）
     if [ "$BOOTSTRAP_OS" = linux ] && bs_have fc-cache; then fc-cache -f "$_dir" >/dev/null 2>&1 || true; fi
-    bs_log "字体已安装：$_dir（$_styles）；请在终端设置中选用「Maple Mono Normal NF CN」"
+    bs_log "字体已安装：${_dir}（${_styles}）；请在终端设置中选用「Maple Mono Normal NF CN」"
   else
     bs_warn "WARNING: 字体解压失败"
   fi

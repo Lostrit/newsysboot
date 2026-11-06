@@ -175,7 +175,7 @@ bs_mise_retry() {
     bs_gh_promote_backup
     bs_mise "$@" && return 0
   fi
-  bs_warn "WARNING: mise 经 GitHub 加速代理 $GH_PROXY 执行失败，改为直连 GitHub 重试一次${BS_PROXY_URL:+（经 $BS_PROXY_URL）}"
+  bs_warn "WARNING: mise 经 GitHub 加速代理 $GH_PROXY 执行失败，改为直连 GitHub 重试一次${BS_PROXY_URL:+（经 ${BS_PROXY_URL}）}"
   (
     unset MISE_URL_REPLACEMENTS GIT_CONFIG_COUNT GIT_CONFIG_KEY_0 GIT_CONFIG_VALUE_0
     GH_PROXY= GH_PROXY_BACKUP=
@@ -258,7 +258,7 @@ bs_ensure_mise() {
   fi
   [ "$(bs_sha256 <"$BS_SRC/vendor/mise-install.sh")" = "$(cut -d' ' -f1 "$BS_SRC/vendor/mise-install.sh.sha256")" ] ||
     bs_die "vendor/mise-install.sh 校验失败"
-  bs_log "安装 mise $_want（CDN：mise.jdx.dev）"
+  bs_log "安装 mise ${_want}（CDN：mise.jdx.dev）"
   mkdir -p "$BS_STATE_DIR"
   # 安装脚本的 curl 进度条很长，输出写入日志，失败时再显示
   if ! MISE_VERSION=$_want MISE_QUIET=1 sh "$BS_SRC/vendor/mise-install.sh" >"$BS_STATE_DIR/mise-install.log" 2>&1; then
@@ -399,7 +399,7 @@ bs_detect_proxy() {
     bs_log "使用环境中的代理：$_px"
     BS_PROXY_URL=$_px
   else
-    bs_warn "环境中的代理不可用（$_px），改用 GH_PROXY=${GH_PROXY:-<直连>}"
+    bs_warn "环境中的代理不可用（${_px}），改用 GH_PROXY=${GH_PROXY:-<直连>}"
     unset http_proxy https_proxy all_proxy HTTP_PROXY HTTPS_PROXY ALL_PROXY
   fi
 }
@@ -463,7 +463,7 @@ bs_run_mise() {
       _i=$((_i + 1))
     done
     if bs_proxy_ok "$_px"; then
-      bs_log "mihomo 可用（$_px）：其他海外流量经代理，GitHub 的下载仍经 GH_PROXY=${GH_PROXY:-<直连>}"
+      bs_log "mihomo 可用（${_px}）：其他海外流量经代理，GitHub 的下载仍经 GH_PROXY=${GH_PROXY:-<直连>}"
       BS_PROXY_URL=$_px
       bs_write_env
       export http_proxy https_proxy all_proxy no_proxy HTTP_PROXY HTTPS_PROXY NO_PROXY

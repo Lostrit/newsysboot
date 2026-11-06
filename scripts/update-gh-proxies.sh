@@ -58,7 +58,7 @@ nok=$(wc -l <"$work/ok")
 # 3. 写入列表
 {
   echo "# lib/gh-proxies.txt — GitHub 加速代理候选（D-031），由 scripts/update-gh-proxies.sh 生成，勿直接编辑"
-  echo "# 来源：$source_url（以及上一版列表）；生成时间：$(date '+%Y-%m-%d %H:%M %z')；测试机：$(hostname)"
+  echo "# 来源：${source_url}（以及上一版列表）；生成时间：$(date '+%Y-%m-%d %H:%M %z')；测试机：$(hostname)"
   echo "# 条件：直连可用，$rounds 轮测试中 release / raw / archive / clone 每一轮都全部通过；按最慢一轮的 release 下载速度排序"
   echo "# 部署时（lib/mirrors.sh 的 bs_select_gh_proxy）会在本机重新测延时与真实下载，从中选出最优的一个"
   awk '{ printf "%-48s # 最慢一轮 %d KB/s，最高延时 %d ms\n", $4, $2 / 1024, $3 }' "$work/ok"

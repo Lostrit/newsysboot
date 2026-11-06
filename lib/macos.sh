@@ -27,7 +27,7 @@ bs_macos_prepare() {
   bs_brew_env
   _bp=$(bs_brew_prefix)
   if [ ! -x "$_bp/bin/brew" ]; then
-    bs_log "安装 Homebrew（镜像：$BS_BREW_MIRROR）"
+    bs_log "安装 Homebrew（镜像：${BS_BREW_MIRROR}）"
     _t=$(mktemp -d)
     git clone -q --depth 1 "$BS_BREW_MIRROR/git/homebrew/install.git" "$_t/install"
     /bin/bash "$_t/install/install.sh"

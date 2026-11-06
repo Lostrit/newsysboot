@@ -64,6 +64,13 @@ pre-commit:
         - "tests/*.sh"
       run: for f in {staged_files}; do sh -n "$f" || exit 1; done
 
+    # ---- sh 脚本：$变量 后面不能紧跟非 ASCII 字符（macOS 的 bash 3.2 会把它当作变量名的一部分，P-051） ----
+    sh-var-nonascii:
+      glob:
+        - "bootstrap.sh"
+        - "**/*.sh"
+      run: sh scripts/check-sh-vars.sh {staged_files}
+
     # ---- Windows 用 mihomo 配置必须与模板同步（D-029） ----
     windows-mihomo-sync:
       glob:

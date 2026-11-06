@@ -56,7 +56,7 @@ while :; do
   case "$i" in 1) p=$gh ;; 2) p=$ghb ;; esac
   if [ -n "$p" ]; then
     [ "$i" = 1 ] || echo "bootstrap.sh: WARNING: 经 GitHub 加速代理 $gh 未能全部完成，第 $i 次改用备用加速代理" >&2
-    echo "bootstrap.sh: 第 $i 次（GitHub 加速代理：$p）"
+    echo "bootstrap.sh: 第 $i 次（GitHub 加速代理：${p}）"
     export GH_PROXY=$p BS_NVIM_GH=$p GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0="url.${p}https://github.com/.insteadOf" GIT_CONFIG_VALUE_0=https://github.com/
     export PATH="$shim:$path0"
   else

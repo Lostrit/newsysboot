@@ -235,7 +235,7 @@ bs_select_mirrors() {
     _ts=$(sed -n "s/^export BS_MIRRORS_TS='\(.*\)'$/\1/p" "$_cache")
     _ck=$(sed -n "s/^export BS_MIRRORS_KEY='\(.*\)'$/\1/p" "$_cache")
     if [ "$_ck" = "$_key" ] && [ $(($(date +%s) - ${_ts:-0})) -lt "$BS_MIRRORS_TTL" ]; then
-      bs_log "使用缓存的选源结果：$_cache（BOOTSTRAP_REPROBE=1 可重新测速）"
+      bs_log "使用缓存的选源结果：${_cache}（BOOTSTRAP_REPROBE=1 可重新测速）"
       _keep_apt=${BOOTSTRAP_APT_MIRROR-}
       _keep_docker=${BOOTSTRAP_DOCKER_MIRROR-}
       _keep_reg=${BOOTSTRAP_DOCKER_REGISTRY_MIRRORS-}
@@ -298,7 +298,7 @@ bs_select_gh_proxy_now() {
     GH_PROXY=${_sel%% *}
     GH_PROXY_BACKUP=
     case "$_sel" in *' '*) GH_PROXY_BACKUP=${_sel#* } ;; esac
-    [ -n "$GH_PROXY_BACKUP" ] || bs_warn "WARNING: 只有一个完整可用的 GitHub 加速代理（$GH_PROXY），没有备用代理"
+    [ -n "$GH_PROXY_BACKUP" ] || bs_warn "WARNING: 只有一个完整可用的 GitHub 加速代理（${GH_PROXY}），没有备用代理"
   else
     bs_warn "WARNING: 没有完整可用的 GitHub 加速代理，GitHub 下载将直连（国内可能很慢或失败）"
     GH_PROXY= GH_PROXY_BACKUP=

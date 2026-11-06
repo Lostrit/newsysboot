@@ -60,7 +60,7 @@ LANGUAGE=$_lang"
     if bs_have update-locale && bs_locale_have "$_loc"; then
       bs_root update-locale "LANG=$_loc" "LANGUAGE=$_lang" || bs_warn "WARNING: update-locale 失败"
     elif ! bs_locale_have "$_loc"; then
-      bs_warn "WARNING: 没有 locale $_loc，不修改系统默认 locale"
+      bs_warn "WARNING: 没有 locale ${_loc}，不修改系统默认 locale"
       return 0
     else
       printf '%s\n' "$_want" | bs_root tee /etc/default/locale >/dev/null
@@ -72,7 +72,7 @@ bs_timezone_setup() {
   _tz=${BOOTSTRAP_TZ:-Asia/Shanghai}
   [ "$_tz" != none ] || return 0
   [ -e "/usr/share/zoneinfo/$_tz" ] || {
-    bs_warn "WARNING: 没有时区数据 /usr/share/zoneinfo/$_tz（tzdata 软件包），跳过时区设置"
+    bs_warn "WARNING: 没有时区数据 /usr/share/zoneinfo/${_tz}（tzdata 软件包），跳过时区设置"
     return 0
   }
   _cur=$(readlink /etc/localtime 2>/dev/null | sed 's#.*zoneinfo/##')
@@ -113,6 +113,6 @@ PermitRootLogin no"
   if [ "$(cat "$BS_SSHD_CONTAINER_DROPIN" 2>/dev/null)" != "$_conf" ]; then
     bs_root mkdir -p /etc/ssh/sshd_config.d
     printf '%s\n' "$_conf" | bs_root tee "$BS_SSHD_CONTAINER_DROPIN" >/dev/null
-    bs_log "sshd 配置：$BS_SSHD_CONTAINER_DROPIN（入口：/usr/local/bin/bootstrap-sshd）"
+    bs_log "sshd 配置：${BS_SSHD_CONTAINER_DROPIN}（入口：/usr/local/bin/bootstrap-sshd）"
   fi
 }

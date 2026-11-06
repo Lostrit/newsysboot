@@ -403,3 +403,13 @@
   - 本地文件用 `& ([scriptblock]::Create((Get-Content -Raw -Encoding UTF8 .\bootstrap.ps1))) [参数]`，可以传参数。CI 也这样运行。
   - pwsh 7 默认按 UTF-8 读取，不受影响（`tests/ps-parse.ps1`、`verify-windows.ps1` 在 pwsh 中运行）。
 
+
+## P-051 macOS 的 /bin/sh（bash 3.2）把 `$var（` 中全角字符的字节当作变量名
+
+- **现象**：GitHub Actions 的 macOS runner（2026-11-06）上，`bootstrap.sh --dotfiles` 在安装 mise 前退出：
+  `lib/stage.sh: line 261: _want�: unbound variable`，对应的代码是 `bs_log "安装 mise $_want（CDN：mise.jdx.dev）"`。
+- **原因**：macOS 的 `/bin/sh` 是 bash 3.2。它把紧跟在变量名后的非 ASCII 字节（这里是「（」的首字节）也当作变量名的一部分，`set -u` 下就报错退出。
+  Linux 上的 dash、bash 5 不会这样，所以容器和真机测试一直没有发现。全仓库共有 34 处这样的写法，例如选源缓存提示中的 `$_cache（`，macOS 第二次运行时就会触发。
+- **解决**：
+  - 全部改成 `${var}（`。
+  - 新增 `scripts/check-sh-vars.sh`，lefthook 的 `sh-var-nonascii` 在提交时检查所有 .sh 文件。

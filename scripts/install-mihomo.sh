@@ -41,7 +41,7 @@ case "$MODE-$(uname -m)" in
 esac
 
 if [ -x "$BIN" ] && "$BIN" -v 2>/dev/null | grep -q "v$VERSION "; then
-  echo "install-mihomo: 已是 v$VERSION（$BIN）"
+  echo "install-mihomo: 已是 v${VERSION}（${BIN}）"
   exit 0
 fi
 
@@ -57,7 +57,7 @@ for p in ${GH_PROXY:-} ${GH_PROXY_BACKUP:-}; do
   rm -f "$tmp/$ASSET"
 done
 if [ ! -s "$tmp/$ASSET" ]; then
-  echo "install-mihomo: 下载 $url（直连）"
+  echo "install-mihomo: 下载 ${url}（直连）"
   curl -fsSL --retry 2 --connect-timeout 10 -m 300 -o "$tmp/$ASSET" "$url" || {
     echo "install-mihomo: 直连下载失败（含超时），无法安装 mihomo" >&2
     exit 1

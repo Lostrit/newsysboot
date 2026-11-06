@@ -57,9 +57,9 @@ bs_tidy_home() {
     if [ -f "$HOME/$_b" ] && [ ! -L "$HOME/$_b" ] && [ -f "/etc/skel/$_b" ]; then
       if cmp -s "$HOME/$_b" "/etc/skel/$_b"; then
         rm -f "$HOME/$_b"
-        bs_log "已删除 $_b（与 /etc/skel 相同；登录 shell 为 zsh）"
+        bs_log "已删除 ${_b}（与 /etc/skel 相同；登录 shell 为 zsh）"
       else
-        bs_warn "保留 $_b：与 /etc/skel 不同（可能有你自己的修改）"
+        bs_warn "保留 ${_b}：与 /etc/skel 不同（可能有你自己的修改）"
       fi
     fi
   done

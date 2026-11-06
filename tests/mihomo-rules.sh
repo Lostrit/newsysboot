@@ -97,7 +97,7 @@ for p in $profiles; do
   port=$((port + 1))
   d="$work/$p"
   BOOTSTRAP_MIHOMO_PORT=$port sh "$repo/scripts/render-mihomo.sh" "$p" "$d/config.yaml" >/dev/null 2>&1 ||
-    { echo "FAIL $p：渲染失败"; fail=1; continue; }
+    { echo "FAIL ${p}：渲染失败"; fail=1; continue; }
   # 测试实例：不开 TUN、不开 DNS 监听
   sed -i 's/^  enable: true$/  enable: false/' "$d/config.yaml"
   # Steam 商店的健康检查地址换成能直连的地址，模拟家庭网络中「直连可用、代理不可用」：
@@ -107,7 +107,7 @@ for p in $profiles; do
   echo $! >"$work/$p.pid"
   i=0
   until grep -q "Mixed(http+socks) proxy listening" "$d/log" 2>/dev/null; do
-    i=$((i + 1)); [ "$i" -lt 120 ] || { echo "FAIL $p：mihomo 未启动"; tail -5 "$d/log"; fail=1; continue 2; }
+    i=$((i + 1)); [ "$i" -lt 120 ] || { echo "FAIL ${p}：mihomo 未启动"; tail -5 "$d/log"; fail=1; continue 2; }
     sleep 1
   done
   # 规则集在后台下载；等日志中不再出现新的下载记录
@@ -136,7 +136,7 @@ for p in $profiles; do
     if [ "$got" = "$want" ]; then
       echo "PASS $p $host → $got"
     else
-      echo "FAIL $p $host → ${got:-<无记录>}（预期 $want）：$(printf '%s' "$line" | sed -n 's/.*msg="\(.*\)"/\1/p' | cut -c1-160)"
+      echo "FAIL $p $host → ${got:-<无记录>}（预期 ${want}）：$(printf '%s' "$line" | sed -n 's/.*msg="\(.*\)"/\1/p' | cut -c1-160)"
       echo 1 >"$work/failed"
     fi
   done

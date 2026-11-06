@@ -12,7 +12,7 @@ st=$(getent passwd "$u" | cut -d: -f6)/.local/state/bootstrap
 check "BOOTSTRAP_ROLE=container" "grep -qx \"export BOOTSTRAP_ROLE='container'\" $st/env.sh"
 check "MISE_DISABLE_TOOLS：fnox age gh btop" "grep -q \"^export MISE_DISABLE_TOOLS='fnox,age,aqua:cli/cli,aqua:aristocratos/btop'\" $st/env.sh"
 for t in fnox age gh btop; do
-  check "不安装 $t（容器中不落盘机密）" "! su - $u -c 'zsh -lc \"command -v $t\"'"
+  check "不安装 ${t}（容器中不落盘机密）" "! su - $u -c 'zsh -lc \"command -v $t\"'"
 done
 check "mise 中没有 fnox / age 的安装" "! ls $(dirname "$st")/../share/mise/installs 2>/dev/null | grep -qE '^(fnox|age)$'"
 for t in jq eza bat rg fd nvim tmux herdr node; do

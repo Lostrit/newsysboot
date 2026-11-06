@@ -32,7 +32,7 @@ bs_has_tty() {
 bs_ask() {
   _var=$1
   _prompt=$2
-  bs_has_tty || bs_die "需要交互输入「$_prompt」，但当前没有终端；请改用对应的环境变量"
+  bs_has_tty || bs_die "需要交互输入「${_prompt}」，但当前没有终端；请改用对应的环境变量"
   printf '%s' "$_prompt" >/dev/tty
   if [ "${3:-}" = secret ]; then
     _stty=$(stty -g </dev/tty)
