@@ -31,6 +31,8 @@ pre-commit:
       # 生成文件不格式化，否则会与模板不一致（scripts/gen-windows-mihomo.sh）
       exclude:
         - "files/mihomo/windows-desktop.yaml"
+        # gh 自己会改写 config.yml（4 空格缩进）：保持 gh 生成的格式，否则 gh 写回后仓库出现改动（D-037）
+        - "dotfiles/.config/gh/config.yml"
       run: prettier --write {staged_files}
       stage_fixed: true
 
@@ -67,4 +69,6 @@ pre-commit:
       glob:
         - "files/mihomo/config.yaml.tera"
         - "files/mihomo/windows-desktop.yaml"
+        # gh 自己会改写 config.yml（4 空格缩进）：保持 gh 生成的格式，否则 gh 写回后仓库出现改动（D-037）
+        - "dotfiles/.config/gh/config.yml"
       run: sh scripts/gen-windows-mihomo.sh --check

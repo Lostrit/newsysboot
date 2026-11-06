@@ -50,6 +50,14 @@ curl -fsSL https://gh-proxy.com/https://raw.githubusercontent.com/Lostrit/newsys
 
 记录：总耗时、哪些步骤需要输入密码、是否有报错。
 
+## 1.5 本地系统的工具与字体（D-036、D-039）
+
+- [ ] 系统自带 `ssh`、`git`（bootstrap 与 zsh 插件依赖它）
+- [ ] Shell 与文件搜索工具可用（starship、atuin、fzf、eza、bat、fd、rg、jq、micro）；delta 可用（git 的 pager）
+- [ ] `nvim`、`node`、`bun`、`lazygit`、`tmux`、`herdr`、`claude`、`gh`、`age` 不由 mise 提供（`mise which nvim` 失败）
+- [ ] `~/.local/share/fonts/MapleMono` 中有 4 个 ttf；`fc-list | grep -i maple` 能列出；Konsole 中选用后图标与中文正常
+- [ ] `ssh <远程主机>` 登录后用远程的 tmux / nvim 工作
+
 ## 2. 文件布局与系统分区
 
 ```sh

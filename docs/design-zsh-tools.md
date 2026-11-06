@@ -47,7 +47,6 @@ ztool fd        comp  'fd --gen-completions zsh'
 ztool atuin     comp  'atuin gen-completions --shell zsh'
 ztool atuin     init  'atuin init zsh'
 ztool fzf       init  'fzf --zsh'
-ztool zoxide    init  'zoxide init zsh'
 ztool starship  init  'starship init zsh'   # 提示符，最后加载
 ```
 

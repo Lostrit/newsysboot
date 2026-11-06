@@ -1,0 +1,29 @@
+# lib/tool-roles.txt — 各环境不启用的全局工具（D-036），lib/roles.sh 与 bootstrap.ps1 共用
+#
+# 全局工具全部声明在 dotfiles/.config/mise/config.toml；这里列出每种环境要排除的，写入 MISE_DISABLE_TOOLS
+# （mise 的 disable_tools 设置：不安装、不激活）。工具名必须与 config.toml 中的键完全一致（含 aqua: 等前缀）。
+#
+# 环境（lib/roles.sh 的 bs_role）：
+#   本地系统（物理接触、图形界面，作为客户端）：macos（本地开发主力机）、windows（Windows 相关开发调试）、steamos（外出便携）
+#   远程系统（经 SSH 使用终端）：host（Linux 主机，远程开发机）、container（Linux 主机上的 Debian 辅助开发容器）
+#
+# 格式：<环境>: <工具> <工具> …（# 之后为注释；可以分多行写同一环境）
+
+# 本地系统不需要终端复用（tmux / herdr 在远程系统上运行）；有 Claude 桌面版的系统不装 claude CLI；btop 只给 Linux 主机
+macos:     aqua:tmux/tmux-builds aqua:herdrdev/herdr claude aqua:aristocratos/btop
+
+# 不做重度开发：没有运行时、git 相关工具、nvim、gh、age（fnox 保留：重新部署时解密 mihomo 节点）
+# delta 保留：git 的 pager 写死为 delta（dotfiles/.config/git/config），SteamOS 自带 git
+steamos:   aqua:tmux/tmux-builds aqua:herdrdev/herdr claude aqua:aristocratos/btop
+steamos:   node bun aqua:jesseduffield/lazygit aqua:neovim/neovim aqua:tree-sitter/tree-sitter aqua:cli/cli age
+
+# 同 steamos，另外不装 git（也就不需要 delta）
+windows:   aqua:tmux/tmux-builds aqua:herdrdev/herdr claude aqua:aristocratos/btop
+windows:   node bun aqua:jesseduffield/lazygit aqua:neovim/neovim aqua:tree-sitter/tree-sitter aqua:cli/cli age
+windows:   aqua:dandavison/delta
+
+# Linux 主机：全部启用
+host:
+
+# 容器中不落盘任何机密（D-038）：不装加解密工具与 gh（登录凭据会写入 hosts.yml）；btop 只给主机
+container: fnox age aqua:cli/cli aqua:aristocratos/btop

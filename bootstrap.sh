@@ -137,6 +137,9 @@ BS_SRC=$(bs_self_dir)
 . "$BS_SRC/lib/macos.sh"
 . "$BS_SRC/lib/tidy.sh"
 . "$BS_SRC/lib/terminfo.sh"
+. "$BS_SRC/lib/roles.sh"
+. "$BS_SRC/lib/system.sh"
+. "$BS_SRC/lib/fonts.sh"
 . "$BS_SRC/lib/stage.sh"
 
 BS_MODE=full

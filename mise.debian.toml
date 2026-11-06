@@ -14,6 +14,11 @@
 "apt:xz-utils" = "latest"
 "apt:zstd" = "latest"
 "apt:openssh-client" = "latest"
+# 远程系统经 SSH 使用：SSH 服务端；locale 与时区（zh_CN.UTF-8、Asia/Shanghai，D-038）。
+# 这三个在 root 阶段已安装并配置（lib/system.sh），这里声明以便 mise bootstrap status 检查
+"apt:openssh-server" = "latest"
+"apt:locales" = "latest"
+"apt:tzdata" = "latest"
 # 较少见终端的 terminfo（kitty、alacritty、wezterm 等）；Ghostty 的由 lib/terminfo.sh 安装（D-034）
 "apt:ncurses-term" = "latest"
 # nvim-treesitter 编译语法解析器需要 C 编译器（dotfiles/.config/nvim/README.md）

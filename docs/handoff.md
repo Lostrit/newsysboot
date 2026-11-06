@@ -1,8 +1,8 @@
 # 开发交接（新的开发机 / 新的 agent 先读这里）
 
 更新时间：2026-11-06。本文档汇总**在仓库其他文档中不容易直接看出、但继续开发必须知道**的信息：开发环境、测试方法、工作约定与待办。
-功能与架构见 [plan.md](plan.md)、[usage.md](usage.md)；状态见 [progress.md](progress.md)；每个决定的原因见 [decisions.md](decisions.md)（D-001～D-035）；
-踩过的坑见 [pitfalls.md](pitfalls.md)（P-001～P-048）；调研结论见 [research.md](research.md)（R-001～R-015）。
+功能与架构见 [plan.md](plan.md)、[usage.md](usage.md)；状态见 [progress.md](progress.md)；每个决定的原因见 [decisions.md](decisions.md)（D-001～D-041）；
+踩过的坑见 [pitfalls.md](pitfalls.md)（P-001～P-049）；调研结论见 [research.md](research.md)（R-001～R-016）。
 
 ## 1. 仓库与推送
 
@@ -72,6 +72,8 @@ ssh <user>@<dev> 'cd ~/bstest && (nohup sh tests/run.sh debian:13 > ~/bstest.log
 | `tests/run-windows-config.sh` | Windows 预渲染配置与模板同步、`mihomo -t` | 开发机即可 |
 | `tests/run-macos-clt.sh` | macOS 管道模式等待 Xcode 命令行工具（容器中用假命令模拟） | 开发机即可 |
 | `tests/run-tidy.sh` | HOME 整理（按腾讯云 Ubuntu 主机的预置文件模拟） | 开发机即可 |
+| GitHub Actions `local-systems` | Windows（`windows-latest`）与 macOS（`macos-15-intel`、`macos-latest`）的部署与检查（D-041）；推送到 GitHub 后自动运行，用 `gh run list` 查看 | GitHub |
+| `tests/ps-parse.ps1` | PowerShell 语法；dev 上用 `DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1 mise x aqua:PowerShell/PowerShell@7.5.4 -- pwsh -NoProfile -File tests/ps-parse.ps1 …`（dev 没有 libicu） | dev |
 | 真机 | 部署后在 dev 上跑主机检查与真实节点分流检查（脚本思路见对话记录：逐项 `check`，从 `journalctl -u mihomo` 核对实际策略） | dev |
 
 注意：
@@ -85,6 +87,8 @@ ssh <user>@<dev> 'cd ~/bstest && (nohup sh tests/run.sh debian:13 > ~/bstest.log
 - 选源（D-006）与 GitHub 加速代理（D-031）：候选在 `lib/gh-proxies.txt`，由 `scripts/update-gh-proxies.sh` 从 github.xxlab.tech 维护（需在国内网络、不经代理的机器上运行，约 5 分钟）；部署时只选一次（主代理 + 备用代理，D-033），缓存 7 天。
 - mihomo 三个场景（D-027）：server（Linux 主机，环境变量接入）、desktop（macOS root LaunchDaemon / Windows WinSW 服务，TUN）、steamos（TUN）。
 - 状态文件：`~/.local/state/bootstrap/{mirrors.env,env.sh}`；`~/.zshenv` 读取 `env.sh`。
+- 环境（D-036）：本地系统 macOS / Windows / SteamOS，远程系统 Linux 主机 / 容器；工具全集在 `dotfiles/.config/mise/config.toml`，
+  各环境排除的在 `lib/tool-roles.txt`（**改工具名时两边一起改**，必须是完整名，如 `aqua:jqlang/jq`）。差异见 [platforms.md](platforms.md)。
 
 ## 6. 待办（按优先级）
 

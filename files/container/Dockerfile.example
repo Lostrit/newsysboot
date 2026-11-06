@@ -1,0 +1,23 @@
+# files/container/Dockerfile.example —— Debian 辅助开发容器示例（D-038，说明见 docs/container.md）
+#
+# 构建（经宿主机的 mihomo 访问海外；构建时容器在宿主机网络中，代理为 127.0.0.1:7890）：
+#   docker build --network host --build-arg http_proxy=http://127.0.0.1:7890 --build-arg https_proxy=http://127.0.0.1:7890 \
+#     -f Dockerfile.example -t devbox .
+# 镜像中不包含任何机密：SSH 主机私钥在容器启动后经 docker exec 写入内存，授权公钥由 docker secrets 提供。
+FROM debian:13
+
+ARG BOOTSTRAP_USER=dev
+# bootstrap：用户、zsh、mise 工具、dotfiles、nvim 预装；容器中会安装 openssh-server、locales、tzdata、procps、iproute2，
+# 删除安装时生成的 SSH 主机密钥，写入 sshd 配置与入口 /usr/local/bin/bootstrap-sshd
+RUN apt-get update && apt-get install -y --no-install-recommends curl ca-certificates \
+ && curl -fsSL https://cnb.cool/xfengjing/lostrit/NewSysBoot/-/git/raw/main/bootstrap.sh \
+    | BOOTSTRAP_SOURCE=cnb BOOTSTRAP_USER=$BOOTSTRAP_USER BOOTSTRAP_NONINTERACTIVE=1 BOOTSTRAP_NVIM=1 sh \
+ && rm -rf /var/lib/apt/lists/*
+
+# 不经 PAM 的进程（docker exec 直接运行的命令）也使用中文 locale 与上海时区（bootstrap 已生成 locale、设置 /etc/localtime）
+ENV LANG=zh_CN.UTF-8 LANGUAGE=zh_CN:en_US TZ=Asia/Shanghai
+
+EXPOSE 22
+# 以 root 启动（sshd 需要）；PID 1 用 tini（compose 的 init: true，或 docker run --init）
+ENTRYPOINT ["/usr/local/bin/bootstrap-sshd"]
+CMD ["sleep", "infinity"]

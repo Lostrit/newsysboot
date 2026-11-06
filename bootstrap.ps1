@@ -1,28 +1,43 @@
 # bootstrap.ps1 — Windows 入口（⚠️ 未在真机测试，docs/progress.md）
 #
-# 用法（PowerShell；部署 mihomo 服务需要「以管理员身份运行」）：
+# 用法（PowerShell；部署 mihomo 服务、OpenSSH 客户端需要「以管理员身份运行」）：
 #   irm https://gh-proxy.com/https://raw.githubusercontent.com/Lostrit/newsysboot/main/bootstrap.ps1 | iex
 #   或：powershell -ExecutionPolicy Bypass -File bootstrap.ps1 [-Source github|cnb] [-Dir <检出目录>] [-NoMihomo]
 #
-# 步骤：
-#   - winget 安装 Git 与 mise
+# Windows 是「本地系统」（D-036）：只做 Windows 相关的开发调试，经 SSH 使用远程系统；不装 Git（也就不引入 bash）、
+# 运行时、nvim（D-040）。步骤：
+#   - winget 安装 mise 与 PowerShell 7；检查 OpenSSH 客户端、启用 ssh-agent（管理员）
+#   - 下载仓库压缩包（CNB 直连，或 GitHub 经加速代理），解压到检出目录；重新运行即更新（检出目录中的修改会被覆盖）
 #   - GitHub 加速代理测速（同 lib/mirrors.sh：取前 1MiB，校验 sha256）
-#   - 检出仓库；安装仓库的工具（fnox、age）
+#   - 安装仓库的工具（fnox：解密 mihomo 节点）
 #   - mihomo 系统服务（D-029，需要管理员）：官方二进制 + WinSW（锁定版本、校验 sha256），开机即启动（不延迟）、TUN 模式；
 #     配置为预渲染的 files/mihomo/windows-desktop.yaml，节点由 fnox 用 age 私钥解密后填入
+#   - XDG 目录与按环境排除的工具（用户环境变量 MISE_DISABLE_TOOLS，lib/tool-roles.txt）
 #   - `mise bootstrap --only dotfiles,tools`（mise 的 [bootstrap.files] 在 Windows 上不可用；不安装 Docker，D-005）
+#   - PowerShell 7 的 profile（dotfiles/.config/powershell/profile.ps1）与 PSFzf 模块；字体 Maple Mono（D-039）
 #
-# 无人值守：环境变量 BOOTSTRAP_SOURCE、FNOX_AGE_KEY（age 私钥）、BOOTSTRAP_NO_MIHOMO=1。
+# 无人值守：环境变量 BOOTSTRAP_SOURCE、FNOX_AGE_KEY（age 私钥）、BOOTSTRAP_NO_MIHOMO=1、BOOTSTRAP_FONTS=0（不装字体）。
+# 测试（GitHub Actions，D-041）：BOOTSTRAP_LOCAL=1（直接使用 -Dir 中已有的文件，不下载仓库）、
+#   BOOTSTRAP_NO_GH_PROXY=1（不使用 GitHub 加速代理，直连）。
 param(
   [ValidateSet('github', 'cnb', '')] [string] $Source = $env:BOOTSTRAP_SOURCE,
   [string] $Dir = $(if ($env:BOOTSTRAP_DIR) { $env:BOOTSTRAP_DIR } else { Join-Path $HOME '.local\share\bootstrap' }),
   [switch] $NoMihomo = ($env:BOOTSTRAP_NO_MIHOMO -eq '1'),
-  [switch] $Reprobe = ($env:BOOTSTRAP_REPROBE -eq '1')
+  [switch] $Reprobe = ($env:BOOTSTRAP_REPROBE -eq '1'),
+  [switch] $Local = ($env:BOOTSTRAP_LOCAL -eq '1'),
+  [switch] $NoGhProxy = ($env:BOOTSTRAP_NO_GH_PROXY -eq '1')
 )
 $ErrorActionPreference = 'Stop'
+# PowerShell 5.1 的下载进度条会让 Invoke-WebRequest 慢几十倍（字体约 150 MB）
+$ProgressPreference = 'SilentlyContinue'
 
 $RepoGithub = if ($env:BOOTSTRAP_REPO_GITHUB) { $env:BOOTSTRAP_REPO_GITHUB } else { 'https://github.com/Lostrit/newsysboot.git' }
 $RepoCnb = if ($env:BOOTSTRAP_REPO_CNB) { $env:BOOTSTRAP_REPO_CNB } else { 'https://cnb.cool/xfengjing/lostrit/NewSysBoot.git' }
+# 仓库压缩包（Windows 不装 Git，D-040）：CNB 的 zip 内文件直接在根目录，GitHub 的多一层「仓库名-分支」目录
+$ArchiveGithub = ($RepoGithub -replace '\.git$', '') + '/archive/refs/heads/main.zip'
+$ArchiveCnb = ($RepoCnb -replace '\.git$', '') + '/-/git/archive/main.zip'
+# PSFzf（PowerShell 的 fzf 集成，PowerShell Gallery），锁定版本
+$PsFzfVersion = '2.7.9'
 # 内置的 GitHub 加速代理（scripts/update-gh-proxies.sh 维护，D-031）；都不可用时直连
 $GhProxies = @('https://github.cnxiaobai.com/', 'https://git.yylx.win/', 'https://gh.padao.fun/', 'https://ghproxy.sakuramoe.dev/')  # @gh-proxies
 # Windows 自带 curl.exe / tar.exe（PowerShell 5.1 中 curl 是 Invoke-WebRequest 的别名）；在 Linux 的 pwsh 中测试时用 curl
@@ -43,7 +58,10 @@ $MihomoData = Join-Path $env:ProgramData 'mihomo'
 
 function Say($msg) { Write-Host "==> $msg" -ForegroundColor Cyan }
 
-function Install-WingetPackage($id) {
+# 已有对应命令（如 GitHub Actions 的 runner 预装）时跳过
+function Install-WingetPackage($id, $cmd) {
+  if ($cmd -and (Get-Command $cmd -ErrorAction SilentlyContinue)) { return }
+  if (-not (Get-Command winget -ErrorAction SilentlyContinue)) { throw "需要 winget 安装 $id（或先自行安装 $cmd）" }
   if (-not (winget list --id $id -e 2>$null | Select-String $id)) {
     Say "winget install $id"
     winget install --id $id -e --silent --accept-package-agreements --accept-source-agreements | Out-Null
@@ -56,9 +74,9 @@ function Install-WingetPackage($id) {
 #   全部候选并行测延时，最低的 5 个做 release / raw / archive / clone 真实测试，全部通过者中取 release 最快的；
 #   结果缓存 7 天（-Reprobe 重新选择）；都不可用时直连
 # ---------------------------------------------------------------------------
-function Get-ShVar($repoDir, $name) {
-  $m = Select-String -Path (Join-Path $repoDir 'lib\mirrors.sh') -Pattern "^$name=`"(.*)`"$" | Select-Object -First 1
-  if (-not $m) { throw "lib/mirrors.sh 中没有 $name" }
+function Get-ShVar($repoDir, $name, $file = 'lib\mirrors.sh') {
+  $m = Select-String -Path (Join-Path $repoDir $file) -Pattern "^$name=`"(.*)`"$" | Select-Object -First 1
+  if (-not $m) { throw "$file 中没有 $name" }
   $m.Matches[0].Groups[1].Value
 }
 
@@ -119,7 +137,8 @@ function Test-GhProxy($p, $t) {
     if (-not (Test-Path $tgz)) { return 0 }
     $list = & tar -tzf $tgz 2>$null
     if (-not ($list -contains $t.ArchiveFile)) { return 0 }
-    # clone（不经环境中的代理；最多 60 秒）
+    # clone（不经环境中的代理；最多 60 秒）：Windows 不装 Git（D-040），没有 git 时跳过这一项
+    if (-not (Get-Command git -ErrorAction SilentlyContinue)) { return $speed }
     $saved = @{}
     foreach ($v in 'HTTP_PROXY', 'HTTPS_PROXY', 'ALL_PROXY', 'http_proxy', 'https_proxy', 'all_proxy') {
       $saved[$v] = [Environment]::GetEnvironmentVariable($v, 'Process')
@@ -142,6 +161,7 @@ function Test-GhProxy($p, $t) {
 
 # 返回 @(主代理, 备用代理)（D-033）；空字符串表示没有（直连）
 function Select-GhProxy($repoDir) {
+  if ($NoGhProxy) { return @('', '') }
   if ($null -ne $env:GH_PROXY) { return @($env:GH_PROXY, "$env:GH_PROXY_BACKUP") }
   $cache = Join-Path $StateDir 'gh-proxy.txt'
   if (-not $Reprobe -and (Test-Path $cache) -and ((Get-Item $cache).LastWriteTime -gt (Get-Date).AddDays(-7))) {
@@ -324,44 +344,157 @@ function Install-MihomoService($ghs, $repoDir) {
 }
 
 # ---------------------------------------------------------------------------
-Install-WingetPackage 'Git.Git'
-Install-WingetPackage 'jdx.mise'
-$env:Path = [Environment]::GetEnvironmentVariable('Path', 'Machine') + ';' + [Environment]::GetEnvironmentVariable('Path', 'User')
-
-if (-not $Source) {
-  $c = Read-Host '从哪里拉取本仓库？ 1) GitHub（经加速代理）  2) CNB  [1]'
-  $Source = if ($c -eq '2' -or $c -eq 'cnb') { 'cnb' } else { 'github' }
+# 本地系统的其他组成部分（D-036、D-039、D-040）
+# ---------------------------------------------------------------------------
+# 仓库压缩包 → 检出目录：解压到同级的临时目录再整体替换（检出目录中的修改会被覆盖：Windows 上不在这里开发）
+function Get-RepoArchive {
+  $new = "$Dir.new-$PID"
+  $zip = "$Dir.zip-$PID"
+  New-Item -ItemType Directory -Force -Path (Split-Path $Dir) | Out-Null
+  $urls = if ($Source -eq 'cnb') { @($ArchiveCnb) } else {
+    # 此时还没有选择结果：依次尝试内置的加速代理，最后直连（与 bootstrap.sh 的管道模式一致）
+    $pre = @()
+    if ($env:GH_PROXY) { $pre += $env:GH_PROXY }
+    if (-not $NoGhProxy) { $pre += $GhProxies }
+    @($pre | Select-Object -Unique | ForEach-Object { "$_$ArchiveGithub" }) + @($ArchiveGithub)
+  }
+  $root = $null
+  foreach ($u in $urls) {
+    Say "下载仓库 $u"
+    Remove-Item $new, $zip -Recurse -Force -ErrorAction SilentlyContinue
+    & $Curl -fsSL --connect-timeout 10 -m 300 -o $zip $u
+    if ($LASTEXITCODE -ne 0) { continue }
+    try { Expand-Archive -Path $zip -DestinationPath $new -Force } catch { continue }
+    # CNB：文件在根目录；GitHub：唯一的子目录
+    if (Test-Path (Join-Path $new 'bootstrap.ps1')) { $root = $new; break }
+    $sub = @(Get-ChildItem $new -Directory)
+    if ($sub.Count -eq 1 -and (Test-Path (Join-Path $sub[0].FullName 'bootstrap.ps1'))) { $root = $sub[0].FullName; break }
+  }
+  Remove-Item $zip -Force -ErrorAction SilentlyContinue
+  if (-not $root) {
+    Remove-Item $new -Recurse -Force -ErrorAction SilentlyContinue
+    throw $(if ($Source -eq 'cnb') { "无法下载仓库：$ArchiveCnb" } else { '无法从 GitHub 下载仓库，可改用 -Source cnb' })
+  }
+  $old = "$Dir.old-$PID"
+  if (Test-Path $Dir) { Move-Item $Dir $old }
+  Move-Item $root $Dir
+  Remove-Item $new, $old -Recurse -Force -ErrorAction SilentlyContinue
+  Set-Content -Path (Join-Path $Dir '.bootstrap-archive') -Value "$((Get-Date).ToString('s')) $($urls -join ' ')"
 }
 
-if (Test-Path (Join-Path $Dir '.git')) {
-  Say "更新仓库 $Dir"
+# lib/tool-roles.txt 中某个环境排除的工具（与 lib/roles.sh 的 bs_disabled_tools 相同）
+function Get-DisabledTools($repoDir, $role) {
+  $names = Get-Content (Join-Path $repoDir 'lib\tool-roles.txt') | ForEach-Object { $_ -replace '#.*', '' } |
+    Where-Object { $_ -match "^${role}:" } | ForEach-Object { ($_ -replace "^${role}:", '').Trim() -split '\s+' } |
+    Where-Object { $_ }
+  $names -join ','
+}
+
+# 当前进程与用户环境变量同时设置（之后打开的终端也生效）
+function Set-UserEnv($name, $value) {
+  Set-Item "Env:$name" $value
+  [Environment]::SetEnvironmentVariable($name, $value, 'User')
+}
+
+# OpenSSH 客户端（Windows 10 1809 起是系统可选功能，通常已安装）与 ssh-agent 服务（默认禁用）
+function Confirm-OpenSsh {
+  if (-not $OnWindows) { return }
+  if (-not (Get-Command ssh.exe -ErrorAction SilentlyContinue)) {
+    if (Test-Admin) {
+      Say '安装 OpenSSH 客户端（Windows 可选功能）'
+      Add-WindowsCapability -Online -Name 'OpenSSH.Client~~~~0.0.1.0' | Out-Null
+    } else { Write-Warning '没有 ssh.exe：请以管理员身份重新运行，或在「设置 → 系统 → 可选功能」中添加「OpenSSH 客户端」' }
+  }
+  $agent = Get-Service -Name ssh-agent -ErrorAction SilentlyContinue
+  if ($agent -and (Test-Admin)) {
+    if ($agent.StartType -ne 'Automatic') { Set-Service -Name ssh-agent -StartupType Automatic }
+    if ($agent.Status -ne 'Running') { Start-Service -Name ssh-agent }
+  } elseif ($agent -and $agent.Status -ne 'Running') {
+    Write-Warning 'ssh-agent 服务未运行（默认禁用）：以管理员身份重新运行本脚本即可启用'
+  }
+}
+
+# PowerShell 7：$PROFILE 中加载仓库的 profile（D-040），安装 PSFzf
+function Set-PwshProfile {
+  $pwsh = Get-Command pwsh -ErrorAction SilentlyContinue
+  if (-not $pwsh) { Write-Warning '没有 PowerShell 7（pwsh），跳过 profile 设置'; return }
+  $target = (& $pwsh.Source -NoProfile -NonInteractive -Command '$PROFILE.CurrentUserCurrentHost' | Out-String).Trim()
+  if (-not $target) { Write-Warning '无法确定 PowerShell 7 的 $PROFILE 路径'; return }
+  $line = '$f = Join-Path $HOME ''.config/powershell/profile.ps1''; if (Test-Path $f) { . $f }  # bootstrap（D-040）'
+  New-Item -ItemType Directory -Force -Path (Split-Path $target) | Out-Null
+  $cur = if (Test-Path $target) { Get-Content $target -Raw } else { '' }
+  if ($cur -notmatch [regex]::Escape('# bootstrap（D-040）')) {
+    Say "PowerShell 7 profile：$target"
+    Add-Content -Path $target -Value $line -Encoding utf8
+  }
+  $have = & $pwsh.Source -NoProfile -NonInteractive -Command "[bool](Get-Module -ListAvailable PSFzf | Where-Object { `$_.Version -eq '$PsFzfVersion' })"
+  if ("$have".Trim() -ne 'True') {
+    Say "安装 PowerShell 模块 PSFzf $PsFzfVersion（PowerShell Gallery）"
+    & $pwsh.Source -NoProfile -NonInteractive -Command "Install-PSResource -Name PSFzf -Version '$PsFzfVersion' -Scope CurrentUser -TrustRepository -Quiet -Reinstall"
+    if ($LASTEXITCODE -ne 0) { Write-Warning 'PSFzf 安装失败（之后可重新运行本脚本）：Tab 补全不使用 fzf' }
+  }
+}
+
+# 字体（D-039）：版本、文件名、sha256 与 lib/fonts.sh 共用；安装到当前用户（不需要管理员）
+function Install-Fonts($ghs, $repoDir) {
+  if ($env:BOOTSTRAP_FONTS -eq '0' -or -not $OnWindows) { return }
+  $ver = Get-ShVar $repoDir 'BS_FONT_VERSION' 'lib\fonts.sh'
+  $asset = Get-ShVar $repoDir 'BS_FONT_ASSET' 'lib\fonts.sh'
+  $sha = Get-ShVar $repoDir 'BS_FONT_SHA256' 'lib\fonts.sh'
+  $styles = if ($env:BOOTSTRAP_FONT_STYLES) { $env:BOOTSTRAP_FONT_STYLES } else { Get-ShVar $repoDir 'BS_FONT_STYLES' 'lib\fonts.sh' }
+  $want = "$ver $asset $styles"
+  $mark = Join-Path $StateDir 'fonts.txt'
+  if ((Test-Path $mark) -and (Get-Content $mark -Raw).Trim() -eq $want) { return }
+  $tmp = Join-Path $env:TEMP "bootstrap-font-$PID"
+  New-Item -ItemType Directory -Force -Path $tmp | Out-Null
+  try {
+    $zip = Join-Path $tmp $asset
+    Get-VerifiedFile $ghs "https://github.com/subframe7536/maple-font/releases/download/v$ver/$asset" $sha $zip
+    Expand-Archive -Path $zip -DestinationPath (Join-Path $tmp 'x') -Force
+    $base = $asset -replace '\.zip$', ''
+    $files = if ($styles -eq 'all') { Get-ChildItem (Join-Path $tmp 'x') -Filter *.ttf } else {
+      $styles -split '\s+' | ForEach-Object { Get-Item (Join-Path $tmp "x\$base-$_.ttf") }
+    }
+    $dir = Join-Path $env:LOCALAPPDATA 'Microsoft\Windows\Fonts'
+    $reg = 'HKCU:\Software\Microsoft\Windows NT\CurrentVersion\Fonts'
+    New-Item -ItemType Directory -Force -Path $dir | Out-Null
+    if (-not (Test-Path $reg)) { New-Item -Path $reg -Force | Out-Null }
+    foreach ($f in $files) {
+      $dst = Join-Path $dir $f.Name
+      Copy-Item $f.FullName $dst -Force
+      New-ItemProperty -Path $reg -Name "$($f.BaseName) (TrueType)" -Value $dst -PropertyType String -Force | Out-Null
+    }
+    Set-Content -Path $mark -Value $want
+    Say "字体已安装（$styles）：请在终端设置中选用「Maple Mono Normal NF CN」（已打开的程序需要重启才能看到）"
+  } catch {
+    Write-Warning "字体未安装（之后可重新运行本脚本）：$($_.Exception.Message)"
+  } finally { Remove-Item $tmp -Recurse -Force -ErrorAction SilentlyContinue }
+}
+
+# ---------------------------------------------------------------------------
+Install-WingetPackage 'jdx.mise' 'mise'
+Install-WingetPackage 'Microsoft.PowerShell' 'pwsh'
+$env:Path = [Environment]::GetEnvironmentVariable('Path', 'Machine') + ';' + [Environment]::GetEnvironmentVariable('Path', 'User') + ';' + $env:Path
+Confirm-OpenSsh
+
+if ($Local) {
+  if (-not (Test-Path (Join-Path $Dir 'bootstrap.ps1'))) { throw "BOOTSTRAP_LOCAL=1：$Dir 中没有仓库文件" }
+  Say "使用已有的仓库文件：$Dir（BOOTSTRAP_LOCAL=1）"
+} elseif ((Test-Path (Join-Path $Dir '.git')) -and (Get-Command git -ErrorAction SilentlyContinue)) {
+  # 旧版本以 git clone 检出、且本机有 Git 时继续用 git 更新
+  Say "更新仓库 $Dir（git）"
   git -C $Dir pull -q --ff-only
 } else {
-  New-Item -ItemType Directory -Force -Path (Split-Path $Dir) | Out-Null
-  if ($Source -eq 'cnb') {
-    Say "检出 $RepoCnb → $Dir"
-    git clone -q $RepoCnb $Dir
-  } else {
-    # 此时还没有选择结果：依次尝试内置的加速代理，最后直连（与 bootstrap.sh 的管道模式一致）
-    $tries = @()
-    if ($env:GH_PROXY) { $tries += $env:GH_PROXY }
-    $tries += $GhProxies
-    $tries += ''
-    foreach ($p in ($tries | Select-Object -Unique)) {
-      Say "检出 $p$RepoGithub → $Dir"
-      git clone -q --depth 1 "$p$RepoGithub" $Dir
-      if ($LASTEXITCODE -eq 0) { break }
-      Remove-Item $Dir -Recurse -Force -ErrorAction SilentlyContinue
-    }
-    if (-not (Test-Path (Join-Path $Dir '.git'))) { throw '无法从 GitHub 拉取仓库，可改用 -Source cnb' }
-    git -C $Dir remote set-url origin $RepoGithub
+  if (-not $Source) {
+    $c = Read-Host '从哪里下载本仓库？ 1) GitHub（经加速代理）  2) CNB  [1]'
+    $Source = if ($c -eq '2' -or $c -eq 'cnb') { 'cnb' } else { 'github' }
   }
+  Get-RepoArchive
 }
 
 $ghs = Select-GhProxy $Dir
 $gh = $ghs[0]
 Say "GH_PROXY: $(if ($gh) { $gh } else { '<直连>' })  备用：$(if ($ghs[1]) { $ghs[1] } else { '<无>' })"
-
 # mise 的 GitHub 下载经加速代理（与 Linux 的 env.sh 一致），并持久化到用户环境变量；$p 为空时取消
 function Set-MiseGhProxy($p) {
   $rep = if ($p) { @{ 'https://github.com/' = "${p}https://github.com/"; 'https://raw.githubusercontent.com/' = "${p}https://raw.githubusercontent.com/" } | ConvertTo-Json -Compress } else { $null }
@@ -382,15 +515,26 @@ function Invoke-MiseRetry([scriptblock] $run) {
   }
   throw 'mise 执行失败'
 }
-if ($gh) { Set-MiseGhProxy $gh }
+Set-MiseGhProxy $gh
 $env:MISE_NODE_MIRROR_URL = 'https://mirrors.cloud.tencent.com/nodejs-release/'
 [Environment]::SetEnvironmentVariable('MISE_NODE_MIRROR_URL', $env:MISE_NODE_MIRROR_URL, 'User')
 [Environment]::SetEnvironmentVariable('NPM_CONFIG_REGISTRY', 'https://mirrors.cloud.tencent.com/npm/', 'User')
 
+# XDG 目录（mise 全局配置的 [env] 引用它们；工具配置与 Linux / macOS 一致地放在 ~/.config 等目录）
+foreach ($kv in @(@('XDG_CONFIG_HOME', '.config'), @('XDG_DATA_HOME', '.local\share'), @('XDG_STATE_HOME', '.local\state'), @('XDG_CACHE_HOME', '.cache'))) {
+  $v = [Environment]::GetEnvironmentVariable($kv[0], 'User')
+  if (-not $v) { $v = Join-Path $HOME $kv[1] }
+  Set-UserEnv $kv[0] $v
+}
+# 部署环境与按环境排除的全局工具（D-036）：必须在第一次 mise install 之前设置
+Set-UserEnv 'BOOTSTRAP_ROLE' 'windows'
+Set-UserEnv 'MISE_DISABLE_TOOLS' (Get-DisabledTools $Dir 'windows')
+Say "不启用的工具：$env:MISE_DISABLE_TOOLS"
+
 Push-Location $Dir
 try {
   mise trust -q (Join-Path $Dir 'mise.toml')
-  # 仓库的工具（fnox、age）：解密 mihomo 节点需要 fnox
+  # 仓库的工具（fnox：解密 mihomo 节点）与全局工具
   Invoke-MiseRetry { mise install -q }
 
   if ($NoMihomo) {
@@ -404,4 +548,6 @@ try {
   Say 'mise bootstrap --yes --only dotfiles,tools'
   Invoke-MiseRetry { mise bootstrap --yes --only dotfiles,tools }
 } finally { Pop-Location }
-Say '完成。重新打开终端使环境变量生效。'
+Set-PwshProfile
+Install-Fonts $ghs $Dir
+Say '完成。重新打开终端（PowerShell 7：pwsh）使环境变量生效。'

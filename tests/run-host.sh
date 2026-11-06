@@ -97,6 +97,9 @@ docker exec -e TEST_REAL_SECRETS="${TEST_REAL_SECRETS:-}" "$name" sh -c '
   check() { if eval "$2" >/dev/null 2>&1; then echo "PASS $1"; else echo "FAIL $1"; fail=1; fi; }
   st=/home/tester/.local/state/bootstrap
   check "terminfo xterm-ghostty"         "TERM=xterm-ghostty tput colors | grep -qx 256"
+  check "role host, no disabled tools"   "grep -qx \"export BOOTSTRAP_ROLE='host'\" $st/env.sh && grep -qx \"export MISE_DISABLE_TOOLS=''\" $st/env.sh"
+  check "locale zh_CN + timezone"        "locale -a | grep -qix zh_CN.utf8 && grep -qx LANG=zh_CN.UTF-8 /etc/default/locale && readlink /etc/localtime | grep -q Asia/Shanghai"
+  check "host tools: jq gh btop fnox age" "su - tester -c 'zsh -lc \"jq --version && gh --version && btop --version && fnox --version && age --version\"'"
   check "mihomo active"                  "systemctl is-active mihomo"
   check "mihomo enabled"                 "systemctl is-enabled mihomo"
   check "mihomo config 0600 root"        "[ \"\$(stat -c %a:%U /etc/mihomo/config.yaml)\" = 600:root ]"

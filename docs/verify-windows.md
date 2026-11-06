@@ -25,19 +25,33 @@ irm https://gh-proxy.com/https://raw.githubusercontent.com/Lostrit/newsysboot/ma
 
 预期：
 
-- [ ] winget 安装 Git 与 mise（已安装则跳过）
-- [ ] 依次尝试内置的加速代理拉取仓库（最后才直连）
+- [ ] winget 安装 mise 与 PowerShell 7（已安装则跳过）；**不安装 Git**（D-040）
+- [ ] 有 `ssh.exe`（缺失时自动安装 OpenSSH 客户端）；`Get-Service ssh-agent` 为 Running、Automatic
+- [ ] 下载仓库压缩包：CNB 直连，或 GitHub 依次尝试内置的加速代理（最后才直连）
 - [ ] 输出「选择 GitHub 加速代理（测延时与 release / raw / archive / clone）…」，约 30～60 秒后输出 `GH_PROXY: https://…`；
       `%LOCALAPPDATA%\bootstrap\gh-proxy.txt` 记录选择结果；再次运行时输出「使用缓存的 GitHub 加速代理」（D-031）
 - [ ] mihomo、WinSW 经该加速代理下载；可手动设置 `$env:GH_PROXY='https://127.0.0.1:9/'` 后运行，确认输出「经 GitHub 加速代理下载失败，改为直连」并继续
-- [ ] 输出 `GH_PROXY: …`，选择拉取来源后检出到 `%USERPROFILE%\.local\share\bootstrap`
-- [ ] `mise install` 安装 fnox / age
+- [ ] 选择拉取来源后，压缩包解压到 `%USERPROFILE%\.local\share\bootstrap`（目录中有 `.bootstrap-archive`，没有 `.git`）
+- [ ] 输出「不启用的工具：…」（`lib/tool-roles.txt` 中 windows 的清单）；`mise install` 安装 fnox 与 Shell、文件搜索工具
 - [ ] 下载 mihomo 与 WinSW 时 sha256 校验通过（失败会报「sha256 校验失败」并中止）
 - [ ] 提示输入 age 私钥；输入时不回显
 - [ ] 输出「注册并启动 mihomo 服务」，最后输出「mihomo 已生效（TUN 模式，开机自动启动）」
 - [ ] 之后的 `mise bootstrap --only dotfiles,tools` 正常完成（此时 GitHub 下载经 TUN 代理）
 
 记录：总耗时、是否出现 SmartScreen / Defender 拦截（WinSW、mihomo 为未签名或少见的可执行文件）。
+
+## 1.5 本地系统的工具、PowerShell 7 与字体（D-036、D-039、D-040）
+
+也可以直接运行自动检查：`pwsh -File $HOME\.local\share\bootstrap\tests\ci\verify-windows.ps1`（GitHub Actions 使用同一个脚本）。
+
+- [ ] 新开 Windows Terminal 中的 **PowerShell 7**（`pwsh`）：starship 提示符正常，没有报错
+- [ ] 输入命令时有灰色的历史预测，按 → 接受；命令、参数、字符串有颜色（Catppuccin Mocha）
+- [ ] Ctrl+R 打开 atuin 历史搜索；Tab 补全弹出 fzf 选择（PSFzf）；Ctrl+T 选文件、Alt+C 进入目录
+- [ ] `ll`、`lt` 输出 eza 的长列表 / 树形（带图标）；`bat`、`rg`、`fd`、`jq` 可用，`jq` 输出有颜色
+- [ ] `nvim`、`node`、`git`、`lazygit`、`tmux` 不存在（`Get-Command` 找不到）
+- [ ] `ssh <远程主机>` 能登录；`ssh-add` 能添加密钥（ssh-agent 已启用）
+- [ ] 终端设置中能选到字体「Maple Mono Normal NF CN」，图标与中文显示正常
+- [ ] 系统自带的 Windows PowerShell 5.1 打开时没有报错（不加载这份配置）
 
 ## 2. 文件布局与权限
 

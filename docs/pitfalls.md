@@ -376,3 +376,16 @@
   这次第 2 次尝试已改用备用代理 gh.padao.fun 并全部完成（D-033 在真实限流中生效）。
 - **解决**：nvim 预装同时包装 curl 和 wget；`dotfiles/.config/wget/wgetrc` 设置 `hsts-file = ~/.cache/wget-hsts`，
   `.zshenv` 与部署期间都设置 `WGETRC`；HOME 整理把已有的 `~/.wget-hsts` 移到 `~/.cache/wget-hsts`。
+
+## P-049 compose 的 secrets 会让明文落在主机磁盘上
+
+- **现象**：设计容器 sshd 的主机私钥注入（2026-11-06）时，在 dev 上实测 Docker Compose v5.7.0，有三点：
+  - `secrets: k: environment: SECRET_K` 注入后，主机上 `/var/lib/docker/rootfs/overlayfs/<容器>/run/secrets/k` 能搜到明文。
+  - 容器内这个文件的权限是 0444，并且不是挂载点。
+  - 在 `/run/secrets` 加 `tmpfs` 后容器内看不到文件，但磁盘上的明文仍在；`mode: 0400` 被忽略（not supported outside Swarm mode）。
+- **原因**：
+  - Swarm 之外，Compose 只是模拟 secrets：环境变量来源的内容会在创建容器时复制进容器的可写层。
+  - 文件来源则是绑定挂载主机上的明文文件。
+  - 另外，容器的 `/dev/shm` 在 `docker restart` 后会被清空，内存中的数据不能跨重启保留。
+- **解决**：D-038。主机私钥由 fnox 解密，经 `docker exec -i … bootstrap-sshd load-key` 的管道写入容器的 `/dev/shm`，每次启动后重新注入。
+  授权公钥是公开信息，仍用文件来源的 secret。

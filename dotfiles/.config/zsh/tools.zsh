@@ -10,6 +10,7 @@ ztool bat       comp 'bat --completion zsh'
 ztool bun       comp 'SHELL=zsh bun completions'
 ztool delta     comp 'delta --generate-completion zsh'
 ztool fd        comp 'fd --gen-completions zsh'
+ztool gh        comp 'gh completion -s zsh'
 ztool herdr     comp 'herdr completion zsh'
 ztool rg        comp 'rg --generate complete-zsh'
 ztool starship  comp 'starship completions zsh'
@@ -26,5 +27,4 @@ ztool vivid     env  'print -r -- "export LS_COLORS=${(qq)$(vivid generate catpp
 # ---- compinit 之后加载（顺序敏感：须在 fzf-tab 等插件之前）----
 ztool fzf       init 'fzf --zsh'
 ztool atuin     init 'atuin init zsh'
-ztool zoxide    init 'zoxide init zsh'
 ztool starship  init 'starship init zsh --print-full-init'

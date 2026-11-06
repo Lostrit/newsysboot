@@ -107,3 +107,8 @@ Temporary Items
 
 # End of https://www.toptal.com/developers/gitignore/api/visualstudiocode,linux,macos
 
+
+# gh 的登录凭据绝不能进入仓库（D-037；正常情况下 ~/.config/gh 只链接 config.yml，hosts.yml 不会写到这里）
+dotfiles/.config/gh/hosts.yml
+# btop 的日志等运行时文件
+dotfiles/.config/btop/*.log

@@ -55,3 +55,6 @@ docker exec -u tester -w /home/tester "$name" sh -c '
   ls ~/.local/state/bootstrap
   cd ~/.local/share/bootstrap && ~/.local/bin/mise -E debian,container bootstrap status 2>&1 | tail -n 30
 '
+echo "######## verify（tests/container/verify.sh）"
+docker cp "$repo/tests/container/verify.sh" "$name:/tmp/verify.sh"
+docker exec "$name" sh /tmp/verify.sh tester

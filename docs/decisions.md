@@ -521,3 +521,146 @@ Linux 主机为 server（`allow-lan: true`，只放行本机和 Docker 网段）
   - 降低排序而非删除：部署时按本机实测速度重新排序，候选顺序不起作用。
 - **已有主机**：缓存的选源结果在 7 天内仍可能使用它（失败时会切换到备用代理）；`BOOTSTRAP_REPROBE=1` 可立即重新选择。
 
+
+## D-036 按环境分配工具：本地系统 / 远程系统，全局配置为全集，按环境排除 ✅
+
+**日期**：2026-11-06
+
+- **决策**：
+  1. 环境分为**本地系统**（macOS、Windows、SteamOS：物理接触、图形界面、作为客户端）和**远程系统**（Linux 主机、Debian 容器：经 SSH 使用终端）。
+     `lib/roles.sh` 的 `bs_role` 判断，结果为 `BOOTSTRAP_ROLE`；Windows 由 `bootstrap.ps1` 固定为 `windows`。
+  2. 全部工具仍声明在 `dotfiles/.config/mise/config.toml`；各环境不需要的写在 `lib/tool-roles.txt`。部署时写入 `MISE_DISABLE_TOOLS`
+     （mise 的 `disable_tools`：不安装、不激活），Linux / macOS 写在 `env.sh`，Windows 写在用户环境变量。`lib/roles.sh` 与 `bootstrap.ps1` 读同一份文件。
+  3. 分配见 [platforms.md](platforms.md)：
+     - 本地系统不装 tmux / herdr；macOS、Windows 不装 claude CLI（用桌面版），SteamOS 暂不装。
+     - Windows、SteamOS 不装运行时、git 相关工具（SteamOS 保留 delta）、nvim、gh、age。
+     - 容器不装 fnox / age / gh（D-038）。
+     - btop 只装在 Linux 主机上，gh 只装在 macOS 和 Linux 主机上。
+  4. 删除遗留的 zoxide 配置（没有安装 zoxide，终端复用方案已够用）。
+- **原因**：
+  - `os = [...]` 只能区分 Linux / macOS / Windows，区分不了主机、容器和 SteamOS。
+  - `MISE_ENV` 是全局生效的，会顺带激活所有项目中同名的 `mise.<env>.toml`（例如本仓库的 `mise.dev.toml`）。
+  - `disable_tools` 实测（mise 2026.10）对 `mise install`、`mise bootstrap` 和激活都生效，但必须写完整的工具名（如 `aqua:jqlang/jq`），写短名不生效。
+- **备选方案**：
+  - 按环境拆成多份全局配置，用 `conf.d` 链接：`~/.config/mise` 是整目录链接到仓库，生成的链接会落在仓库工作区。
+  - 每个工具单独写条件：mise 不支持按自定义环境写条件。
+- **注意**：`MISE_DISABLE_TOOLS` 也会让项目配置中的同名工具失效。fnox 在 Windows / SteamOS 上不排除，因为重新部署时要用它解密 mihomo 节点。
+
+## D-037 新增 jq、gh、btop，fnox 与 age 改为全局工具；配置遵循 XDG 与 Catppuccin Mocha ✅
+
+**日期**：2026-11-06
+
+- **决策**：
+  1. **jq 1.8.2**：所有系统；`JQ_COLORS` 用 Catppuccin Mocha 的 24 位色（mise `[env]`）。
+  2. **gh 2.103.3**：macOS 和 Linux 主机。
+     - 只链接 `~/.config/gh/config.yml`（gh 生成的默认格式，`git_protocol: ssh`、`color_labels: enabled`）。
+     - `.gitignore` 加入 `dotfiles/.config/gh/hosts.yml`。
+  3. **btop 1.4.8**：Linux 主机，用 musl 静态链接版。
+     - 整目录链接 `~/.config/btop`。`btop.conf` 是 `btop --default-config` 的输出，只把 `color_theme` 改为 `catppuccin_mocha`。
+     - 主题取自 catppuccin/btop 提交 `f437574`。
+  4. **fnox 1.43.0 与 age 1.3.2** 加入全局配置，供 macOS 和 Linux 主机日常开发使用。
+     - 仓库 `mise.toml` 只保留 fnox，部署时用于解密。
+     - 加解密方案统一用 fnox。
+- **原因**：
+  - btop 与 htop 相比界面更现代，上手容易，有官方 Catppuccin 主题，配置在 XDG 目录，资源占用也低。
+  - btop 退出时会把配置写回文件。实测用完整的默认配置时，写回后内容不变，仓库不会出现改动。
+  - Linux 主机没有系统密钥环，gh 会把登录凭据以明文写进 `hosts.yml`。整目录链接的话，凭据就进了仓库工作区，有被推送到公开仓库的风险。
+  - fnox 本身就是「机密注入环境变量」，和容器不落盘机密的原则一致，也与本仓库共用同一把 age 密钥。
+  - sops 与 dotenvx 都不依赖 age CLI；dotenvx 用自己的 secp256k1 密钥，要多保管一份私钥。
+  - age CLI 只用来生成密钥（age-keygen）和临时加密文件。
+- **备选方案**：
+  - htop：更省资源，但界面和主题都不如 btop。
+  - sops：需要加密结构化配置文件时可以再加，与 fnox 共用 age 密钥。
+  - dotenvx：不推荐，原因见上。
+
+## D-038 远程系统的 locale、时区与 SSH 服务端；容器内不落盘机密 ✅
+
+**日期**：2026-11-06
+
+- **决策**：
+  1. Linux 主机与容器在 root 阶段（`lib/system.sh`）完成以下设置：
+     - 安装 `locales tzdata openssh-server`。
+     - 生成 `en_US.UTF-8` 与 `zh_CN.UTF-8`，`/etc/default/locale` 设为 `LANG=zh_CN.UTF-8`、`LANGUAGE=zh_CN:en_US`，不设置 `LC_ALL`。
+     - 时区设为 `Asia/Shanghai`。
+     - `BOOTSTRAP_LOCALE`、`BOOTSTRAP_LANGUAGE`、`BOOTSTRAP_TZ` 可以覆盖，设为 `none` 时跳过。
+     - `.zshenv` 在 `LANG` 为空时读取 `/etc/default/locale`。
+  2. 容器另装 procps、iproute2。
+  3. 容器的 sshd：
+     - 删除安装时生成的主机密钥，写入 drop-in 与入口 `/usr/local/bin/bootstrap-sshd`。
+     - **主机私钥由 fnox 解密，经 `docker exec -i` 的管道写入容器的 `/dev/shm`**。
+     - 授权公钥用 docker secrets 的文件来源提供。
+     - 详见 [container.md](container.md)。
+  4. 容器不装 fnox / age / gh，claude 的凭据用环境变量注入。
+- **原因**：
+  - `LC_ALL` 会覆盖所有分类设置，不应作为系统默认。
+  - ssh 客户端默认会传来本地的 `LANG`，主机上同时有两种 locale 时，不会出现 `setlocale` 警告。
+  - SSH 加固（主机）要求 sshd 已安装，所以 openssh-server 放在 root 阶段安装。
+  - compose 的 secrets 都会让明文落在主机磁盘上（P-049）。
+  - 容器重启后 `/dev/shm` 会被清空，私钥只能每次启动后重新注入。
+- **备选方案**：
+  - compose `environment` 来源的 secret：明文复制进容器层，权限 0444，保留到容器删除。入口脚本仍兼容这种方式，但不推荐。
+  - 容器启动时临时生成主机私钥：每次重启指纹都会变，客户端每次都会报 known_hosts 不匹配。
+  - 在镜像中生成主机私钥：所有容器共用一把，并随镜像分发。
+
+## D-039 本地系统的终端字体：Maple Mono Normal NF CN（hinted），默认 4 个字重 ✅
+
+**日期**：2026-11-06
+
+- **决策**：
+  - macOS、Windows、SteamOS 安装 Maple Mono v7.9 的 `MapleMonoNormal-NF-CN.zip`（锁定 sha256）。
+  - 版本、文件名、校验值写在 `lib/fonts.sh`，`bootstrap.ps1` 读取同一份定义。
+  - 默认只装 Regular、Italic、Bold、BoldItalic 四个字重；`BOOTSTRAP_FONT_STYLES=all` 安装全部，`BOOTSTRAP_FONTS=0` 不安装。
+  - 终端模拟器的配置暂不纳入仓库。
+- **原因**：
+  - 选择 Normal 字形、带连字（文件名不含 `NL`）、Nerd Font、中文、hinted 版。macOS 会忽略 hinting，所以三个系统可以统一用这一份。
+  - 压缩包有 16 个字重，解压后约 330 MB，终端只用得到四个。
+  - 字体经第三方加速代理下载，必须校验 sha256。
+- **备选方案**：
+  - Homebrew cask、Scoop 等包管理器：各平台不一致，SteamOS 也装不了。
+  - 安装全部字重：太占空间。
+
+## D-040 Windows：不装 Git，下载压缩包部署；PowerShell 7 接近 zsh 的体验 ✅
+
+**日期**：2026-11-06
+
+- **决策**：
+  1. 不再安装 Git.Git，仓库改为下载压缩包。
+     - 来源：CNB 的 `/-/git/archive/main.zip`（文件直接在根目录），或 GitHub 的 `archive/refs/heads/main.zip`（经加速代理，多一层目录）。
+     - 先解压到同级的临时目录，再整体替换检出目录。重新运行即更新。
+     - 已有 `.git` 且本机有 Git 时仍用 `git pull`。
+     - 选择加速代理时，没有 git 就跳过 clone 这一项测试。
+  2. winget 安装 PowerShell 7（`Microsoft.PowerShell`）。
+     - `$PROFILE` 中追加一行，加载 `~/.config/powershell/profile.ps1`。
+     - 安装 PSFzf 2.7.9。
+     - 对应关系见 [platforms.md](platforms.md) 第 7 节。
+  3. 检查 OpenSSH 客户端（缺失时以管理员身份安装可选功能），并启用 ssh-agent 服务。
+  4. XDG 目录与 `MISE_DISABLE_TOOLS` 写入用户环境变量，必须在第一次 `mise install` 之前设置。
+- **原因**：
+  - Windows 上只做 Windows 相关的开发调试，经 SSH 使用远程系统。
+  - Git for Windows 会带上 bash，与「不引入 bash」的要求冲突。
+  - `$PROFILE` 位于「文档」目录，可能被 OneDrive 重定向，因此由 pwsh 自己给出路径，那里只放一行。
+  - Windows PowerShell 5.1 自带的 PSReadLine 太旧，没有输入预测。
+- **备选方案**：
+  - 保留 Git：会引入 bash。
+  - Scoop 安装工具：与其他系统的 mise 不一致。
+
+## D-041 用 GitHub Actions 测试 Windows 与 macOS ✅
+
+**日期**：2026-11-06
+
+- **决策**：`.github/workflows/local-systems.yml`，推送到 GitHub 或提 PR 时运行。
+  - **Windows**（`windows-latest`）：
+    - 先检查 PowerShell 语法。
+    - 预装 mise（与 `vendor/mise-install.sh` 同一版本，校验 sha256）。
+    - 在 Windows PowerShell 5.1 中运行两次 `bootstrap.ps1`，参数为 `BOOTSTRAP_LOCAL=1`、`BOOTSTRAP_NO_GH_PROXY=1`、`BOOTSTRAP_NO_MIHOMO=1`。
+    - 最后运行 `tests/ci/verify-windows.ps1`。
+  - **macOS**（`macos-15-intel`、`macos-latest`）：运行两次 `bootstrap.sh --dotfiles`，再运行 `tests/ci/verify-macos.zsh`。
+- **原因**：
+  - Windows 与 macOS 此前只能静态检查，现在每次改动都能自动安装并检查一遍。
+  - GitHub 已于 2025-12 停用 `macos-13` runner，Intel 只剩 `macos-15-intel`（R-016）。它与你的 macOS 13.7.8 Intel 有版本差异，所以再加上 Apple 芯片的 `macos-latest`。
+- **局限**：
+  - runner 在海外，直连 GitHub，不测国内网络。
+  - mihomo 服务需要 age 私钥，不在 CI 中测试。
+  - macOS 用 `--dotfiles` 模式，不改系统。
+  - SteamOS 没有对应的 runner。
+  - 最终仍以真机验证为准。

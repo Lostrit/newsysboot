@@ -31,5 +31,15 @@ export WGETRC="$XDG_CONFIG_HOME/wget/wgetrc"   # HSTS 记录不写 ~/.wget-hsts�
 { export TERMINFO_DIRS="$XDG_DATA_HOME/terminfo:"; } 2>/dev/null
 fpath=("$XDG_DATA_HOME/zsh/site-functions" $fpath)
 
+# 系统默认 locale：登录会话经 PAM 读取 /etc/default/locale；`docker exec … zsh` 等不经 PAM 的场景在这里补上（D-038）
+if [[ -z $LANG && -r /etc/default/locale ]]; then
+  () {
+    local l
+    for l in ${(f)"$(</etc/default/locale)"}; do
+      [[ $l == (LANG|LANGUAGE)=* ]] && export "${l//\"/}"
+    done
+  }
+fi
+
 # bootstrap 写入的环境（GH_PROXY、MISE_URL_REPLACEMENTS 等），见 lib/env.sh
 [[ -r "$XDG_STATE_HOME/bootstrap/env.sh" ]] && source "$XDG_STATE_HOME/bootstrap/env.sh"

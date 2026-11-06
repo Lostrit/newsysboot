@@ -5,6 +5,8 @@
 #   - 目录由 bootstrap 的 [bootstrap.directories] 创建；工具自己需要的目录大多会按需自动创建
 #   - 补全 / init 脚本由 zsh 的 $ZDOTDIR/tools.zsh 声明，启动时生成并缓存，不在 postinstall 中生成
 #   - 版本全部锁定；升级 = 修改版本号并提交
+#   - 这里是全部环境的工具全集；各环境不需要的由 bootstrap 写入 MISE_DISABLE_TOOLS 排除（D-036，
+#     清单在 bootstrap 仓库的 lib/tool-roles.txt；工具名改动时两边一起改）
 
 # ---------------------------------------------------------------------------
 # hooks
@@ -68,6 +70,9 @@ FZF_DEFAULT_OPTS = """\
 --color=marker:#B4BEFE,fg+:#CDD6F4,prompt:#CBA6F7,hl+:#F38BA8 \
 --color=selected-bg:#45475A \
 --color=border:#6C7086,label:#CDD6F4"""
+
+# jq：Catppuccin Mocha 配色（null:false:true:数字:字符串:数组:对象:键名，24 位真彩色，jq ≥ 1.7.1）
+JQ_COLORS = "38;2;108;112;134:38;2;250;179;135:38;2;250;179;135:38;2;250;179;135:38;2;166;227;161:38;2;147;153;178:38;2;147;153;178:38;2;137;180;250"
 
 # atuin
 ATUIN_CONFIG_DIR = "${XDG_CONFIG_HOME}/atuin"
@@ -140,6 +145,25 @@ version = "3.6a"
 
 [tools."aqua:sharkdp/vivid"]
 version = "0.11.1"
+
+[tools."aqua:jqlang/jq"]
+version = "1.8.2"
+
+# GitHub CLI（macOS、Linux 主机）：配置遵循 XDG（~/.config/gh）；登录凭据在 hosts.yml，因此只链接 config.yml（D-037）
+[tools."aqua:cli/cli"]
+version = "2.103.3"
+
+# 进程监控（Linux 主机）：musl 静态链接版；配置与主题在 ~/.config/btop（Catppuccin Mocha）
+[tools."aqua:aristocratos/btop"]
+version = "1.4.8"
+
+# 机密管理（macOS、Linux 主机的日常开发；部署时用 bootstrap 仓库 mise.toml 中的同一版本，D-008、D-037）
+[tools.fnox]
+version = "1.43.0"
+
+# age CLI：生成密钥（age-keygen）与临时加密文件；fnox 自带 age 加解密，不依赖它
+[tools.age]
+version = "1.3.2"
 
 [tools."aqua:jesseduffield/lazygit"]
 version = "0.61.1"

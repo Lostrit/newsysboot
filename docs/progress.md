@@ -1,6 +1,6 @@
 # 当前进度
 
-更新时间：2026-11-04（最新提交见 `git log`；推送：GitHub `Lostrit/newsysboot`、CNB `xfengjing/lostrit/NewSysBoot`，由 Claude 负责）
+更新时间：2026-11-06（最新提交见 `git log`；推送：GitHub `Lostrit/newsysboot`、CNB `xfengjing/lostrit/NewSysBoot`，由 Claude 负责）
 
 ## 一、各环境状态
 
@@ -11,8 +11,8 @@
 | Docker 容器（Debian / Ubuntu） | ✅ 完整（不装 mihomo / Docker，使用注入的宿主机代理） | ✅ debian 12 / 13、ubuntu 22.04 / 24.04；dev 上的容器（注入代理 / 无代理 / 屏蔽 GitHub） |
 | `--dotfiles` 模式 | ✅ | ✅ 无 sudo 用户；dev 主机重复运行 |
 | SteamOS | 🟡 第一版（D-020、D-027、D-028） | ⏳ 真机未验证，清单：[verify-steamos.md](verify-steamos.md) |
-| macOS | 🟡 第一版（D-028 root LaunchDaemon + TUN、P-038） | ⏳ 真机未验证，清单：[verify-macos.md](verify-macos.md)；命令行工具等待逻辑已在容器中模拟 |
-| Windows | 🟡 第一版（D-029 WinSW 系统服务 + TUN） | ⏳ 真机未验证，清单：[verify-windows.md](verify-windows.md)；PowerShell 7 语法解析通过 |
+| macOS | 🟡 第一版（D-028 root LaunchDaemon + TUN、P-038） | ⏳ 真机未验证，清单：[verify-macos.md](verify-macos.md)；GitHub Actions `macos-15-intel` / `macos-latest` 以 `--dotfiles` 自动测试（D-041） |
+| Windows | 🟡 第一版（D-029 WinSW 系统服务 + TUN；D-040 不装 Git、PowerShell 7） | ⏳ 真机未验证，清单：[verify-windows.md](verify-windows.md)；GitHub Actions `windows-latest` 自动测试（D-041） |
 | **真机版本矩阵**（D-032，R-015） | ✅ | ✅ Debian 12 / 13（root）、Ubuntu 22.04 / 24.04（ubuntu 用户）、Ubuntu 26.04（root，sudo-rs）全部通过；`sh tests/run-cloud.sh` 可随时重跑 |
 | 阿里云 / 华为云 / 火山引擎 | 🟡 内网源探测已实现（D-006） | ⏳ 未在真机验证（华为云、火山引擎的内网域名待核实） |
 
@@ -25,7 +25,12 @@
 - **mihomo**（D-016、D-020、D-027～D-029）：锁定版本 + sha256；节点 fnox + age 加密；三个分流场景（server / desktop / steamos）；
   Linux 主机经环境变量，本地设备默认 TUN；两次执行，代理可用后切换（含 `--dotfiles` 与容器中检测已有代理，P-028）
 - **Docker**（D-005、D-013）：只在 Linux 主机安装；镜像源 + Docker Hub 镜像 + docker 组 + dockerd 代理
-- **mise 工具与 dotfiles**：20 个工具；dotfiles 整目录链接；zsh 工具清单 + 缓存（启动约 0.07 秒，D-010）；非交互式 shell 经 shims（评审第 9 项）
+- **按环境分配工具**（D-036）：本地系统（macOS / Windows / SteamOS）与远程系统（Linux 主机 / 容器）；全局配置为 23 个工具的全集，
+  各环境排除的写在 `lib/tool-roles.txt`（`MISE_DISABLE_TOOLS`）；新增 jq、gh、btop，fnox / age 改为全局工具（D-037）；差异见 [platforms.md](platforms.md)
+- **远程系统**（D-038）：locale zh_CN.UTF-8、时区 Asia/Shanghai、openssh-server；容器另装 procps / iproute2，不装加解密工具，
+  sshd 的主机私钥经 fnox 注入内存（[container.md](container.md)）
+- **本地系统**：Maple Mono Normal NF CN 字体（D-039）；Windows 不装 Git、下载压缩包部署，PowerShell 7 profile 接近 zsh 体验（D-040）
+- **mise 工具与 dotfiles**：dotfiles 整目录链接；zsh 工具清单 + 缓存（启动约 0.07 秒，D-010）；非交互式 shell 经 shims（评审第 9 项）
 - **nvim 预装**（D-026）：网络检测通过时默认预装，否则 WARNING 跳过；`--no-nvim` / `--nvim`
 - **终端 terminfo**（D-034）：Ghostty（`xterm-ghostty`）条目编译到 `/etc/terminfo`，安装 ncurses-term；zsh 中 TERM 无对应 terminfo 时回退
 - **HOME 整理**（D-030）：清理云镜像预置配置与 bash 默认文件，历史 / terminfo / docker 配置移到 XDG 目录
@@ -37,11 +42,13 @@
 
 - ✅ 真机版本矩阵测试已完成（R-015）。
 - ✅ 备用 GitHub 加速代理（D-033）：主代理失败时先试备用代理，再直连。
+- ✅ 本地 / 远程系统的工具分配与配置（D-036～D-041）。
 
 ## 四、需要用户参与
 
-1. **SteamOS / macOS / Windows 真机验证**：按三份验证清单执行（暂缓）
-2. **其他云的真机**：阿里云、华为云（可选火山引擎）各一台全新主机跑一次（验证内网源探测与内网域名）
+1. **SteamOS / macOS / Windows 真机验证**：按三份验证清单执行（暂缓）；新增的检查项在各清单的「1.5」节
+2. **终端模拟器**：决定各本地系统使用的终端后，再把终端配置（字体、Catppuccin Mocha）纳入仓库
+3. **其他云的真机**：阿里云、华为云（可选火山引擎）各一台全新主机跑一次（验证内网源探测与内网域名）
 
 ## 五、已知限制
 
@@ -50,6 +57,9 @@
 - 云镜像预置文件的识别目前只收录腾讯云的默认内容（D-030）
 - 暂不提供 mihomo 网页面板（external-controller）
 - glibc < 2.39（Debian 12、Ubuntu 22.04）上 tree-sitter CLI 无法运行，nvim 没有 treesitter 语法解析器（P-043）
+- 容器重启后需要重新注入 SSH 主机私钥（`/dev/shm` 会被清空，P-049）
+- Windows 的检出目录是只读副本：重新运行会覆盖其中的修改（D-040）
+- GitHub Actions 的 macOS 是 15，与你的 13.7.8 Intel 有差异；mihomo 与国内网络不在 CI 中测试（D-041）
 
 ## 说明
 

@@ -1,5 +1,11 @@
 # mise.container.toml — Docker 容器环境
 #
 # 容器中不安装 mihomo、不安装 Docker（不做 Docker in Docker），使用宿主机的代理：
-# 由容器编排注入 http_proxy=http://host.docker.internal:7890 等（见 dotfiles/.docker/docker-compose.yml）。
-# 目前没有容器专属的声明；保留本文件，便于以后添加（例如容器内的 locale、时区）。
+# 由容器编排注入 http_proxy=http://host.docker.internal:7890 等（示例见 files/container/compose.example.yaml）。
+# 容器中不落盘任何机密（D-038）：不装 fnox / age / gh（lib/tool-roles.txt）；SSH 主机私钥启动后经 docker exec 写入内存
+# （lib/system.sh、files/container/bootstrap-sshd.sh、docs/container.md）。
+
+[bootstrap.packages]
+# 精简镜像中没有 ps / top / ip（主机上通常已自带）
+"apt:procps" = "latest"
+"apt:iproute2" = "latest"

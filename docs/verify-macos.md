@@ -54,6 +54,14 @@ curl -fsSL https://gh-proxy.com/https://raw.githubusercontent.com/Lostrit/newsys
 
 记录：总耗时、需要输入密码的次数、是否出现系统弹窗（「允许接受传入网络连接」「后台项目已添加」等）。
 
+## 1.5 本地系统的工具与字体（D-036、D-039）
+
+也可以直接运行自动检查：`zsh ~/.local/share/bootstrap/tests/ci/verify-macos.zsh`（GitHub Actions 使用同一个脚本；那里是 macOS 15，这里是 13.7.8 Intel）。
+
+- [ ] `tmux`、`herdr`、`claude`、`btop` 不由 mise 提供（`mise which tmux` 失败）；nvim、node、bun、gh、fnox、age、jq 可用
+- [ ] `~/Library/Fonts` 中有 `MapleMonoNormal-NF-CN-{Regular,Italic,Bold,BoldItalic}.ttf`；终端（Ghostty 等）中选用「Maple Mono Normal NF CN」后图标与中文正常
+- [ ] `gh auth login` 后凭据在钥匙串中，`~/.config/gh/hosts.yml` 中没有 token；仓库 `git status` 干净
+
 ## 2. 文件布局与权限
 
 ```sh

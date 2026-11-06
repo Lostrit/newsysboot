@@ -10,6 +10,8 @@
 | [pitfalls.md](pitfalls.md) | 开发中遇到的坑 |
 | [design-zsh-tools.md](design-zsh-tools.md) | 设计：工具的 shell 集成与 zshrc 解耦 |
 | [usage.md](usage.md) | 使用说明（入口、选项、环境变量、测试） |
+| [platforms.md](platforms.md) | **各平台差异**：本地 / 远程系统的定位、工具分配、配置、SSH、locale、字体、测试覆盖 |
+| [container.md](container.md) | Debian 辅助开发容器：不落盘机密、SSH 主机私钥经 fnox 注入内存、授权公钥 |
 | [verify-windows.md](verify-windows.md) | Windows 真机验证清单（待执行）：步骤、命令与预期结果 |
 | [verify-macos.md](verify-macos.md) | macOS 真机验证清单（待执行）：LaunchDaemon + TUN、分流、开机时机 |
 | [verify-steamos.md](verify-steamos.md) | SteamOS 真机验证清单（待执行）：TUN、Steam 商店回退、下载直连、远程畅玩 |

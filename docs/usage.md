@@ -14,6 +14,8 @@ curl -fsSL https://cnb.cool/xfengjing/lostrit/NewSysBoot/-/git/raw/main/bootstra
 流程：检测环境 → 选源测速 → apt 换源与基础包 → （root 时）创建普通用户、SSH 加固 → 以普通用户检出仓库到
 `~/.local/share/bootstrap` → 安装 mise → `mise bootstrap`（包、文件、服务、dotfiles、登录 shell、工具）。
 
+各系统安装的工具与配置不同（本地系统 / 远程系统，D-036），见 [platforms.md](platforms.md)；Debian 辅助开发容器见 [container.md](container.md)。
+
 以 root 运行时新建普通用户（`BOOTSTRAP_USER`）并切换过去；以已有的 sudo 普通用户运行时（如腾讯云 Ubuntu 的 `ubuntu`）
 不新建用户，需要 root 的步骤经 sudo 执行。两种情况都会对登录用户做 SSH 加固（D-004、D-025）：
 交互模式下需要确认，无人值守时设置 `BOOTSTRAP_HARDEN_SSH=1`。
@@ -59,6 +61,9 @@ sh ~/.local/share/bootstrap/bootstrap.sh --dotfiles
 | `BOOTSTRAP_REPO` | 仓库地址（本地测试可用路径） |
 | `BOOTSTRAP_PYPI_INDEX` | 手动指定 pip / uv 的 PyPI 镜像（默认：腾讯云内网时用内网地址，否则用腾讯云公网镜像） |
 | `BOOTSTRAP_NO_TIDY=1` | 不整理 HOME（D-030） |
+| `BOOTSTRAP_LOCALE` / `BOOTSTRAP_LANGUAGE` | 远程系统的默认 locale（默认 `zh_CN.UTF-8` / `zh_CN:en_US`；`none` 跳过，D-038） |
+| `BOOTSTRAP_TZ` | 远程系统的时区（默认 `Asia/Shanghai`；`none` 跳过） |
+| `BOOTSTRAP_FONTS=0` / `BOOTSTRAP_FONT_STYLES` | 本地系统不装字体 / 要装的字重（默认 `Regular Italic Bold BoldItalic`，`all` 为全部，D-039） |
 | `BS_DEBUG=1` | 显示测速明细和完整的 apt 输出 |
 
 ## Dockerfile 中使用
@@ -67,6 +72,8 @@ sh ~/.local/share/bootstrap/bootstrap.sh --dotfiles
 ARG BOOTSTRAP_USER=dev
 RUN BOOTSTRAP_USER=$BOOTSTRAP_USER BOOTSTRAP_NONINTERACTIVE=1 sh /path/to/bootstrap.sh
 ```
+
+完整示例（SSH 登录、locale、时区、主机私钥经 fnox 注入内存）见 [container.md](container.md) 与 `files/container/`。
 
 容器中自动只启用 `debian,container` 模块：不装 mihomo 和 Docker，使用宿主机代理（由编排注入 `http_proxy`）。
 注入的代理能访问 GitHub 时直接使用（并写入 `env.sh`），不可用时回退到 `GH_PROXY`（P-028）。例如：
@@ -149,6 +156,12 @@ irm https://gh-proxy.com/https://raw.githubusercontent.com/Lostrit/newsysboot/ma
 
 注意不要同时开启其他代理客户端或 VPN 的 TUN，避免路由冲突。
 
+- **不装 Git**：仓库以压缩包下载到 `%USERPROFILE%\.local\share\bootstrap`，重新运行即更新，检出目录中的修改会被覆盖（D-040）。
+- **PowerShell 7**：完成后打开 `pwsh`，`$PROFILE` 会加载 `~/.config/powershell/profile.ps1`（starship、atuin、PSFzf、eza 别名等）。
+- **SSH**：检查 OpenSSH 客户端，并启用 ssh-agent 服务（需要管理员）。
+- **字体**：Maple Mono Normal NF CN 安装到当前用户，需要在终端设置中选用。
+- **其他开关**：`BOOTSTRAP_FONTS=0` 不装字体；`BOOTSTRAP_LOCAL=1`（使用 `-Dir` 中已有的文件）与 `BOOTSTRAP_NO_GH_PROXY=1`（直连 GitHub）供 CI 使用。
+
 ## 测试
 
 ```sh
@@ -162,4 +175,8 @@ sh tests/mihomo-rules.sh             # 三个场景的分流（需要 mihomo）
 sh tests/run-windows-config.sh       # Windows 预渲染配置与模板同步、mihomo -t
 sh tests/run-macos-clt.sh            # macOS 管道模式等待 Xcode 命令行工具安装（容器中模拟）
 sh tests/run-tidy.sh                 # HOME 整理（按腾讯云 Ubuntu 主机的预置文件模拟）
+pwsh -NoProfile -File tests/ps-parse.ps1 bootstrap.ps1 dotfiles/.config/powershell/profile.ps1   # PowerShell 语法
 ```
+
+`tests/run.sh` 结束时运行 `tests/container/verify.sh`（工具、locale、时区、sshd 私钥注入与登录）。
+Windows 与 macOS 由 GitHub Actions 测试（`.github/workflows/local-systems.yml`，D-041）。

@@ -21,6 +21,13 @@ check "docker active + mirror + pull"  "systemctl is-active docker && docker inf
 check "dockerd proxy drop-in"          "systemctl show docker -p Environment | grep -q HTTP_PROXY=http://127.0.0.1:7890"
 check "sudo nopasswd / docker group"   "sudo -n true && id -nG $u | grep -qw docker"
 check "login shell zsh"                "getent passwd $u | grep -q zsh"
+check "role host, no disabled tools (D-036)" "grep -qx \"export BOOTSTRAP_ROLE='host'\" $st/env.sh && grep -qx \"export MISE_DISABLE_TOOLS=''\" $st/env.sh"
+check "locale zh_CN.UTF-8 (D-038)"     "locale -a | grep -qix zh_CN.utf8 && locale -a | grep -qix en_US.utf8 && grep -qx LANG=zh_CN.UTF-8 /etc/default/locale"
+check "timezone Asia/Shanghai (D-038)" "readlink /etc/localtime | grep -q 'Asia/Shanghai\$' && [[ \$(date +%z) == +0800 ]]"
+check "openssh-server installed"       "dpkg -s openssh-server"
+check "gh: only config.yml linked (D-037)" "[[ -L ~/.config/gh/config.yml && ! -L ~/.config/gh ]] && gh config get git_protocol | grep -qx ssh"
+check "btop config + catppuccin theme"  "[[ -L ~/.config/btop && -f ~/.config/btop/themes/catppuccin_mocha.theme ]] && grep -q catppuccin_mocha ~/.config/btop/btop.conf"
+check "no fonts on remote host (D-039)" "[[ ! -e ~/.local/share/fonts ]]"
 check "terminfo xterm-ghostty (D-034)" "[[ -e /etc/terminfo/x/xterm-ghostty ]] && TERM=xterm-ghostty tput colors | grep -qx 256 && dpkg -s ncurses-term"
 check "zsh TERM fallback (D-034)"      "[[ \$(TERM=no-such-term zsh -i -c 'print -r -- \$TERM' 2>/dev/null | tail -n 1) == xterm-256color ]] && [[ \$(TERM=xterm-ghostty zsh -i -c 'print -r -- \$TERM' 2>/dev/null | tail -n 1) == xterm-ghostty ]]"
 check "sshd root/password off"         "sudo /usr/sbin/sshd -T | grep -qx 'permitrootlogin no' && sudo /usr/sbin/sshd -T | grep -qx 'passwordauthentication no'"
@@ -33,7 +40,7 @@ check "zsh plugin origin canonical"    "git -C ~/.local/share/zsh/plugins/zsh-de
 check "nvim plugin origin canonical"   "git -C ~/.local/share/nvim/lazy/lazy.nvim remote get-url origin | grep -q '^https://github.com/'"
 # 所有 mise 工具都能运行（捕获 glibc 版本不兼容等问题，P-043；tree-sitter 在 glibc < 2.39 上已知无法运行，单独列出）
 bad=()
-for t in node bun atuin bat claude delta eza fd fzf herdr micro rg starship vivid lazygit nvim; do
+for t in node bun atuin bat claude delta eza fd fzf herdr micro rg starship vivid lazygit nvim jq gh btop fnox age; do
   out=$($t --version 2>&1 | head -1); [[ $out == *GLIBC* || $out == *"error while loading"* ]] && bad+=($t)
 done
 check "all mise tools run${bad:+ (FAIL: $bad)}" "(( ${#bad} == 0 ))"

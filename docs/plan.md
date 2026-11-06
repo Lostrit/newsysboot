@@ -57,6 +57,10 @@ curl | sh → │ 1 检测环境：OS / 发行版 / 容器 / 现有代理       
 | PowerShell | Windows | `windows`（单独实现） |
 | 任何环境 + `--dotfiles` | 只应用 dotfiles | `dotfiles`（不需要 root） |
 
+模块之外还有「环境（角色）」（D-036）：本地系统 macos / windows / steamos，远程系统 host / container。
+它决定安装哪些全局工具（`lib/tool-roles.txt` → `MISE_DISABLE_TOOLS`）、是否安装字体（本地系统）、
+是否配置 locale / 时区 / sshd（远程系统），见 [platforms.md](platforms.md)。
+
 镜像源的选择结果通过 `[vars]` 传入，不单独做云厂商模块。检测结果写入 `~/.config/mise/miserc.local.toml`（`env = [...]`），
 之后手动执行 `mise bootstrap` 时会沿用这些模块；可以用 `BOOTSTRAP_ENV` 覆盖。
 
@@ -65,7 +69,8 @@ curl | sh → │ 1 检测环境：OS / 发行版 / 容器 / 现有代理       
 ```
 bootstrap.sh  bootstrap.ps1     # stage-0 入口
 bin/apply                       # 在已有仓库中只应用 dotfiles（D-009）
-lib/                            # detect.sh、mirrors.sh（apt/docker/GitHub 选源）、user.sh、ssh.sh、secrets.sh
+lib/                            # detect.sh、mirrors.sh（apt/docker/GitHub 选源）、user.sh、ssh.sh、roles.sh（环境与工具）、
+                                #   system.sh（locale / 时区 / 容器 sshd）、fonts.sh、tool-roles.txt
 mise.toml                       # 共用部分（含 dotfiles 模块，D-009）
 mise.debian.toml  mise.steamos.toml  mise.macos.toml  mise.container.toml
 mise.mihomo.toml  mise.docker.toml

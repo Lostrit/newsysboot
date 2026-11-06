@@ -1,0 +1,94 @@
+# 本地系统（Windows、macOS）的自动测试（D-041）：仓库推送到 GitHub 时运行
+#
+# 能验证：工具按环境安装 / 排除、dotfiles 链接、PowerShell profile、字体、macOS 的 zsh 与 nvim 预装。
+# 不能验证：国内网络（runner 在海外，直连 GitHub，不使用加速代理）、mihomo 服务（需要 age 私钥）、
+# SteamOS（没有对应的 runner）。最终仍以真机验证为准（docs/verify-*.md）。
+#
+# macOS：用户的机器是 Intel MacBook Pro、macOS 13.7.8；GitHub 已停用 macos-13 runner（2025-12），
+# 用 macos-15-intel（Intel）与 macos-latest（Apple 芯片）两种覆盖，系统版本比用户的新。
+name: local-systems
+
+on:
+  push:
+    branches: [main, "ci/**"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    timeout-minutes: 60
+    env:
+      BOOTSTRAP_LOCAL: "1"
+      BOOTSTRAP_NO_GH_PROXY: "1"
+      BOOTSTRAP_NO_MIHOMO: "1"
+      BOOTSTRAP_DIR: ${{ github.workspace }}
+    steps:
+      - uses: actions/checkout@v5
+      - name: PowerShell 语法
+        shell: pwsh
+        run: ./tests/ps-parse.ps1 bootstrap.ps1 dotfiles/.config/powershell/profile.ps1 tests/ci/verify-windows.ps1
+      # runner 不一定有 winget：mise 预先装好（与 vendor/mise-install.sh 同一版本，校验 sha256），bootstrap.ps1 检测到后跳过 winget
+      - name: 安装 mise
+        shell: pwsh
+        run: |
+          $v = '2026.10.22'
+          $sha = 'd17239513ad4821fc73ce8c5aa9dc6a239652a59cb76fa3f003d3e6c67833b4d'
+          $zip = Join-Path $env:RUNNER_TEMP 'mise.zip'
+          Invoke-WebRequest "https://github.com/jdx/mise/releases/download/v$v/mise-v$v-windows-x64.zip" -OutFile $zip
+          if ((Get-FileHash $zip -Algorithm SHA256).Hash.ToLower() -ne $sha) { throw 'mise sha256 不符' }
+          Expand-Archive $zip (Join-Path $env:RUNNER_TEMP 'mise')
+          Add-Content $env:GITHUB_PATH (Join-Path $env:RUNNER_TEMP 'mise\mise\bin')
+      # 与用户一样在系统自带的 Windows PowerShell 5.1 中运行（以管理员身份：runner 默认即管理员）
+      - name: bootstrap.ps1
+        shell: powershell
+        run: ./bootstrap.ps1 *>&1 | Tee-Object -FilePath "$env:RUNNER_TEMP\bs-1.log"
+      - name: 再运行一次（幂等）
+        shell: powershell
+        run: ./bootstrap.ps1 *>&1 | Tee-Object -FilePath "$env:RUNNER_TEMP\bs-2.log"
+      - name: 检查
+        shell: pwsh
+        run: ./tests/ci/verify-windows.ps1
+      # 公开仓库的作业日志需要登录才能下载，注解（annotations）可以匿名读取：失败时把日志末尾写成注解
+      - name: 失败时输出日志末尾
+        if: failure()
+        shell: pwsh
+        run: |
+          Get-ChildItem $env:RUNNER_TEMP -Filter 'bs-*.log' | ForEach-Object {
+            $t = (Get-Content $_.FullName -Tail 80 | ForEach-Object { $_ -replace '%', '%25' -replace "`r", '' }) -join '%0A'
+            Write-Host "::error title=$($_.Name)::$t"
+          }
+
+  macos:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-15-intel, macos-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    env:
+      BOOTSTRAP_DIR: ${{ github.workspace }}
+      BOOTSTRAP_NONINTERACTIVE: "1"
+      BOOTSTRAP_SOURCE: github
+      # 空值 = 用户指定直连，不测速选择加速代理
+      GH_PROXY: ""
+    steps:
+      - uses: actions/checkout@v5
+      # --dotfiles：不改系统（mihomo 的 LaunchDaemon 需要 age 私钥与登录密码，留给真机验证）
+      - name: bootstrap.sh --dotfiles
+        run: sh bootstrap.sh --dotfiles 2>&1 | tee "$RUNNER_TEMP/bs-1.log"
+      - name: 再运行一次（幂等）
+        run: sh bootstrap.sh --dotfiles 2>&1 | tee "$RUNNER_TEMP/bs-2.log"
+      - name: 检查
+        run: zsh tests/ci/verify-macos.zsh
+      - name: 失败时输出日志末尾
+        if: failure()
+        run: |
+          for f in "$RUNNER_TEMP"/bs-*.log; do
+            [ -f "$f" ] || continue
+            t=$(tail -n 80 "$f" | sed 's/\x1b\[[0-9;]*m//g; s/%/%25/g' | awk '{printf "%s%%0A", $0}')
+            echo "::error title=$(basename "$f")::$t"
+          done

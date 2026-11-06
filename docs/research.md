@@ -224,3 +224,33 @@ fnox 是 mise 作者开发的机密管理工具：在 `fnox.toml` 中声明机�
 - 国内可用的 Docker Hub 镜像加速：腾讯云内网 `mirror.ccs.tencentyun.com`；公网现状需要再查。
 - CNB 的 raw 文件地址格式；sops `exec-env` 对嵌套键的处理；mise `[bootstrap.files]` 的 `source` + `template = true` 能否和 Tera 的 `include` 一起用。
 - mihomo 的 geodata 镜像地址（`geox-url`）。
+
+## R-016 本地 / 远程系统划分相关的调研（2026-11-06）
+
+- **mise `disable_tools`**（mise 2026.10.21 实测）：环境变量 `MISE_DISABLE_TOOLS` 写完整工具名（如 `aqua:jqlang/jq`）时，
+  `mise ls --current`、`mise install`、`mise bootstrap --only tools` 都会跳过该工具；写短名（`jq`）不生效。
+- **本地 nvim 编辑远程仓库**（2026-11-06，依据各项目文档整理，未逐一实测）：
+  - `nvim scp://host//path`（内置 netrw）：逐个文件拉取，LSP、全项目搜索都不可用。
+  - `nvim --remote-ui --server`（0.9 起）：本地只是界面，nvim 实际在远程运行；需要端口转发，两端版本要一致，功能标记为实验性。
+  - remote-nvim.nvim：在远程启动 nvim 后用 `--remote-ui` 连接。
+  - remote-sshfs.nvim、distant.nvim：需要本地的 sshfs 或远程的代理程序。
+  - 结论：都比不上「ssh 登录后用远程 nvim」，所以 Windows / SteamOS 不装 nvim。
+- **GitHub Actions 的 macOS runner**：`macos-13` 已于 2025-12-04 停用；Intel 的替代标签是 `macos-15-intel`，
+  GitHub 计划在 macOS 15 镜像退役（2027 年秋）后停止 Intel。`macos-15` / `macos-latest` 是 Apple 芯片。
+  来源：[GitHub Changelog 2025-09-19](https://github.blog/changelog/2025-09-19-github-actions-macos-13-runner-image-is-closing-down/)。
+- **Docker Compose secrets**：环境变量来源由 Compose 复制进容器的可写层；容器 `/dev/shm` 在重启后清空（dev 实测，P-049）。
+  `environment` 来源只支持 Docker Compose，不支持 `docker stack deploy`。
+  来源：[Compose 文档 secrets](https://docs.docker.com/reference/compose-file/secrets/)。
+- **Maple Mono v7.9**（2025-12-05 发布）：
+  - 命名：`MapleMono<字形>[NL]-[NF-]CN[-unhinted].zip`，`NL` 表示不带连字。
+  - `MapleMonoNormal-NF-CN.zip` 大小 159,410,299 字节，sha256 `24aeb14e…5fa7`（GitHub Release 记录的 digest）。
+  - 内含 16 个字重的 ttf（每个约 20 MB），另有 LICENSE.txt、config.json。
+- **PowerShell 支持**（dev 上实测各工具的帮助输出）：
+  - init：`atuin init powershell`、`starship init powershell`。
+  - 补全：`atuin gen-completions --shell powershell`、`bat --completion ps1`、`rg --generate complete-powershell`、
+    `fd --gen-completions powershell`、`starship completions powershell`、`mise completion powershell`。
+  - Windows 版发布文件：atuin 18.21.0 有 `atuin-x86_64-pc-windows-msvc.zip`。
+  - PSFzf 最新版本为 2.7.9（PowerShell Gallery）。
+- **CNB 仓库压缩包**：`https://cnb.cool/<仓库>/-/git/archive/main.zip`（文件直接在根目录）与 `.tar.gz`，国内直连可下载。
+- **btop 1.4.8**：aqua 选用 `btop-x86_64-unknown-linux-musl.tar.gz`（静态链接）；`--default-config` 输出 254 行的完整默认配置；
+  退出时写回的配置与链接的完整配置相同。

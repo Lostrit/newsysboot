@@ -66,8 +66,12 @@ bs_stage_root() {
       bs_apt_update
       mkdir -p "$BS_STATE_DIR" && : >"$BS_STATE_DIR/apt-updated"
     fi
-    # user 阶段之前就需要的包（mise 的 apt 包列表在 mise.debian.toml 中）
-    bs_apt_install git sudo zsh curl ca-certificates
+    # user 阶段之前就需要的包（mise 的 apt 包列表在 mise.debian.toml 中）；
+    # locale / 时区 / SSH 服务端在 root 阶段配置：SSH 加固（主机）与容器 sshd 设置都要求 sshd 已安装（D-038）
+    bs_apt_install git sudo zsh curl ca-certificates locales tzdata openssh-server
+    bs_locale_setup
+    bs_timezone_setup
+    [ "$BOOTSTRAP_CONTAINER" != 1 ] || bs_container_sshd_setup
   fi
   # 关闭 Ubuntu sudo 的 admin_flag（不再在 HOME 中创建 .sudo_as_admin_successful，D-030）
   bs_sudo_no_admin_flag
@@ -274,6 +278,9 @@ bs_write_env() {
     echo "# 由 bootstrap 生成（lib/stage.sh），~/.zshenv 读取；重新运行 bootstrap.sh 会覆盖"
     bs_env_line BOOTSTRAP_DIR "$BOOTSTRAP_DIR"
     bs_env_line BOOTSTRAP_MODULES "$BOOTSTRAP_MODULES"
+    # 部署环境与按环境排除的全局工具（D-036，lib/tool-roles.txt）：mise 不安装、不激活它们
+    bs_env_line BOOTSTRAP_ROLE "$(bs_role)"
+    bs_env_line MISE_DISABLE_TOOLS "$(bs_disabled_tools)"
     bs_env_line GH_PROXY "$_gh"
     # 标记这是生成的值：之后重新运行时不把它当作用户指定（P-028）
     bs_env_line BOOTSTRAP_GENERATED_GH_PROXY "$_gh"
@@ -467,6 +474,10 @@ bs_run_mise() {
 
   bs_log "mise ${_envs:+-E $_envs }$*"
   bs_mise_retry "$_envs" "$@" || bs_die "mise bootstrap 失败"
-  [ -n "$BS_DRY_RUN" ] || bs_nvim_preinstall
+  if [ -z "$BS_DRY_RUN" ]; then
+    bs_nvim_preinstall
+    # 本地系统的终端字体（D-039）
+    bs_fonts_install
+  fi
   bs_log "完成。新开一个终端（或执行 exec zsh -l）使配置生效。"
 }

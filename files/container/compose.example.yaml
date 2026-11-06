@@ -1,0 +1,39 @@
+# files/container/compose.example.yaml —— Debian 辅助开发容器的编排示例（D-038，说明见 docs/container.md）
+#
+# 启动并注入 SSH 主机私钥（私钥由 fnox 解密，经管道写入容器内存，不落盘；每次容器启动后都要执行第二条）：
+#   docker compose up -d
+#   fnox get SSH_HOST_KEY | docker compose exec -T -u root dev bootstrap-sshd load-key
+# 登录：ssh -p 2222 dev@<Linux 主机>（或在客户端 ~/.ssh/config 中经 Linux 主机 ProxyJump）
+services:
+  dev:
+    image: devbox
+    build:
+      context: .
+      dockerfile: Dockerfile.example
+    hostname: devbox
+    # tini 作为 PID 1：回收子进程、转发信号
+    init: true
+    restart: unless-stopped
+    ports:
+      # 只监听本机：从其他机器经 Linux 主机的 SSH 跳转（ProxyJump）登录；需要直接暴露时改为 "2222:22"
+      - "127.0.0.1:2222:22"
+    extra_hosts:
+      - host.docker.internal:host-gateway
+    environment:
+      # 宿主机的 mihomo（server 场景默认放行 Docker 网段 172.16.0.0/12）
+      http_proxy: http://host.docker.internal:7890
+      https_proxy: http://host.docker.internal:7890
+      no_proxy: localhost,127.0.0.1,::1,.tencentyun.com
+    secrets:
+      # 授权公钥（公开信息）：bootstrap-sshd 启动时复制为 /etc/ssh/bootstrap_authorized_keys
+      - ssh_authorized_keys
+    volumes:
+      - work:/home/dev/work
+
+secrets:
+  ssh_authorized_keys:
+    # 每行一个公钥（.gitignore 已忽略 authorized_keys，不会误提交）
+    file: ./authorized_keys
+
+volumes:
+  work:
