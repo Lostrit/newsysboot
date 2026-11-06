@@ -60,6 +60,14 @@ $MihomoData = Join-Path $env:ProgramData 'mihomo'
 
 function Say($msg) { Write-Host "==> $msg" -ForegroundColor Cyan }
 
+# 运行原生命令，成败只看 $LASTEXITCODE：Windows PowerShell 5.1 中原生命令的标准错误被重定向时（如 CI 的 *>&1），
+# 每一行都会变成错误记录，在 $ErrorActionPreference = 'Stop' 下直接中止脚本（mise 的进度信息就写在标准错误）
+function Invoke-Native([scriptblock] $run) {
+  $old = $ErrorActionPreference
+  $ErrorActionPreference = 'Continue'
+  try { & $run } finally { $ErrorActionPreference = $old }
+}
+
 # 已有对应命令（如 GitHub Actions 的 runner 预装）时跳过
 function Install-WingetPackage($id, $cmd) {
   if ($cmd -and (Get-Command $cmd -ErrorAction SilentlyContinue)) { return }
@@ -276,7 +284,7 @@ function Install-MihomoService($ghs, $repoDir) {
   $env:FNOX_AGE_KEY = $key
   Push-Location $repoDir
   try {
-    $nodes = (mise exec fnox -- fnox get MIHOMO_PROXIES) -join "`n"
+    $nodes = (Invoke-Native { mise exec fnox -- fnox get MIHOMO_PROXIES 2>$null }) -join "`n"
   } finally {
     Pop-Location
     Remove-Item Env:FNOX_AGE_KEY -ErrorAction SilentlyContinue
@@ -364,7 +372,7 @@ function Get-RepoArchive {
   foreach ($u in $urls) {
     Say "下载仓库 $u"
     Remove-Item $new, $zip -Recurse -Force -ErrorAction SilentlyContinue
-    & $Curl -fsSL --connect-timeout 10 -m 300 -o $zip $u
+    Invoke-Native { & $Curl -fsSL --connect-timeout 10 -m 300 -o $zip $u }
     if ($LASTEXITCODE -ne 0) { continue }
     try { Expand-Archive -Path $zip -DestinationPath $new -Force } catch { continue }
     # CNB：文件在根目录；GitHub：唯一的子目录
@@ -420,7 +428,7 @@ function Confirm-OpenSsh {
 function Set-PwshProfile {
   $pwsh = Get-Command pwsh -ErrorAction SilentlyContinue
   if (-not $pwsh) { Write-Warning '没有 PowerShell 7（pwsh），跳过 profile 设置'; return }
-  $target = (& $pwsh.Source -NoProfile -NonInteractive -Command '$PROFILE.CurrentUserCurrentHost' | Out-String).Trim()
+  $target = (Invoke-Native { & $pwsh.Source -NoProfile -NonInteractive -Command '$PROFILE.CurrentUserCurrentHost' } | Out-String).Trim()
   if (-not $target) { Write-Warning '无法确定 PowerShell 7 的 $PROFILE 路径'; return }
   $line = '$f = Join-Path $HOME ''.config/powershell/profile.ps1''; if (Test-Path $f) { . $f }  # bootstrap（D-040）'
   New-Item -ItemType Directory -Force -Path (Split-Path $target) | Out-Null
@@ -429,10 +437,10 @@ function Set-PwshProfile {
     Say "PowerShell 7 profile：$target"
     Add-Content -Path $target -Value $line -Encoding utf8
   }
-  $have = & $pwsh.Source -NoProfile -NonInteractive -Command "[bool](Get-Module -ListAvailable PSFzf | Where-Object { `$_.Version -eq '$PsFzfVersion' })"
+  $have = Invoke-Native { & $pwsh.Source -NoProfile -NonInteractive -Command "[bool](Get-Module -ListAvailable PSFzf | Where-Object { `$_.Version -eq '$PsFzfVersion' })" }
   if ("$have".Trim() -ne 'True') {
     Say "安装 PowerShell 模块 PSFzf $PsFzfVersion（PowerShell Gallery）"
-    & $pwsh.Source -NoProfile -NonInteractive -Command "Install-PSResource -Name PSFzf -Version '$PsFzfVersion' -Scope CurrentUser -TrustRepository -Quiet -Reinstall"
+    Invoke-Native { & $pwsh.Source -NoProfile -NonInteractive -Command "Install-PSResource -Name PSFzf -Version '$PsFzfVersion' -Scope CurrentUser -TrustRepository -Quiet -Reinstall" }
     if ($LASTEXITCODE -ne 0) { Write-Warning 'PSFzf 安装失败（之后可重新运行本脚本）：Tab 补全不使用 fzf' }
   }
 }
@@ -485,7 +493,7 @@ if ($Local) {
 } elseif ((Test-Path (Join-Path $Dir '.git')) -and (Get-Command git -ErrorAction SilentlyContinue)) {
   # 旧版本以 git clone 检出、且本机有 Git 时继续用 git 更新
   Say "更新仓库 $Dir（git）"
-  git -C $Dir pull -q --ff-only
+  Invoke-Native { git -C $Dir pull -q --ff-only }
 } else {
   if (-not $Source) {
     $c = Read-Host '从哪里下载本仓库？ 1) GitHub（经加速代理）  2) CNB  [1]'
@@ -505,14 +513,14 @@ function Set-MiseGhProxy($p) {
 }
 # mise 失败时依次改用备用代理、直连重试（D-031、D-033）；成功后之后的步骤沿用该前缀
 function Invoke-MiseRetry([scriptblock] $run) {
-  & $run
+  Invoke-Native $run
   if ($LASTEXITCODE -eq 0) { return }
   foreach ($p in @($ghs[1], '') | Select-Object -Unique) {
     if ($p -eq $script:gh) { continue }
     Write-Warning "mise 经 $(if ($script:gh) { "GitHub 加速代理 $($script:gh)" } else { '直连' }) 执行失败，改为$(if ($p) { "备用加速代理 $p" } else { '直连 GitHub' })重试"
     $script:gh = $p
     Set-MiseGhProxy $p
-    & $run
+    Invoke-Native $run
     if ($LASTEXITCODE -eq 0) { return }
   }
   throw 'mise 执行失败'
@@ -535,7 +543,7 @@ Say "不启用的工具：$env:MISE_DISABLE_TOOLS"
 
 Push-Location $Dir
 try {
-  mise trust -q (Join-Path $Dir 'mise.toml')
+  Invoke-Native { mise trust -q (Join-Path $Dir 'mise.toml') }
   # 仓库的工具（fnox：解密 mihomo 节点）与全局工具
   Invoke-MiseRetry { mise install -q }
 
