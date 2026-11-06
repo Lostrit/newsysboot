@@ -662,6 +662,13 @@ Linux 主机为 server（`allow-lan: true`，只放行本机和 Docker 网段）
 - **原因**：
   - Windows 与 macOS 此前只能静态检查，现在每次改动都能自动安装并检查一遍。
   - GitHub 已于 2025-12 停用 `macos-13` runner，Intel 只剩 `macos-15-intel`（R-016）。它与你的 macOS 13.7.8 Intel 有版本差异，所以再加上 Apple 芯片的 `macos-latest`。
+- **验证**（2026-11-06）：三个作业全部通过。期间发现了 5 个真机上同样会出现、此前一直没被发现的问题，均已修复：
+  - P-050：Windows PowerShell 5.1 按 ANSI 代码页读取脚本。
+  - P-051：macOS 的 bash 3.2 把 `$var（` 当作变量名。
+  - P-052：5.1 的原生命令标准错误被重定向时会中止脚本。
+  - P-053：mise 的 brew 软件包不支持 Intel Mac。
+  - eza、delta 的 aqua 注册表没有可用的 macOS / Intel Mac 版本。
+  - 公开仓库的作业日志需要登录才能下载，所以工作流把各日志末尾写成注解，可以匿名读取。
 - **局限**：
   - runner 在海外，直连 GitHub，不测国内网络。
   - mihomo 服务需要 age 私钥，不在 CI 中测试。

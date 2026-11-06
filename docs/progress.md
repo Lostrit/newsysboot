@@ -8,11 +8,11 @@
 | --- | --- | --- |
 | Debian / Ubuntu 主机（root 运行，新建用户） | ✅ 完整 | ✅ 腾讯云 Debian 13 真机（dev，22 项；2026-11-03 全新系统重新部署：新配置 22 项主机检查 + 真实节点 server 分流 23 项全部通过）；本地 systemd 容器（`tests/run-host.sh`，23 项） |
 | Debian / Ubuntu 主机（已有 sudo 用户） | ✅ 完整（D-025） | ✅ 腾讯云 Ubuntu 24.04 真机（dev，`ubuntu` 用户，22 项）；✅ 腾讯云 Ubuntu 26.04 真机（2026-11-03，sudo-rs + uutils coreutils，22 项主机检查 + 真实节点分流 17 项，GitHub 下载经 GH_PROXY）；`TEST_SUDO_USER=1 tests/run-host.sh` |
-| Docker 容器（Debian / Ubuntu） | ✅ 完整（不装 mihomo / Docker，使用注入的宿主机代理） | ✅ debian 12 / 13、ubuntu 22.04 / 24.04；dev 上的容器（注入代理 / 无代理 / 屏蔽 GitHub） |
+| Docker 容器（Debian / Ubuntu） | ✅ 完整（不装 mihomo / Docker，使用注入的宿主机代理） | ✅ debian 12 / 13、ubuntu 22.04 / 24.04；dev 上的容器（注入代理 / 无代理 / 屏蔽 GitHub）；2026-11-06 `tests/container/verify.sh`（D-036、D-038：工具、locale、时区、sshd 私钥注入与登录、私钥只在内存中）全部通过 |
 | `--dotfiles` 模式 | ✅ | ✅ 无 sudo 用户；dev 主机重复运行 |
 | SteamOS | 🟡 第一版（D-020、D-027、D-028） | ⏳ 真机未验证，清单：[verify-steamos.md](verify-steamos.md) |
-| macOS | 🟡 第一版（D-028 root LaunchDaemon + TUN、P-038） | ⏳ 真机未验证，清单：[verify-macos.md](verify-macos.md)；GitHub Actions `macos-15-intel` / `macos-latest` 以 `--dotfiles` 自动测试（D-041） |
-| Windows | 🟡 第一版（D-029 WinSW 系统服务 + TUN；D-040 不装 Git、PowerShell 7） | ⏳ 真机未验证，清单：[verify-windows.md](verify-windows.md)；GitHub Actions `windows-latest` 自动测试（D-041） |
+| macOS | 🟡 第一版（D-028 root LaunchDaemon + TUN、P-038） | ✅ GitHub Actions `macos-15-intel` / `macos-latest` 以 `--dotfiles` 测试（D-041，2026-11-06 全部通过；期间发现并修复 P-051、P-053）；⏳ 真机（13.7.8 Intel、mihomo），清单：[verify-macos.md](verify-macos.md) |
+| Windows | 🟡 第一版（D-029 WinSW 系统服务 + TUN；D-040 不装 Git、PowerShell 7） | ✅ GitHub Actions `windows-latest`（D-041，2026-11-06 检查全部通过：工具分配、PowerShell 7 profile、PSFzf、字体、OpenSSH）；⏳ 真机（mihomo 与国内网络），清单：[verify-windows.md](verify-windows.md) |
 | **真机版本矩阵**（D-032，R-015） | ✅ | ✅ Debian 12 / 13（root）、Ubuntu 22.04 / 24.04（ubuntu 用户）、Ubuntu 26.04（root，sudo-rs）全部通过；`sh tests/run-cloud.sh` 可随时重跑 |
 | 阿里云 / 华为云 / 火山引擎 | 🟡 内网源探测已实现（D-006） | ⏳ 未在真机验证（华为云、火山引擎的内网域名待核实） |
 
@@ -42,7 +42,11 @@
 
 - ✅ 真机版本矩阵测试已完成（R-015）。
 - ✅ 备用 GitHub 加速代理（D-033）：主代理失败时先试备用代理，再直连。
-- ✅ 本地 / 远程系统的工具分配与配置（D-036～D-041）。
+- ✅ 本地 / 远程系统的工具分配与配置（D-036～D-041）。2026-11-06 验证：
+  - `tests/run.sh debian:13`：检查全部通过。
+  - `tests/run-host.sh`：27 项全部通过。
+  - 真机 Ubuntu 22.04（ubuntu 用户）与 Debian 13（root → lostrit）：各 51 项全部通过。
+  - GitHub Actions 三个作业全部通过。
 
 ## 四、需要用户参与
 
