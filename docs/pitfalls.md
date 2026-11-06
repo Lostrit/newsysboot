@@ -413,3 +413,15 @@
 - **解决**：
   - 全部改成 `${var}（`。
   - 新增 `scripts/check-sh-vars.sh`，lefthook 的 `sh-var-nonascii` 在提交时检查所有 .sh 文件。
+
+## P-052 Windows PowerShell 5.1：原生命令的标准错误被重定向时，会在 `$ErrorActionPreference = 'Stop'` 下中止脚本
+
+- **现象**：GitHub Actions 中 `bootstrap.ps1 *>&1 | Tee-Object …` 执行到 `mise bootstrap` 时立即失败（2026-11-06）：
+  `mise : mise bootstrap: dotfiles … NativeCommandError`，而这一行只是 mise 写到标准错误的进度信息。
+- **原因**：5.1 中原生命令的标准错误被重定向时（`2>&1`、`*>&1`、管道），每一行都会变成 ErrorRecord。脚本设置了 `$ErrorActionPreference = 'Stop'`，于是第一行就抛出异常。
+  直接在终端中运行时没有重定向，不会触发，所以真机上未必能发现。
+- **解决**：
+  - `bootstrap.ps1` 新增 `Invoke-Native`：调用原生命令（mise、curl、git、pwsh）时临时改为 `Continue`，成败只看 `$LASTEXITCODE`。
+  - 同一轮 CI 还发现另外两处 Windows 问题，一并修复：
+    - 全局 mise 配置的 postinstall 钩子是 sh 语法，cmd 报「'case' is not recognized」。改用 `[hooks.postinstall]` 的 `run_windows = "exit /b 0"`。
+    - 字体文件注册后被系统占用，重复运行时覆盖失败。改为内容相同时不再复制。

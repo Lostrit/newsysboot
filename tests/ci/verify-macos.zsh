@@ -30,7 +30,9 @@ check "btop 配置已链接"                 "[[ -L ~/.config/btop ]]"
 for s in Regular Italic Bold BoldItalic; do
   check "字体 $s (D-039)" "[[ -f ~/Library/Fonts/MapleMonoNormal-NF-CN-$s.ttf ]]"
 done
-check "zsh 启动无输出"                  "[[ -z \"\$(zsh -i -c exit 2>&1 </dev/null)\" ]]"
+zout=$(zsh -i -c exit 2>&1 </dev/null)
+check "zsh 启动无输出"                  "[[ -z \$zout ]]"
+[[ -z $zout ]] || print -r -- "zsh 启动输出：$zout"
 check "nvim 插件已预装"                 "(( \$(ls ~/.local/share/nvim/lazy | wc -l) >= 30 ))"
 check "仓库工作区干净"                  "[[ -z \"\$(git -C \$BOOTSTRAP_DIR status --porcelain)\" ]]"
 print "==> FAIL $fail"
