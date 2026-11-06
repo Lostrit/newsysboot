@@ -475,6 +475,11 @@ bs_run_mise() {
   bs_log "mise ${_envs:+-E $_envs }$*"
   bs_mise_retry "$_envs" "$@" || bs_die "mise bootstrap 失败"
   if [ -z "$BS_DRY_RUN" ]; then
+    # macOS：aqua 中没有可用 macOS 版本的工具（eza、delta）由 Homebrew 安装（D-036、P-053）
+    if [ "$BOOTSTRAP_OS" = macos ]; then
+      bs_brew_env
+      sh "$BS_SRC/scripts/macos-brew-packages.sh" || bs_warn "WARNING: 部分 Homebrew 软件包安装失败，之后可重新运行 bootstrap.sh"
+    fi
     bs_nvim_preinstall
     # 本地系统的终端字体（D-039）
     bs_fonts_install

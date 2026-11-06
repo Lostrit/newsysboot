@@ -425,3 +425,11 @@
   - 同一轮 CI 还发现另外两处 Windows 问题，一并修复：
     - 全局 mise 配置的 postinstall 钩子是 sh 语法，cmd 报「'case' is not recognized」。改用 `[hooks.postinstall]` 的 `run_windows = "exit /b 0"`。
     - 字体文件注册后被系统占用，重复运行时覆盖失败。改为内容相同时不再复制。
+
+## P-053 mise 的 `[bootstrap.packages] "brew:…"` 只支持 Apple 芯片：Intel Mac 上会直接跳过
+
+- **现象**：GitHub Actions 的 `macos-15-intel` 上执行 `mise -E macos bootstrap packages apply`（2026-11-06），输出
+  `brew eza skipped (only available on arm64 macos and x86_64/arm64 linux)`，`git-delta` 也被跳过，退出码为 0。`macos-latest`（Apple 芯片）上正常安装。
+- **原因**：mise 2026.10 内置的 Homebrew 软件包实现只支持 arm64 macOS 与 Linux。用户的 Mac 是 Intel 芯片，正好在不支持之列。
+- **解决**：改用 `scripts/macos-brew-packages.sh` 直接调用 `brew install`（Intel 与 Apple 芯片都适用），在 mise bootstrap 之后执行；
+  Homebrew 的镜像变量沿用 `lib/macos.sh` 的设置。

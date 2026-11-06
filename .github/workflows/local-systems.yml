@@ -101,15 +101,6 @@ jobs:
       - name: 再运行一次（幂等）
         shell: bash
         run: sh bootstrap.sh --dotfiles 2>&1 | tee "$RUNNER_TEMP/bs-2.log"
-      # --dotfiles 不装系统软件包：单独执行 macos 模块的 packages（Homebrew 的 eza 等）
-      - name: Homebrew 软件包（mise.macos.toml）
-        shell: bash
-        run: |
-          {
-            which -a brew; ~/.local/bin/mise -E macos bootstrap packages status
-            ~/.local/bin/mise -E macos bootstrap packages apply
-            brew list --versions eza git-delta; command -v eza delta
-          } 2>&1 | tee "$RUNNER_TEMP/bs-3.log"
       - name: 检查
         shell: bash
         run: zsh tests/ci/verify-macos.zsh 2>&1 | tee "$RUNNER_TEMP/bs-verify.log"
