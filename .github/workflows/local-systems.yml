@@ -67,11 +67,14 @@ jobs:
         run: |
           $logs = @(Get-ChildItem $env:RUNNER_TEMP -Filter 'bs-*.log' -ErrorAction SilentlyContinue)
           if (-not $logs) { Write-Host '::warning title=no logs::RUNNER_TEMP 中没有 bs-*.log' }
-          # 注解消息约 4 KB 就会被截断：末尾 120 行分成 30 行一段
+          # 注解消息约 4 KB 就会被截断，每个步骤每种级别最多 10 条：检查日志用 warning（末尾 120 行），
+          # 部署日志用 notice（各取末尾 60 行），都按 30 行一段
           foreach ($f in $logs) {
-            $lines = @(Get-Content $f.FullName -Tail 120 -ErrorAction SilentlyContinue | ForEach-Object { "$_" -replace '%', '%25' -replace "`r", '' })
+            $verify = $f.Name -eq 'bs-verify.log'
+            $level = if ($verify) { 'warning' } else { 'notice' }
+            $lines = @(Get-Content $f.FullName -Tail $(if ($verify) { 120 } else { 60 }) -ErrorAction SilentlyContinue | ForEach-Object { "$_" -replace '%', '%25' -replace "`r", '' })
             for ($i = 0; $i -lt $lines.Count; $i += 30) {
-              Write-Host "::notice title=$($f.Name) #$($i / 30 + 1)::$($lines[$i..([Math]::Min($i + 29, $lines.Count - 1))] -join '%0A')"
+              Write-Host "::$level title=$($f.Name) #$($i / 30 + 1)::$($lines[$i..([Math]::Min($i + 29, $lines.Count - 1))] -join '%0A')"
             }
           }
 
@@ -110,16 +113,18 @@ jobs:
         if: always()
         shell: bash
         run: |
-          # 注解消息约 4 KB 就会被截断：末尾 120 行分成 30 行一段（sh -x 的输出中有非 UTF-8 字节，awk 会报错，用 python）
+          # 注解消息约 4 KB 就会被截断，每个步骤每种级别最多 10 条：检查日志用 warning（末尾 120 行），
+          # 部署日志用 notice（各取末尾 60 行），都按 30 行一段（sh -x 的输出中有非 UTF-8 字节，awk 会报错，用 python）
           python3 - "$RUNNER_TEMP" <<'PY'
           import glob, os, re, sys
           logs = sorted(glob.glob(os.path.join(sys.argv[1], "bs-*.log")))
           if not logs:
               print("::warning title=no logs::RUNNER_TEMP has no bs-*.log")
           for f in logs:
+              verify = os.path.basename(f) == "bs-verify.log"
               text = open(f, "rb").read().decode("utf-8", "replace")
-              lines = [re.sub(r"\x1b\[[0-9;?]*[a-zA-Z]", "", l).replace("\r", "")[:160] for l in text.splitlines()[-120:]]
+              lines = [re.sub(r"\x1b\[[0-9;?]*[a-zA-Z]", "", l).replace("\r", "")[:160] for l in text.splitlines()[-(120 if verify else 60):]]
               for i in range(0, len(lines), 30):
                   msg = "%0A".join(l.replace("%", "%25") for l in lines[i:i + 30])
-                  print(f"::notice title={os.path.basename(f)} #{i // 30 + 1}::{msg}")
+                  print(f"::{'warning' if verify else 'notice'} title={os.path.basename(f)} #{i // 30 + 1}::{msg}")
           PY

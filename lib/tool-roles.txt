@@ -11,8 +11,9 @@
 
 # 本地系统不需要终端复用（tmux / herdr 在远程系统上运行）；有 Claude 桌面版的系统不装 claude CLI；btop 只给 Linux 主机
 macos:     aqua:tmux/tmux-builds aqua:herdrdev/herdr claude aqua:aristocratos/btop
-# eza 没有发布 macOS 的二进制，aqua 注册表在 macOS 上要求 cargo 编译（mise 的 aqua 后端不支持）：改由 Homebrew 安装（mise.macos.toml）
-macos:     aqua:eza-community/eza
+# 改由 Homebrew 安装（mise.macos.toml）：eza 没有发布 macOS 的二进制，aqua 注册表要求 cargo 编译（mise 的 aqua 后端不支持）；
+# delta 的 aqua 注册表不支持 Intel Mac（darwin/amd64）
+macos:     aqua:eza-community/eza aqua:dandavison/delta
 
 # 不做重度开发：没有运行时、git 相关工具、nvim、gh、age（fnox 保留：重新部署时解密 mihomo 节点）
 # delta 保留：git 的 pager 写死为 delta（dotfiles/.config/git/config），SteamOS 自带 git

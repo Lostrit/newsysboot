@@ -545,7 +545,8 @@ Linux 主机为 server（`allow-lan: true`，只放行本机和 Docker 网段）
   - 按环境拆成多份全局配置，用 `conf.d` 链接：`~/.config/mise` 是整目录链接到仓库，生成的链接会落在仓库工作区。
   - 每个工具单独写条件：mise 不支持按自定义环境写条件。
 - **补充**（CI 发现）：eza 没有 macOS 的二进制发布，aqua 注册表在 macOS 上要求 cargo 编译，mise 报「package type `cargo` is not supported」。
-  所以 macOS 排除 aqua 的 eza，改由 `mise.macos.toml` 的 `brew:eza` 安装。
+  delta 的 aqua 注册表不支持 darwin/amd64（Intel Mac，即你的机器）。
+  所以 macOS 排除 aqua 的 eza 与 delta，改由 `mise.macos.toml` 的 `brew:eza`、`brew:git-delta` 安装。
 - **注意**：`MISE_DISABLE_TOOLS` 也会让项目配置中的同名工具失效。fnox 在 Windows / SteamOS 上不排除，因为重新部署时要用它解密 mihomo 节点。
 
 ## D-037 新增 jq、gh、btop，fnox 与 age 改为全局工具；配置遵循 XDG 与 Catppuccin Mocha ✅

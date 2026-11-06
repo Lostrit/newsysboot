@@ -14,12 +14,14 @@ print "macOS $(sw_vers -productVersion) $(uname -m)  MISE_DISABLE_TOOLS=$MISE_DI
 
 check "BOOTSTRAP_ROLE=macos"            "[[ \$BOOTSTRAP_ROLE == macos ]]"
 # 启用的工具都能运行（D-036）
-for t in bat fd rg starship atuin fzf jq micro vivid nvim node bun lazygit delta gh fnox age; do
+for t in bat fd rg starship atuin fzf jq micro vivid nvim node bun lazygit gh fnox age; do
   check "工具 $t" "mise which $t && \$(mise which $t) --version"
 done
-check "工具 eza（Homebrew）"              "[[ \$(command -v eza) == */homebrew/* || \$(command -v eza) == /usr/local/* ]] && eza --version"
+for t in eza delta; do
+  check "工具 $t（Homebrew）" "[[ \$(command -v $t) == /opt/homebrew/* || \$(command -v $t) == /usr/local/* ]] && $t --version"
+done
 # 排除的工具 mise 不提供（runner 上可能另有系统自带的，所以用 mise which 判断）
-for t in tmux herdr claude btop eza; do
+for t in tmux herdr claude btop eza delta; do
   check "不启用 $t" "! mise which $t"
 done
 check "jq 配色（mise [env]）"           "[[ \$JQ_COLORS == 38\\;2\\;* ]]"

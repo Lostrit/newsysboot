@@ -11,10 +11,12 @@
 # ---------------------------------------------------------------------------
 # hooks
 # ---------------------------------------------------------------------------
-[hooks]
 # herdr 的 claude 集成：要求 claude 的目录已存在，而工具是并行安装的，所以放在全局 postinstall（全部装完之后）。
-# 只在本次安装了 herdr 或 claude 时执行（MISE_INSTALLED_TOOLS 是本次安装的工具列表，JSON）
-postinstall = '''
+# 只在本次安装了 herdr 或 claude 时执行（MISE_INSTALLED_TOOLS 是本次安装的工具列表，JSON）。
+# Windows 上不装 herdr / claude（D-036），cmd 也不认识 sh 语法：run_windows 替代 run，什么都不做
+[hooks.postinstall]
+run_windows = "exit /b 0"
+run = '''
 case "${MISE_INSTALLED_TOOLS:-}" in
   *herdr* | *claude*)
     if command -v herdr >/dev/null 2>&1; then

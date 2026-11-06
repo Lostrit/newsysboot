@@ -453,6 +453,7 @@ function Install-Fonts($ghs, $repoDir) {
   $sha = Get-ShVar $repoDir 'BS_FONT_SHA256' 'lib\fonts.sh'
   $styles = if ($env:BOOTSTRAP_FONT_STYLES) { $env:BOOTSTRAP_FONT_STYLES } else { Get-ShVar $repoDir 'BS_FONT_STYLES' 'lib\fonts.sh' }
   $want = "$ver $asset $styles"
+  New-Item -ItemType Directory -Force -Path $StateDir | Out-Null
   $mark = Join-Path $StateDir 'fonts.txt'
   if ((Test-Path $mark) -and (Get-Content $mark -Raw).Trim() -eq $want) { return }
   $tmp = Join-Path $env:TEMP "bootstrap-font-$PID"
@@ -471,7 +472,8 @@ function Install-Fonts($ghs, $repoDir) {
     if (-not (Test-Path $reg)) { New-Item -Path $reg -Force | Out-Null }
     foreach ($f in $files) {
       $dst = Join-Path $dir $f.Name
-      Copy-Item $f.FullName $dst -Force
+      # 已注册的字体文件会被系统占用，内容相同就不再覆盖
+      if ((Get-FileSha256 $dst) -ne (Get-FileSha256 $f.FullName)) { Copy-Item $f.FullName $dst -Force }
       New-ItemProperty -Path $reg -Name "$($f.BaseName) (TrueType)" -Value $dst -PropertyType String -Force | Out-Null
     }
     Set-Content -Path $mark -Value $want

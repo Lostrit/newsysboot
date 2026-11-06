@@ -45,8 +45,10 @@
 - **本地系统不装终端复用**：tmux / herdr 在远程系统上运行，断线后重新连接即可恢复会话。
 - **Windows、SteamOS 不做重度开发**：没有运行时、nvim 和 git 相关工具，经 `ssh` 登录后用远程的 nvim 打开仓库。
   本地 nvim 也可以经 SSH 编辑远程文件（`nvim scp://…`、`--remote-ui`、remote-nvim.nvim 等），但都比不上直接用远程 nvim，所以不装（R-016）。
-- **macOS 的 eza 由 Homebrew 安装**（`mise.macos.toml` 的 `brew:eza`）：eza 没有发布 macOS 二进制，aqua 注册表要求 cargo 编译，mise 的 aqua 后端不支持。
-  因此 `--dotfiles` 模式下 macOS 没有 eza。
+- **macOS 的 eza 与 delta 由 Homebrew 安装**（`mise.macos.toml` 的 `brew:eza`、`brew:git-delta`）：
+  - eza 没有发布 macOS 二进制，aqua 注册表要求 cargo 编译，mise 的 aqua 后端不支持。
+  - delta 的 aqua 注册表不支持 Intel Mac。
+  - 因此 `--dotfiles` 模式下 macOS 没有这两个工具。
 - **SteamOS 保留 delta**：系统自带 git，而 git 配置中的 pager 写死为 delta。
 - **fnox「仅部署时」**：重新部署时用它解密 mihomo 节点。它不在排除清单里，所以也会出现在 PATH 中。
 - **容器中没有任何加解密工具和 gh**：容器内不落盘机密（D-038）。gh 登录后会把凭据写进 `hosts.yml`。
