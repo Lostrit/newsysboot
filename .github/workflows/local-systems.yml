@@ -45,21 +45,29 @@ jobs:
       # 与用户一样在系统自带的 Windows PowerShell 5.1 中运行（以管理员身份：runner 默认即管理员）
       - name: bootstrap.ps1
         shell: powershell
-        run: ./bootstrap.ps1 *>&1 | Tee-Object -FilePath "$env:RUNNER_TEMP\bs-1.log"
+        run: |
+          $ErrorActionPreference = 'Continue'
+          try { ./bootstrap.ps1 *>&1 | Tee-Object -FilePath "$env:RUNNER_TEMP\bs-1.log" }
+          catch { "错误：$($_ | Out-String)" | Tee-Object -FilePath "$env:RUNNER_TEMP\bs-1.log" -Append; exit 1 }
       - name: 再运行一次（幂等）
         shell: powershell
-        run: ./bootstrap.ps1 *>&1 | Tee-Object -FilePath "$env:RUNNER_TEMP\bs-2.log"
+        run: |
+          $ErrorActionPreference = 'Continue'
+          try { ./bootstrap.ps1 *>&1 | Tee-Object -FilePath "$env:RUNNER_TEMP\bs-2.log" }
+          catch { "错误：$($_ | Out-String)" | Tee-Object -FilePath "$env:RUNNER_TEMP\bs-2.log" -Append; exit 1 }
       - name: 检查
         shell: pwsh
-        run: ./tests/ci/verify-windows.ps1
-      # 公开仓库的作业日志需要登录才能下载，注解（annotations）可以匿名读取：失败时把日志末尾写成注解
-      - name: 失败时输出日志末尾
-        if: failure()
+        run: ./tests/ci/verify-windows.ps1 *>&1 | Tee-Object -FilePath "$env:RUNNER_TEMP\bs-verify.log"; exit $LASTEXITCODE
+      # 公开仓库的作业日志需要登录才能下载，注解（annotations）可以匿名读取：把各日志的末尾写成注解，便于排查
+      - name: 日志末尾写成注解
+        if: always()
         shell: pwsh
         run: |
-          Get-ChildItem $env:RUNNER_TEMP -Filter 'bs-*.log' | ForEach-Object {
-            $t = (Get-Content $_.FullName -Tail 80 | ForEach-Object { $_ -replace '%', '%25' -replace "`r", '' }) -join '%0A'
-            Write-Host "::error title=$($_.Name)::$t"
+          $logs = @(Get-ChildItem $env:RUNNER_TEMP -Filter 'bs-*.log' -ErrorAction SilentlyContinue)
+          if (-not $logs) { Write-Host '::warning title=no logs::RUNNER_TEMP 中没有 bs-*.log' }
+          foreach ($f in $logs) {
+            $t = (Get-Content $f.FullName -Tail 120 -ErrorAction SilentlyContinue | ForEach-Object { "$_" -replace '%', '%25' -replace "`r", '' }) -join '%0A'
+            Write-Host "::notice title=$($f.Name)::$t"
           }
 
   macos:
@@ -78,17 +86,23 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       # --dotfiles：不改系统（mihomo 的 LaunchDaemon 需要 age 私钥与登录密码，留给真机验证）
+      # shell: bash 才会带 -o pipefail（默认的 bash 不带，| tee 会吞掉失败）；-x 跟踪执行，失败时能看到停在哪一步
       - name: bootstrap.sh --dotfiles
-        run: sh bootstrap.sh --dotfiles 2>&1 | tee "$RUNNER_TEMP/bs-1.log"
+        shell: bash
+        run: sh -x bootstrap.sh --dotfiles 2>&1 | tee "$RUNNER_TEMP/bs-1.log"
       - name: 再运行一次（幂等）
+        shell: bash
         run: sh bootstrap.sh --dotfiles 2>&1 | tee "$RUNNER_TEMP/bs-2.log"
       - name: 检查
-        run: zsh tests/ci/verify-macos.zsh
-      - name: 失败时输出日志末尾
-        if: failure()
+        shell: bash
+        run: zsh tests/ci/verify-macos.zsh 2>&1 | tee "$RUNNER_TEMP/bs-verify.log"
+      # 公开仓库的作业日志需要登录才能下载，注解（annotations）可以匿名读取：把各日志的末尾写成注解，便于排查
+      - name: 日志末尾写成注解
+        if: always()
+        shell: bash
         run: |
           for f in "$RUNNER_TEMP"/bs-*.log; do
-            [ -f "$f" ] || continue
-            t=$(tail -n 80 "$f" | sed 's/\x1b\[[0-9;]*m//g; s/%/%25/g' | awk '{printf "%s%%0A", $0}')
-            echo "::error title=$(basename "$f")::$t"
+            [ -f "$f" ] || { echo "::warning title=no logs::RUNNER_TEMP 中没有 bs-*.log"; continue; }
+            t=$(tail -n 120 "$f" | LC_ALL=C sed $'s/\x1b\\[[0-9;]*[a-zA-Z]//g; s/%/%25/g; s/\r//g' | awk '{printf "%s%%0A", $0}')
+            echo "::notice title=$(basename "$f")::$t"
           done
