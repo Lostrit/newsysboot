@@ -14,6 +14,10 @@ mihomo_allow_lan = "false"
 mihomo_bind_address = "127.0.0.1"
 mihomo_lan_allowed_ips = "127.0.0.0/8"
 
+[bootstrap.packages]
+# eza 没有 macOS 的二进制发布，aqua 注册表要求 cargo 编译：改用 Homebrew（全局配置中的 aqua 版本在 macOS 上被排除，D-036）
+"brew:eza" = "latest"
+
 [bootstrap.secrets.mihomo_proxies]
 env = "MIHOMO_PROXIES"
 description = "mihomo 节点（fnox 解密；部署时输入 age 私钥）"
