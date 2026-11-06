@@ -30,8 +30,9 @@ check "btop 配置已链接"                 "[[ -L ~/.config/btop ]]"
 for s in Regular Italic Bold BoldItalic; do
   check "字体 $s (D-039)" "[[ -f ~/Library/Fonts/MapleMonoNormal-NF-CN-$s.ttf ]]"
 done
-# 在伪终端中检查（没有终端时 zsh -i 会报「can't change option: zle」，与真实使用不同）
-zout=$(script -q /dev/null zsh -i -c exit </dev/null 2>&1 | tr -d '\r' | sed $'s/\x1b\\[[0-9;?]*[a-zA-Z]//g; s/\x1b\\][^\x07]*\x07//g')
+# 在伪终端中检查（没有终端时 zsh -i 会报「can't change option: zle」，与真实使用不同）；
+# BSD 的 script 在标准输入结束时会回显「^D」与退格，去掉
+zout=$(script -q /dev/null zsh -i -c exit </dev/null 2>&1 | tr -d '\r\b' | sed $'s/\x1b\\[[0-9;?]*[a-zA-Z]//g; s/\x1b\\][^\x07]*\x07//g; s/\\^D//g')
 check "zsh 启动无输出"                  "[[ -z \$zout ]]"
 [[ -z $zout ]] || print -r -- "zsh 启动输出：$zout"
 check "nvim 插件已预装"                 "(( \$(ls ~/.local/share/nvim/lazy | wc -l) >= 30 ))"
