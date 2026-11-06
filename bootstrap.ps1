@@ -2,7 +2,9 @@
 #
 # 用法（PowerShell；部署 mihomo 服务、OpenSSH 客户端需要「以管理员身份运行」）：
 #   irm https://gh-proxy.com/https://raw.githubusercontent.com/Lostrit/newsysboot/main/bootstrap.ps1 | iex
-#   或：powershell -ExecutionPolicy Bypass -File bootstrap.ps1 [-Source github|cnb] [-Dir <检出目录>] [-NoMihomo]
+#   本地文件：& ([scriptblock]::Create((Get-Content -Raw -Encoding UTF8 .\bootstrap.ps1))) [-Source github|cnb] [-Dir <检出目录>] [-NoMihomo]
+#   （不要用 powershell -File：Windows PowerShell 5.1 按 ANSI 代码页读取无 BOM 的脚本，中文会破坏语法；
+#    也不能加 BOM：irm | iex 时 BOM 会成为第一条「命令」，param() 失效，P-050）
 #
 # Windows 是「本地系统」（D-036）：只做 Windows 相关的开发调试，经 SSH 使用远程系统；不装 Git（也就不引入 bash）、
 # 运行时、nvim（D-040）。步骤：

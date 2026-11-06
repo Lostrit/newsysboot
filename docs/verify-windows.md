@@ -175,7 +175,7 @@ irm https://gh-proxy.com/https://raw.githubusercontent.com/Lostrit/newsysboot/ma
 ## 8. 非管理员与跳过选项
 
 - [ ] 在**普通权限**窗口运行：输出「部署 mihomo 服务需要管理员权限…」警告，dotfiles 与工具照常部署，脚本正常结束
-- [ ] 管理员窗口中 `$env:BOOTSTRAP_NO_MIHOMO='1'` 后运行（或 `-File bootstrap.ps1 -NoMihomo`）：输出「跳过 mihomo」，不改动服务
+- [ ] 管理员窗口中 `$env:BOOTSTRAP_NO_MIHOMO='1'` 后运行（或 `& ([scriptblock]::Create((Get-Content -Raw -Encoding UTF8 .\bootstrap.ps1))) -NoMihomo`，不要用 `-File`，P-050）：输出「跳过 mihomo」，不改动服务
 - [ ] 无人值守：预先设置 `$env:FNOX_AGE_KEY`、`$env:BOOTSTRAP_SOURCE='github'` 后运行，不出现任何交互提示
 - [ ] 输入错误的私钥：报「fnox 解密 mihomo 节点失败」并中止，已有的服务与配置不被破坏
 

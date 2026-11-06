@@ -150,6 +150,8 @@ sh tests/mihomo-rules.sh
 ```powershell
 # 以管理员身份运行 PowerShell（部署 mihomo 服务需要管理员；-NoMihomo 跳过）
 irm https://gh-proxy.com/https://raw.githubusercontent.com/Lostrit/newsysboot/main/bootstrap.ps1 | iex
+# 已有本地文件时（不要用 powershell -File：5.1 会按 ANSI 代码页读取，中文破坏语法，P-050）
+& ([scriptblock]::Create((Get-Content -Raw -Encoding UTF8 .\bootstrap.ps1))) -NoMihomo
 # 服务管理
 & "$env:ProgramFiles\mihomo\mihomo-service.exe" status   # start / stop / restart
 ```

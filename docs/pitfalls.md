@@ -389,3 +389,17 @@
   - 另外，容器的 `/dev/shm` 在 `docker restart` 后会被清空，内存中的数据不能跨重启保留。
 - **解决**：D-038。主机私钥由 fnox 解密，经 `docker exec -i … bootstrap-sshd load-key` 的管道写入容器的 `/dev/shm`，每次启动后重新注入。
   授权公钥是公开信息，仍用文件来源的 secret。
+
+## P-050 Windows PowerShell 5.1 用 `-File` 运行无 BOM 的 UTF-8 脚本时，中文会破坏语法
+
+- **现象**：GitHub Actions 的 `windows-latest` 上，Windows PowerShell 5.1 执行 `./bootstrap.ps1`（2026-11-06）：脚本一行都没有执行，步骤就失败了，`Tee-Object` 的日志文件也没有生成。
+- **原因**：
+  - 5.1 读取不带 BOM 的 .ps1 时按系统 ANSI 代码页解码，例如 cp1252 / GBK。
+  - UTF-8 中文的某些字节在 cp1252 中是弯引号（0x93 / 0x94），PowerShell 把它们当作字符串定界符，解析因此出错。
+  - 另一方面，文件也不能加 BOM：`irm … | iex` 时 BOM 字符（U+FEFF）会被当作第一条命令（dev 上 pwsh 7.5 实测「The term '﻿#' is not recognized」），`param()` 不再是第一条语句。
+- **解决**：
+  - 保持无 BOM。
+  - 文档中的入口统一为 `irm … | iex`（按响应的 UTF-8 解码）。
+  - 本地文件用 `& ([scriptblock]::Create((Get-Content -Raw -Encoding UTF8 .\bootstrap.ps1))) [参数]`，可以传参数。CI 也这样运行。
+  - pwsh 7 默认按 UTF-8 读取，不受影响（`tests/ps-parse.ps1`、`verify-windows.ps1` 在 pwsh 中运行）。
+
