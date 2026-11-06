@@ -88,7 +88,7 @@ done
 # 日常重新应用：经 zsh（~/.zshenv 会读取 env.sh，继承上次生成的 GH_PROXY / 代理变量）运行 --dotfiles，
 # 之后的 env.sh 检查验证代理设置没有丢失（P-028）
 echo "######## --dotfiles via zsh"
-docker exec -u tester -w /home/tester "$name" zsh -c 'sh ~/.local/share/bootstrap/bootstrap.sh --dotfiles' |
+docker exec -u tester -w /home/tester -e BOOTSTRAP_ASSUME_HOST=1 "$name" zsh -c 'sh ~/.local/share/bootstrap/bootstrap.sh --dotfiles' |
   grep -E '==>|ERROR' || true
 
 echo "######## checks"
