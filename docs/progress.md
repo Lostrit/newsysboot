@@ -20,7 +20,7 @@
 
 - **入口**：`bootstrap.sh`（`curl | sh` 管道模式、root 阶段、user 阶段）、`bootstrap.ps1`（Windows）；选择 GitHub（经加速代理）或 CNB 拉取
 - **选源**（D-006）：各云内网镜像探测，否则公网测速；apt、docker-ce、Docker Hub 镜像、GitHub 加速代理；7 天缓存；
-  GitHub 加速代理按 release / raw / archive / clone 真实测试后只选一次，保留主 / 备两个，失败时「主 → 备 → 直连」（D-031、D-033）
+  GitHub 加速代理按 release / raw / archive / clone 真实测试后只选一次，保留主 / 备两个，失败时「主 → 备 → 直连」（D-031、D-033）；gh.qninq.cn 已排除（D-035）
 - **用户与 SSH**（D-004、D-025）：root 时新建免密 sudo 用户；已有 sudo 用户时加固当前用户；确认能登录后才移走 root 公钥
 - **mihomo**（D-016、D-020、D-027～D-029）：锁定版本 + sha256；节点 fnox + age 加密；三个分流场景（server / desktop / steamos）；
   Linux 主机经环境变量，本地设备默认 TUN；两次执行，代理可用后切换（含 `--dotfiles` 与容器中检测已有代理，P-028）

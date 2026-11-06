@@ -2,7 +2,6 @@
 # 来源：https://github.xxlab.tech/（以及上一版列表）；生成时间：2026-11-03 13:56 +0800；测试机：VM-0-3-debian
 # 条件：直连可用，3 轮测试中 release / raw / archive / clone 每一轮都全部通过；按最慢一轮的 release 下载速度排序
 # 部署时（lib/mirrors.sh 的 bs_select_gh_proxy）会在本机重新测延时与真实下载，从中选出最优的一个
-https://gh.qninq.cn/                             # 最慢一轮 866 KB/s，最高延时 244 ms
 https://github.cnxiaobai.com/                    # 最慢一轮 640 KB/s，最高延时 562 ms
 https://git.yylx.win/                            # 最慢一轮 592 KB/s，最高延时 449 ms
 https://gh.padao.fun/                            # 最慢一轮 567 KB/s，最高延时 632 ms

@@ -116,6 +116,8 @@ sh tests/mihomo-rules.sh
   sh scripts/update-gh-proxies.sh   # 更新 lib/gh-proxies.txt 与 bootstrap.sh / bootstrap.ps1 / lib/mirrors.sh 的内置列表
   ```
 
+- 不想再用的代理写进 `lib/gh-proxies-exclude.txt`（D-035），更新列表时不会再加回来；同时从 `lib/gh-proxies.txt` 与三处内置列表中删除。
+
 ## HOME 整理（D-030）
 
 部署时自动整理当前用户的 HOME，最终只保留 `.cache`、`.config`、`.local`、`.ssh` 与 `.zshenv`：

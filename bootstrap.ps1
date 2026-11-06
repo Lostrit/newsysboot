@@ -24,7 +24,7 @@ $ErrorActionPreference = 'Stop'
 $RepoGithub = if ($env:BOOTSTRAP_REPO_GITHUB) { $env:BOOTSTRAP_REPO_GITHUB } else { 'https://github.com/Lostrit/newsysboot.git' }
 $RepoCnb = if ($env:BOOTSTRAP_REPO_CNB) { $env:BOOTSTRAP_REPO_CNB } else { 'https://cnb.cool/xfengjing/lostrit/NewSysBoot.git' }
 # 内置的 GitHub 加速代理（scripts/update-gh-proxies.sh 维护，D-031）；都不可用时直连
-$GhProxies = @('https://gh.qninq.cn/', 'https://github.cnxiaobai.com/', 'https://git.yylx.win/', 'https://gh.padao.fun/')  # @gh-proxies
+$GhProxies = @('https://github.cnxiaobai.com/', 'https://git.yylx.win/', 'https://gh.padao.fun/', 'https://ghproxy.sakuramoe.dev/')  # @gh-proxies
 # Windows 自带 curl.exe / tar.exe（PowerShell 5.1 中 curl 是 Invoke-WebRequest 的别名）；在 Linux 的 pwsh 中测试时用 curl
 $OnWindows = ($PSVersionTable.PSEdition -ne 'Core') -or $IsWindows
 $Curl = if ($OnWindows) { 'curl.exe' } else { 'curl' }

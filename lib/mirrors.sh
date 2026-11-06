@@ -20,7 +20,7 @@ BS_INTRANET_REGISTRIES="https://mirror.ccs.tencentyun.com"
 BS_PUBLIC_REGISTRIES="https://docker.1ms.run https://docker.m.daocloud.io"
 # GitHub 加速代理（前缀形式，带尾斜杠）：候选来自 lib/gh-proxies.txt（由 scripts/update-gh-proxies.sh 从
 # https://github.xxlab.tech/ 收集并逐项验证后生成，D-031）；文件缺失时使用下面的内置列表
-BS_GH_PROXIES_BUILTIN="https://gh.qninq.cn/ https://github.cnxiaobai.com/ https://git.yylx.win/ https://gh.padao.fun/"
+BS_GH_PROXIES_BUILTIN="https://github.cnxiaobai.com/ https://git.yylx.win/ https://gh.padao.fun/ https://ghproxy.sakuramoe.dev/"
 # 部署时：先对全部候选测延时，再对延时最低的 BS_GH_FINALISTS 个做完整的真实测试
 : "${BS_GH_FINALISTS:=5}"
 # GitHub 测速文件：不可变的 release 资源，取前 1MiB 并校验 sha256，防止代理篡改内容

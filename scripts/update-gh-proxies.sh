@@ -3,7 +3,7 @@
 #
 # 1. 从 https://github.xxlab.tech/ 抓取全部加速前缀，并与现有的 lib/gh-proxies.txt 合并（现有条目也重新验证）
 # 2. 每个候选做 BS_GH_ROUNDS 轮（默认 3）完整测试（lib/mirrors.sh 的 bs_gh_test：release / raw / archive / clone，
-#    直连代理，不经环境中的代理），只保留每一轮都全部通过的（稳定性）
+#    直连代理，不经环境中的代理），只保留每一轮都全部通过的（稳定性）；lib/gh-proxies-exclude.txt 中的不参加测试
 # 3. 按最慢一轮的 release 下载速度排序写入 lib/gh-proxies.txt，并更新 bootstrap.sh / bootstrap.ps1 / lib/mirrors.sh 中的内置列表
 #    （拉取仓库之前还没有 lib/gh-proxies.txt，管道模式与 Windows 入口使用内置列表）
 #
@@ -24,7 +24,10 @@ curl -fsSL --noproxy '*' -m 30 "$source_url" -o "$work/page.html"
 {
   grep -o '<option value="https://[^"]*"' "$work/page.html" | sed 's/<option value="//; s/"$//'
   if [ -r "$out" ]; then sed -n 's/^\(https:[^[:space:]#]*\).*/\1/p' "$out"; fi
-} | sed 's#/*$#/#' | sort -u >"$work/candidates"
+} | sed 's#/*$#/#' | sort -u >"$work/all"
+# 排除列表（lib/gh-proxies-exclude.txt，D-035）
+sed -n 's/^\(https:[^[:space:]#]*\).*/\1/p' "$repo/lib/gh-proxies-exclude.txt" 2>/dev/null | sed 's#/*$#/#' | sort -u >"$work/exclude"
+comm -23 "$work/all" "$work/exclude" >"$work/candidates"
 total=$(wc -l <"$work/candidates")
 echo "update-gh-proxies: 候选 $total 个（来源：$source_url 与现有列表），每个测试 $rounds 轮…" >&2
 

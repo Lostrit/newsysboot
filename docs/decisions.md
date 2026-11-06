@@ -504,3 +504,20 @@ Linux 主机为 server（`allow-lan: true`，只放行本机和 Docker 网段）
   节点偶发连接失败（HTTP 000）时分流检查重试一次；Debian 13 部署中主代理 gh.qninq.cn 被限流、mise 已切换到备用代理（D-033 按设计生效），
   主机检查改为同时接受「主 + 备」与「已切换到备用」两种状态。
 - **用户确认**（2026-11-04）：用户用真实 Ghostty 客户端登录 dev（Debian 13）的 lostrit，显示与行编辑正常。
+
+## D-035 排除 gh.qninq.cn，新增加速代理排除列表 ✅
+
+**日期**：2026-11-06
+
+- **决策**：
+  1. 从 `lib/gh-proxies.txt` 与 `bootstrap.sh` / `bootstrap.ps1` / `lib/mirrors.sh` 的内置列表中删除 `https://gh.qninq.cn/`；
+     内置列表顺延为 github.cnxiaobai.com、git.yylx.win、gh.padao.fun、ghproxy.sakuramoe.dev。
+  2. 新增 `lib/gh-proxies-exclude.txt`：`scripts/update-gh-proxies.sh` 合并候选后去掉其中的前缀，不再测试、不再加回。
+  3. mihomo 规则中 gh.qninq.cn 的 DIRECT 条目保留：缓存期（7 天）内已选中它的主机仍可直连访问，且无害。
+- **原因**：gh.qninq.cn 测速最快、部署时经常被选为主代理，但对同一 IP 限流频繁（P-029、P-041），
+  D-033 的真机测试中多次 429，靠备用代理才完成部署；更新列表时它又总会因测速第一被加回。
+- **备选方案**：
+  - 只在更新列表时手动删除：下次运行脚本会从 github.xxlab.tech 重新加回。
+  - 降低排序而非删除：部署时按本机实测速度重新排序，候选顺序不起作用。
+- **已有主机**：缓存的选源结果在 7 天内仍可能使用它（失败时会切换到备用代理）；`BOOTSTRAP_REPROBE=1` 可立即重新选择。
+

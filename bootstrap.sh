@@ -99,7 +99,7 @@ if [ ! -f "$(bs_self_dir)/lib/common.sh" ]; then
     # （默认国内网络）；跳过重复的候选（P-039）；直连在国内常常卡住，只给 30 秒
     BOOTSTRAP_REPO=$BOOTSTRAP_REPO_GITHUB
     _tried=
-    for _p in "${GH_PROXY:-_none_}" https://gh.qninq.cn/ https://github.cnxiaobai.com/ https://git.yylx.win/ https://gh.padao.fun/ ""; do  # @gh-proxies
+    for _p in "${GH_PROXY:-_none_}" https://github.cnxiaobai.com/ https://git.yylx.win/ https://gh.padao.fun/ https://ghproxy.sakuramoe.dev/ ""; do  # @gh-proxies
       [ "$_p" != _none_ ] || continue
       case "$_tried" in *"[$_p]"*) continue ;; esac
       _tried="$_tried[$_p]"
