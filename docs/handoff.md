@@ -29,6 +29,9 @@
   - 用户的 age 密钥 `age17ft09zwqg3kd3yvclzp6l3wejln9c8lzc5t68g39ydgv8a79tfdsyshnxq`：私钥由用户离线保管，部署新主机时注入。
   - dev 密钥库的密钥 `age1k79xtae5calfxnf9s42lw7kqrkcjjgmk8775lt39sdr5tczwkfdqfvjmwp`：私钥只在 dev 的 `~/secrets` 中，由 dev 主会话管理。
 - age **私钥**：agent **绝不能读取、输出、提交或写进日志**，也不要尝试绕过权限规则读取它。需要用私钥的操作（如 `fnox reencrypt`）请用户执行。
+- 在 dev 上需要解密仓库的 `fnox.toml` 时，用 dev 主会话提供的 `with-vault-key`（`~/.local/bin`，在仓库目录中运行），不要把私钥放进 `FNOX_AGE_KEY`：
+  - `with-vault-key -- <命令>`：用 dev 密钥库的私钥解密，以环境变量注入命令（`fnox exec --redact`）；
+  - `with-vault-key check`：只检查能否解密，不输出值。
 - 腾讯云 API 凭据（`scripts/tccloud.py`、`tests/run-cloud.sh` 用）存在 dev 密钥库的 `tencentcloud` profile 中，
   用 `with-secrets -P tencentcloud -- <命令>` 以环境变量注入；不再使用 `~/.config/tencentcloud/dev.env`。
 - 需要私钥时请用户执行命令注入（私钥只经 ssh 标准输入传输，写入测试主机的内存文件系统）：
@@ -48,7 +51,7 @@
 
 | 机器 | 说明 |
 | --- | --- |
-| dev（开发主机，正式开发环境） | 腾讯云轻量应用服务器，`62.234.97.210`，2 核 7.5G，Debian 13，用户 `lostrit`（角色 host）。**2026-11-09 起本项目在 dev 上开发**（D-042），原 2G 开发机已重装 |
+| dev（开发主机，正式开发环境） | 腾讯云轻量应用服务器，`62.234.97.210`，2 核 7.5G，Debian 13，用户 `lostrit`（角色 host）。**2026-11-09 起本项目在 dev 上开发**（D-042），原 2G 开发机随后重装、不再使用 |
 | 开发检出 | `~/projects/bootstrap`：开发、测试、提交、推送都在这里 |
 | 部署副本 | `~/.local/share/bootstrap`：dev 自身的部署（dotfiles 从这里链接）。改动走「开发检出提交推送 → dev 主会话在部署副本 `git pull --ff-only` 和 `mise install`」，**不要在部署副本里开发或运行 `mise upgrade --bump`** |
 | 分工 | **dev 主会话**（herdr 中的主 Claude 会话）管理整台机器：部署副本、密钥库 `~/secrets`、herdr 队友窗格。bootstrap 的开发由它开的 `bootstrap` 队友（或它自己）在开发检出中进行 |
