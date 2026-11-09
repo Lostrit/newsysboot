@@ -675,3 +675,19 @@ Linux 主机为 server（`allow-lan: true`，只放行本机和 Docker 网段）
   - macOS 用 `--dotfiles` 模式，不改系统。
   - SteamOS 没有对应的 runner。
   - 最终仍以真机验证为准。
+
+## D-042 迁移到 dev 开发；dev 转为正式开发环境 ✅
+
+- **决策**（2026-11-09）：原开发机（腾讯云 2 核 2G）重装，本项目改在 dev（`62.234.97.210`，用户 `lostrit`）上开发。dev 同时是用户的正式开发环境，由 dev 主会话（herdr 中的主 Claude 会话）管理。
+  - **检出**：开发检出 `~/projects/bootstrap`，与部署副本 `~/.local/share/bootstrap` 分开。改动流程为「开发检出 → 验证 → 提交推送 → dev 主会话在部署副本 pull 并 `mise install`」。
+  - **推送凭据**：两个 remote 都用 HTTPS，仓库级 credential helper 分别为 `gh auth git-credential` 与 `cnb git-credential`。不复制旧机器的 CNB 令牌，旧令牌由用户作废。
+  - **age**：`fnox.toml` 增加 dev 密钥库的公钥作为第二个接收者，由用户运行 `fnox reencrypt` 重新加密。dev 用自己的私钥解密，用户的私钥不离开用户手中。
+  - **腾讯云 API 凭据**：导入 dev 的 fnox 密钥库（`tencentcloud` profile），用 `with-secrets -P tencentcloud --` 以环境变量注入。`scripts/tccloud.py` 优先读环境变量。
+  - **保护 dev**：`tests/run-cloud.sh` 不再默认以 dev 为目标（`DEV_IP` 必填，dev 的 IP 直接拒绝）；`tccloud.py reset` 先查实例公网 IP，属于 dev 时拒绝（`TCCLOUD_PROTECTED_IPS` 可追加）。
+- **原因**：
+  - 旧开发机内存只有 2G，重型测试本来就要放到 dev 上跑。
+  - dev 有正式数据后，不能再被测试脚本重装，只靠文档约束不够，所以在脚本里加了保护。
+  - 分开检出：开发中的半成品 dotfiles 不应在验证之前就影响 dev 正在运行的环境。
+- **备选方案**：
+  - 直接把部署副本当开发仓库：两份副本不会不同步，但改坏 dotfiles 会立即影响 dev，所以没有采用。
+  - 把用户的 age 私钥复制到 dev：违反「私钥只在用户手中」的约束，所以改为增加一个接收者。

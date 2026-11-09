@@ -1,37 +1,41 @@
 # 开发交接（新的开发机 / 新的 agent 先读这里）
 
-更新时间：2026-11-06。本文档汇总**在仓库其他文档中不容易直接看出、但继续开发必须知道**的信息：开发环境、测试方法、工作约定与待办。
-功能与架构见 [plan.md](plan.md)、[usage.md](usage.md)；状态见 [progress.md](progress.md)；每个决定的原因见 [decisions.md](decisions.md)（D-001～D-041）；
+更新时间：2026-11-09。本文档汇总**在仓库其他文档中不容易直接看出、但继续开发必须知道**的信息：开发环境、测试方法、工作约定与待办。
+功能与架构见 [plan.md](plan.md)、[usage.md](usage.md)；状态见 [progress.md](progress.md)；每个决定的原因见 [decisions.md](decisions.md)（D-001～D-042）；
 踩过的坑见 [pitfalls.md](pitfalls.md)（P-001～P-053）；调研结论见 [research.md](research.md)（R-001～R-016）。
 
 ## 1. 仓库与推送
 
 | 项目 | 内容 |
 | --- | --- |
-| GitHub | `git@github.com:Lostrit/newsysboot.git`（公开；remote 名 `github`） |
+| GitHub | `https://github.com/Lostrit/newsysboot.git`（公开；remote 名 `github`） |
 | CNB | `https://cnb.cool/xfengjing/lostrit/NewSysBoot.git`（公开；remote 名 `cnb`） |
 | 分支 | 只有 `main` |
-| 推送 | 用户已授权 agent 自行决定推送：验证通过的提交推送到**两个** remote（`git push github main && git push cnb main`） |
-| CNB 凭据 | HTTPS 访问令牌，由用户写入开发机的 `~/.git-credentials`（`credential.https://cnb.cool.helper=store`）。**不要读取、输出或记录令牌**；cnb.cool 的 SSH 22 端口从国内开发机连不上 |
-| GitHub 凭据 | 开发机的 SSH 密钥（`~/.ssh/id_ed25519`）。`known_hosts` 中的 github.com 记录丢失时，用 `ssh-keyscan` 获取并与 GitHub 官方公布的指纹（ed25519 `SHA256:+DiY3wvvV6TuJJhbpZisF/zLDA0zPMSvHdkr4UvCOqU`）核对后再写入 |
+| 推送 | 用户曾授权 agent 自行决定推送：验证通过的提交推送到**两个** remote（`git push github main && git push cnb main`）。迁移到 dev 后由 dev 主会话请用户再确认一次（D-042） |
+| CNB 凭据 | 开发检出的仓库级 credential helper `cnb git-credential`（cnb-cli 经 OAuth 设备授权登录）。**不要读取、输出或记录令牌**；cnb.cool 的 SSH 22 端口从国内主机连不上 |
+| GitHub 凭据 | 开发检出的仓库级 credential helper `gh auth git-credential`（gh 已登录 Lostrit 账号）。不复制旧开发机的令牌或 SSH 密钥 |
 | 提交信息 | Conventional Commits（`feat:` / `fix:` / `docs:` / `chore:`），简体中文 |
 
 ### 提交钩子（P-037）
 
 - 开发工具在 `mise.dev.toml`（taplo、lefthook、prettier、node），只在 `MISE_ENV=dev` 时加载。首次：`MISE_ENV=dev mise install`（会自动 `lefthook install`）。
 - 装了钩子后，**提交必须在开发环境中进行**：`MISE_ENV=dev mise exec -- git commit …`，否则 prettier 找不到。
-- 钩子会检查 zsh 文件语法，开发机需要安装 zsh（`apt-get install zsh`）。
+- 钩子会检查 zsh 文件语法（dev 已有 zsh）。
 - `files/mihomo/windows-desktop.yaml` 是生成文件：修改 `files/mihomo/config.yaml.tera` 后必须运行 `sh scripts/gen-windows-mihomo.sh`，钩子会检查是否同步。
 
 ## 2. 机密（最重要的约束）
 
-- 唯一的机密是 mihomo 节点，加密在 `fnox.toml`（fnox + age，D-008）。age 公钥：`age17ft09zwqg3kd3yvclzp6l3wejln9c8lzc5t68g39ydgv8a79tfdsyshnxq`。
-- age **私钥**只在用户手中（原开发机上为 `/root/age_keys_sops.txt`）：agent **绝不能读取、输出、提交或写进日志**，也不要尝试绕过权限规则读取它。
+- 仓库中唯一的机密是 mihomo 节点，加密在 `fnox.toml`（fnox + age，D-008），同时对两把公钥加密（D-042）：
+  - 用户的 age 密钥 `age17ft09zwqg3kd3yvclzp6l3wejln9c8lzc5t68g39ydgv8a79tfdsyshnxq`：私钥由用户离线保管，部署新主机时注入。
+  - dev 密钥库的密钥 `age1k79xtae5calfxnf9s42lw7kqrkcjjgmk8775lt39sdr5tczwkfdqfvjmwp`：私钥只在 dev 的 `~/secrets` 中，由 dev 主会话管理。
+- age **私钥**：agent **绝不能读取、输出、提交或写进日志**，也不要尝试绕过权限规则读取它。需要用私钥的操作（如 `fnox reencrypt`）请用户执行。
+- 腾讯云 API 凭据（`scripts/tccloud.py`、`tests/run-cloud.sh` 用）存在 dev 密钥库的 `tencentcloud` profile 中，
+  用 `with-secrets -P tencentcloud -- <命令>` 以环境变量注入；不再使用 `~/.config/tencentcloud/dev.env`。
 - 需要私钥时请用户执行命令注入（私钥只经 ssh 标准输入传输，写入测试主机的内存文件系统）：
 
   ```sh
   # 测试主机重装后先删除旧的主机密钥记录；默认用户为 root 时：
-  ssh-keygen -R <主机IP>; grep '^AGE-SECRET-KEY-' /root/age_keys_sops.txt | ssh -o StrictHostKeyChecking=accept-new root@<主机IP> 'umask 077; cat > /dev/shm/bootstrap-age.key'
+  ssh-keygen -R <主机IP>; grep '^AGE-SECRET-KEY-' <用户的私钥文件> | ssh -o StrictHostKeyChecking=accept-new root@<主机IP> 'umask 077; cat > /dev/shm/bootstrap-age.key'
   # 默认用户为 ubuntu 等 sudo 用户时：
   … | ssh … ubuntu@<主机IP> 'sudo sh -c "umask 077; cat > /dev/shm/bootstrap-age.key"'
   ```
@@ -44,37 +48,36 @@
 
 | 机器 | 说明 |
 | --- | --- |
-| 开发机 | 腾讯云，**2 核 2G、无 swap**（2026-11-03 曾因测试容器中并行编译 treesitter 解析器内存耗尽而重启，P-042）。只适合编辑、提交、轻量测试；**较重的测试（完整容器流程、主机测试、PowerShell 测试）放到 dev 上跑** |
-| dev（正式开发环境） | 腾讯云轻量应用服务器，`62.234.97.210`，2 核 7.5G；本机 `~/.ssh/config` 中 `Host dev`（`User` 写的是 ubuntu，当前系统要用 `lostrit@dev`） |
-| dev 当前状态 | **2026-11-09 起用户把 dev 当作正式开发环境使用，不再是可随意重装的测试主机。** Debian 13，以 root 部署并新建 lostrit 用户，部署代码为 ffbac1b（之后的提交只改了文档和 CI 检查），角色 host |
-| 注意 | **不要再对 dev 运行 `tests/run-cloud.sh`**：它会经腾讯云 API 重装系统，dev 上的数据会全部丢失。真机版本矩阵测试需要另开一台临时主机（改 `DEV_IP` 与实例配置）。在 dev 上跑容器测试可以，但结束后要清理测试容器、镜像和 `~/bstest*` |
+| dev（开发主机，正式开发环境） | 腾讯云轻量应用服务器，`62.234.97.210`，2 核 7.5G，Debian 13，用户 `lostrit`（角色 host）。**2026-11-09 起本项目在 dev 上开发**（D-042），原 2G 开发机已重装 |
+| 开发检出 | `~/projects/bootstrap`：开发、测试、提交、推送都在这里 |
+| 部署副本 | `~/.local/share/bootstrap`：dev 自身的部署（dotfiles 从这里链接）。改动走「开发检出提交推送 → dev 主会话在部署副本 `git pull --ff-only` 和 `mise install`」，**不要在部署副本里开发或运行 `mise upgrade --bump`** |
+| 分工 | **dev 主会话**（herdr 中的主 Claude 会话）管理整台机器：部署副本、密钥库 `~/secrets`、herdr 队友窗格。bootstrap 的开发由它开的 `bootstrap` 队友（或它自己）在开发检出中进行 |
+| 禁止 | **不得对 dev 运行 `tests/run-cloud.sh` / `scripts/tccloud.py reset`**：会经腾讯云 API 重装系统。两个脚本都会拒绝以 dev 为目标（按公网 IP 判断）。真机版本矩阵测试要另开临时测试主机 |
 
-在 dev 上跑重型测试的方法（不经 GitHub，直接传工作区快照）：
+在 dev 上跑测试：直接在开发检出中运行（测试脚本会把工作区快照打包进测试容器）。长时间测试用 `nohup` 放到后台并写日志：
 
 ```sh
-c=$(git stash create) && git archive "${c:-HEAD}" | gzip > snap.tgz   # 未跟踪的新文件先 git add
-scp snap.tgz <user>@<dev>:~ && ssh <user>@<dev> 'mkdir -p ~/bstest && tar -C ~/bstest -xzf ~/snap.tgz && cd ~/bstest && git init -q && git add -A && git -c user.name=t -c user.email=t@t commit -qm snap'
-ssh <user>@<dev> 'cd ~/bstest && (nohup sh tests/run.sh debian:13 > ~/bstest.log 2>&1; echo EXIT=$? >> ~/bstest.log) >/dev/null 2>&1 </dev/null &'
-# 结束后：rm -rf ~/bstest ~/bstest*.log（保持 dev 的 HOME 整洁）
+cd ~/projects/bootstrap
+(nohup sh tests/run.sh debian:13 > /tmp/bstest.log 2>&1; echo EXIT=$? >> /tmp/bstest.log) >/dev/null 2>&1 </dev/null &
 ```
 
-长时间命令用 `nohup` / `setsid` 放到后台并写日志，防止 SSH 断开中断（SSH 加固时 root 会被禁止登录，之后改用部署用户登录）。
+dev 是正式环境：测试结束后**必须清理**测试容器、测试镜像和临时目录（`docker ps -a`、`docker images` 核对），不要影响用户正在使用的容器与服务。
 
 ## 4. 测试
 
 | 测试 | 内容 | 在哪跑 |
 | --- | --- | --- |
 | `tests/run.sh <镜像>` | 容器完整流程（屏蔽 GitHub 直连），`TEST_RUNS` / `TEST_KEEP` | dev |
-| `tests/run-pipe.sh <镜像> [--skip tools]` | 管道模式（`curl \| sh`，umask 077，无终端） | 加 `--skip tools` 可在开发机 |
+| `tests/run-pipe.sh <镜像> [--skip tools]` | 管道模式（`curl \| sh`，umask 077，无终端） | dev |
 | `tests/run-dotfiles.sh <镜像>` | `--dotfiles` 模式（无 sudo 用户） | dev |
 | `tests/run-host.sh` | 带 systemd 的特权容器：mihomo、Docker、SSH 加固、HOME 整理等 23 项；`TEST_SUDO_USER=1` 以已有 sudo 用户运行 | dev |
 | `tests/mihomo-rules.sh` | 三个分流场景 63 项（需要 mihomo，用假节点） | dev |
-| `tests/run-windows-config.sh` | Windows 预渲染配置与模板同步、`mihomo -t` | 开发机即可 |
-| `tests/run-macos-clt.sh` | macOS 管道模式等待 Xcode 命令行工具（容器中用假命令模拟） | 开发机即可 |
-| `tests/run-tidy.sh` | HOME 整理（按腾讯云 Ubuntu 主机的预置文件模拟） | 开发机即可 |
+| `tests/run-windows-config.sh` | Windows 预渲染配置与模板同步、`mihomo -t` | dev |
+| `tests/run-macos-clt.sh` | macOS 管道模式等待 Xcode 命令行工具（容器中用假命令模拟） | dev |
+| `tests/run-tidy.sh` | HOME 整理（按腾讯云 Ubuntu 主机的预置文件模拟） | dev |
 | GitHub Actions `local-systems` | Windows（`windows-latest`）与 macOS（`macos-15-intel`、`macos-latest`）的部署与检查（D-041）；推送到 GitHub 后自动运行，用 `gh run list` 查看 | GitHub |
 | `tests/ps-parse.ps1` | PowerShell 语法；dev 上用 `DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1 mise x aqua:PowerShell/PowerShell@7.5.4 -- pwsh -NoProfile -File tests/ps-parse.ps1 …`（dev 没有 libicu） | dev |
-| 真机 | 部署后在 dev 上跑主机检查与真实节点分流检查（脚本思路见对话记录：逐项 `check`，从 `journalctl -u mihomo` 核对实际策略） | dev |
+| 真机 | `tests/run-cloud.sh` 重装**临时测试主机**并部署、检查（`tests/cloud/verify-{host,route}.zsh`） | 临时测试主机（不能是 dev） |
 
 注意：
 - 测试容器屏蔽了 GitHub 直连，GitHub 内容只能经加速代理获取；公共加速代理会被频繁测试限流（P-029、P-041），连续测试时可能需要等一段时间或换代理。
@@ -92,8 +95,8 @@ ssh <user>@<dev> 'cd ~/bstest && (nohup sh tests/run.sh debian:13 > ~/bstest.log
 
 ## 6. 待办（按优先级）
 
-1. **真机版本矩阵测试**（D-032）：`sh tests/run-cloud.sh <BlueprintId> <默认用户> [--as-root]`，镜像 ID 与权限说明见 D-032。
-   密钥在开发机 `~/.config/tencentcloud/dev.env`（不在仓库）；新开发机上需要用户重新提供该文件。
+1. **真机版本矩阵测试**（D-032）：`DEV_IP=<临时主机 IP> with-secrets -P tencentcloud -- sh tests/run-cloud.sh <BlueprintId> <默认用户> [--as-root]`，镜像 ID 与权限说明见 D-032。
+   凭据中的 `INSTANCE_ID` 目前指向 dev，需要用户另开一台临时轻量服务器并更新凭据后才能再跑（D-042）。
 2. ✅ **版本矩阵测试已完成**（R-015）：5 个版本全部通过。修改部署链路后用 `tests/run-cloud.sh` 重跑（每个版本约 15 分钟）。
 3. ✅ 备用 GitHub 加速代理（D-033）：失败链路为「主代理 → 备用代理 → 直连」。
 4. SteamOS / macOS / Windows 真机验证：按 [verify-steamos.md](verify-steamos.md)、[verify-macos.md](verify-macos.md)、[verify-windows.md](verify-windows.md) 执行（用户暂缓）。

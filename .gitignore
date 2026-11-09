@@ -112,3 +112,4 @@ Temporary Items
 dotfiles/.config/gh/hosts.yml
 # btop 的日志等运行时文件
 dotfiles/.config/btop/*.log
+__pycache__/

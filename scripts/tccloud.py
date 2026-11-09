@@ -1,9 +1,12 @@
 #!/usr/bin/env python3
-"""scripts/tccloud.py —— 开发用：通过腾讯云 API 重装测试主机 dev（轻量应用服务器）并注入 age 私钥（D-032）
+"""scripts/tccloud.py —— 开发用：通过腾讯云 API 重装临时测试主机（轻量应用服务器）并注入 age 私钥（D-032、D-042）
 
-密钥与实例信息从 ~/.config/tencentcloud/dev.env 读取（KEY=VALUE，权限 600，不在仓库中）：
+密钥与实例信息：
   TENCENTCLOUD_SECRET_ID / TENCENTCLOUD_SECRET_KEY / TENCENTCLOUD_REGION / INSTANCE_ID / TAT_COMMAND_ID / SSH_PUBKEY_ID
+优先从环境变量读取（dev 上：`with-secrets -P tencentcloud -- …`，凭据在 dev 的 fnox 密钥库中）；
+环境变量里没有 TENCENTCLOUD_SECRET_ID 时，读取 $TCCLOUD_ENV 指定的 KEY=VALUE 文件（权限 600，不在仓库中）。
 本脚本绝不输出密钥；注入私钥的 TAT 命令只执行、不查询其内容（命令中含私钥明文）。
+dev（62.234.97.210）是用户的正式开发环境：reset 前检查实例的公网 IP，属于受保护的主机时拒绝执行。
 
 用法：
   tccloud.py status                    # 实例状态、当前镜像、自动化助手（TAT）状态
@@ -22,10 +25,26 @@ import time
 import urllib.request
 
 ENV_FILE = os.environ.get("TCCLOUD_ENV", os.path.expanduser("~/.config/tencentcloud/dev.env"))
+ENV_KEYS = ("TENCENTCLOUD_SECRET_ID", "TENCENTCLOUD_SECRET_KEY", "TENCENTCLOUD_REGION", "INSTANCE_ID", "TAT_COMMAND_ID", "SSH_PUBKEY_ID")
+# 不允许重装的主机（正式环境）；可用 TCCLOUD_PROTECTED_IPS（空格分隔）追加
+PROTECTED_IPS = {"62.234.97.210"} | set(os.environ.get("TCCLOUD_PROTECTED_IPS", "").split())
 SERVICES = {"lighthouse": "2020-03-24", "tat": "2020-10-28"}
 
 
 def load_env():
+    if os.environ.get("TENCENTCLOUD_SECRET_ID"):
+        cfg = {k: os.environ[k] for k in ENV_KEYS if os.environ.get(k)}
+        src = "环境变量"
+    else:
+        cfg = load_file()
+        src = ENV_FILE
+    for k in ENV_KEYS[:4]:
+        if not cfg.get(k):
+            sys.exit(f"tccloud: {src} 中缺少 {k}")
+    return cfg
+
+
+def load_file():
     cfg = {}
     with open(ENV_FILE, encoding="utf-8") as f:
         for line in f:
@@ -33,9 +52,6 @@ def load_env():
             if line and not line.startswith("#") and "=" in line:
                 k, v = line.split("=", 1)
                 cfg[k.strip()] = v.strip()
-    for k in ("TENCENTCLOUD_SECRET_ID", "TENCENTCLOUD_SECRET_KEY", "TENCENTCLOUD_REGION", "INSTANCE_ID"):
-        if not cfg.get(k):
-            sys.exit(f"tccloud: {ENV_FILE} 中缺少 {k}")
     return cfg
 
 
@@ -116,6 +132,9 @@ def wait_instance(cfg, timeout=900):
 
 
 def cmd_reset(cfg, blueprint):
+    ips = set(instance(cfg).get("PublicAddresses") or [])
+    if ips & PROTECTED_IPS:
+        sys.exit(f"tccloud: 拒绝重装：实例的公网 IP {sorted(ips & PROTECTED_IPS)} 是受保护的正式环境（dev），请改用临时测试主机的 INSTANCE_ID")
     params = {"InstanceId": cfg["INSTANCE_ID"], "BlueprintId": blueprint}
     key = cfg.get("SSH_PUBKEY_ID")
     bound = False

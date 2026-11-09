@@ -1,6 +1,8 @@
 # 当前进度
 
-更新时间：2026-11-06（最新提交见 `git log`；推送：GitHub `Lostrit/newsysboot`、CNB `xfengjing/lostrit/NewSysBoot`，由 Claude 负责）
+更新时间：2026-11-09（最新提交见 `git log`；推送：GitHub `Lostrit/newsysboot`、CNB `xfengjing/lostrit/NewSysBoot`，由 Claude 负责）
+
+> 2026-11-09：开发环境迁移到 dev（`~/projects/bootstrap`），dev 转为正式开发环境，由 dev 主会话管理（D-042）。
 
 ## 一、各环境状态
 

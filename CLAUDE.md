@@ -3,6 +3,13 @@
 个人新系统初始化仓库：在 macOS / SteamOS / Debian·Ubuntu（含腾讯云）/ Windows / Docker 容器中，
 一条命令完成基础系统配置、代理、Docker、mise 工具与 dotfiles 部署。
 
+## 开发环境
+
+- 本项目在 dev 主机（`62.234.97.210`，用户 `lostrit`）上开发，开发检出为 `~/projects/bootstrap`（D-042）。
+  `~/.local/share/bootstrap` 是 dev 自身的**部署副本**（dotfiles 从这里链接），不要在里面开发或运行 `mise upgrade --bump`。
+- dev 是用户的正式开发环境，由 dev 主会话（herdr 中的主 Claude 会话）统一管理：部署副本的拉取与 `mise install`、
+  密钥库 `~/secrets`、队友窗格都归它负责。**不得对 dev 运行 `tests/run-cloud.sh`**（会重装系统，脚本已拒绝）。
+
 ## 必读
 
 - 开始任何工作前先读 `docs/README.md` 与 `docs/handoff.md`（开发交接：环境、机密、测试方法、待办），
@@ -29,7 +36,7 @@
 
 - `dotfiles/`：原 `/root/dotconfig`（通过 git subtree 合并，保留了历史），以 link 方式部署到 `~/.config`。
   `/root/dotconfig` 已不再维护，不要修改它。
-- 远程仓库：GitHub（公开）与 CNB 同时推送，因此**任何明文密钥都不能提交**；机密信息用 fnox（age）加密后放在 `fnox.toml`。age 私钥（如 `/root/age_keys_sops.txt`）绝不能读出、提交或写进日志，只能使用其中的公钥。
+- 远程仓库：GitHub（公开）与 CNB 同时推送，因此**任何明文密钥都不能提交**；机密信息用 fnox（age）加密后放在 `fnox.toml`。age 私钥（用户的私钥，以及 dev 密钥库的私钥）绝不能读出、提交或写进日志，只能使用公钥。
 
 ## 约定
 

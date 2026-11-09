@@ -5,17 +5,19 @@
 #   Debian 镜像：sh tests/run-cloud.sh lhbp-mxml4cnq root
 #   Ubuntu 镜像：sh tests/run-cloud.sh lhbp-1l4ptuvm ubuntu              # 以已有 sudo 用户运行（D-025）
 #                sh tests/run-cloud.sh lhbp-qg4ymn4o ubuntu --as-root    # 经 sudo 以 root 运行，新建用户 lostrit
-# 警告：dev（62.234.97.210）自 2026-11-09 起是用户的正式开发环境，不要再用本脚本重装它；真机测试请另开临时主机并设置 DEV_IP。
-# 环境变量：DEV_IP（默认 62.234.97.210）、BOOTSTRAP_SOURCE（github | cnb，默认 github）、TEST_SKIP_RESET=1（不重装）
+# 警告：dev（62.234.97.210）自 2026-11-09 起是用户的正式开发环境，本脚本拒绝以它为目标（D-042）；
+#       真机测试请另开临时测试主机，设置 DEV_IP，并让腾讯云凭据中的 INSTANCE_ID 指向它。
+# 环境变量：DEV_IP（必填，临时测试主机的公网 IP）、BOOTSTRAP_SOURCE（github | cnb，默认 github）、TEST_SKIP_RESET=1（不重装）
 #
-# 需要 ~/.config/tencentcloud/dev.env（scripts/tccloud.py）。部署的是**已推送**的代码：入口脚本从 CNB 拉取（国内直连）。
+# 腾讯云凭据（scripts/tccloud.py）：在 dev 上用 `with-secrets -P tencentcloud -- sh tests/run-cloud.sh …` 注入。部署的是**已推送**的代码：入口脚本从 CNB 拉取（国内直连）。
 # 部署日志在测试主机的 /var/tmp/bs-run.log；检查脚本为 tests/cloud/verify-{host,route}.zsh。
 # 本机只做调度（ssh / API），重活都在测试主机上（开发机资源有限，P-042）。
 set -eu
 repo=$(cd "$(dirname "$0")/.." && pwd)
-[ $# -ge 2 ] || { sed -n '2,14p' "$0"; exit 2; }
+[ $# -ge 2 ] || { sed -n '2,15p' "$0"; exit 2; }
 bp=$1 login=$2 asroot=${3:-}
-ip=${DEV_IP:-62.234.97.210}
+ip=${DEV_IP:?请设置 DEV_IP（临时测试主机的公网 IP）}
+case " 62.234.97.210 ${TCCLOUD_PROTECTED_IPS:-} " in *" $ip "*) echo "拒绝执行：$ip 是正式开发环境 dev（D-042）" >&2; exit 2 ;; esac
 src=${BOOTSTRAP_SOURCE:-github}
 so="-o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=10 -o ServerAliveInterval=15"
 log() { printf '\033[1;34m==>\033[0m %s\n' "$*"; }
