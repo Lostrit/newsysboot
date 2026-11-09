@@ -3,6 +3,8 @@
 # 构建（经宿主机的 mihomo 访问海外；构建时容器在宿主机网络中，代理为 127.0.0.1:7890）：
 #   docker build --network host --build-arg http_proxy=http://127.0.0.1:7890 --build-arg https_proxy=http://127.0.0.1:7890 \
 #     -f Dockerfile.example -t devbox .
+# 构建时的代理只在构建中使用，不写进镜像（http_proxy 等预定义构建参数不进入 ENV，bootstrap 也不写进 env.sh，P-055）；
+# 运行时的代理由 compose 注入（compose.example.yaml 的 environment：host.docker.internal:7890）。
 # 镜像中不包含任何机密：SSH 主机私钥在容器启动后经 docker exec 写入内存，授权公钥由 docker secrets 提供。
 FROM debian:13
 

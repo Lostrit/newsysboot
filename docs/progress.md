@@ -10,7 +10,7 @@
 | --- | --- | --- |
 | Debian / Ubuntu 主机（root 运行，新建用户） | ✅ 完整 | ✅ 腾讯云 Debian 13 真机（dev，22 项；2026-11-03 全新系统重新部署：新配置 22 项主机检查 + 真实节点 server 分流 23 项全部通过）；本地 systemd 容器（`tests/run-host.sh`，23 项） |
 | Debian / Ubuntu 主机（已有 sudo 用户） | ✅ 完整（D-025） | ✅ 腾讯云 Ubuntu 24.04 真机（dev，`ubuntu` 用户，22 项）；✅ 腾讯云 Ubuntu 26.04 真机（2026-11-03，sudo-rs + uutils coreutils，22 项主机检查 + 真实节点分流 17 项，GitHub 下载经 GH_PROXY）；`TEST_SUDO_USER=1 tests/run-host.sh` |
-| Docker 容器（Debian / Ubuntu） | ✅ 完整（不装 mihomo / Docker，使用注入的宿主机代理） | ✅ debian 12 / 13、ubuntu 22.04 / 24.04；dev 上的容器（注入代理 / 无代理 / 屏蔽 GitHub）；2026-11-06 `tests/container/verify.sh`（D-036、D-038：工具、locale、时区、sshd 私钥注入与登录、私钥只在内存中）全部通过 |
+| Docker 容器（Debian / Ubuntu） | ✅ 完整（不装 mihomo / Docker，使用注入的宿主机代理） | ✅ debian 12 / 13、ubuntu 22.04 / 24.04；dev 上的容器（注入代理 / 无代理 / 屏蔽 GitHub）；2026-11-06 `tests/container/verify.sh`（D-036、D-038：工具、locale、时区、sshd 私钥注入与登录、私钥只在内存中）全部通过；2026-11-09 修复构建时代理写进镜像（P-055），注入代理部署通过 |
 | `--dotfiles` 模式 | ✅ | ✅ 无 sudo 用户；dev 主机重复运行 |
 | SteamOS | 🟡 第一版（D-020、D-027、D-028） | ⏳ 真机未验证，清单：[verify-steamos.md](verify-steamos.md) |
 | macOS | 🟡 第一版（D-028 root LaunchDaemon + TUN、P-038） | ✅ GitHub Actions `macos-15-intel` / `macos-latest` 以 `--dotfiles` 测试（D-041，2026-11-06 全部通过；期间发现并修复 P-051、P-053）；⏳ 真机（13.7.8 Intel、mihomo），清单：[verify-macos.md](verify-macos.md) |

@@ -17,7 +17,9 @@ skip_global_compinit=1
 typeset -U path fpath
 # 非交互式 shell（ssh host 命令、cron、systemd 用户服务等）不执行 mise activate：经 shims 提供 mise 管理的工具，
 # 通过 shim 运行时 mise 会带上 [env] 中的变量；交互式 shell 中 mise activate 会把工具的真实路径放在前面（评审第 9 项）
-path=("$HOME/.local/bin" "$XDG_DATA_HOME/mise/shims" $path)
+# npm 全局安装的命令（mise [env] 中 NPM_CONFIG_PREFIX=$XDG_DATA_HOME/npm，`npm install -g` 装到其 bin）：放在 shims 之后，
+# 同名时 mise 管理的工具优先；常用 CLI 建议用 mise 的 npm: 后端固定版本（platforms.md，P-056）
+path=("$HOME/.local/bin" "$XDG_DATA_HOME/mise/shims" "$XDG_DATA_HOME/npm/bin" $path)
 # shell 自身使用的变量（git commit 等会读取），shim 带不过来，与 mise 配置 [env] 保持一致
 export EDITOR=micro VISUAL=micro
 

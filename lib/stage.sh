@@ -293,7 +293,15 @@ bs_write_env() {
     else
       echo "unset MISE_URL_REPLACEMENTS"
     fi
-    if [ -n "${BS_PROXY_URL:-}" ]; then
+    if [ "$(bs_role)" = container ]; then
+      # 容器不写入代理（P-055）：构建时的代理（docker build --network host 时为 127.0.0.1:7890）在运行时不通，
+      # 运行时的代理由编排注入（compose 的 environment，host.docker.internal:7890）。
+      # 只在运行时有代理时把本机、内网镜像与 GitHub 加速代理补进 no_proxy（整串已在其中时不重复追加）
+      echo "if [ -n \"\${http_proxy:-}\${https_proxy:-}\" ]; then"
+      echo "  case \",\${no_proxy:-},\" in *,$(bs_no_proxy),*) ;; *) no_proxy=\"\${no_proxy:+\$no_proxy,}$(bs_no_proxy)\" ;; esac"
+      echo '  export no_proxy NO_PROXY="$no_proxy"'
+      echo "fi"
+    elif [ -n "${BS_PROXY_URL:-}" ]; then
       bs_env_line http_proxy "$BS_PROXY_URL"
       bs_env_line https_proxy "$BS_PROXY_URL"
       bs_env_line all_proxy "socks5://${BS_PROXY_URL#http://}"

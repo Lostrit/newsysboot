@@ -441,3 +441,20 @@
   所以 `$+commands[taplo]` 为真，ztool 以为已安装。运行 shim 时因未激活报 `No version is set for shim`，生成失败。
 - **解决**：`lib/zcache.zsh` 的 `ztool` 在命令只解析到 `*/mise/shims/*` 时按未安装跳过（激活的工具会由 `mise activate` 解析到带版本号的安装路径，见 design-zsh-tools.md）。
   在 `MISE_ENV=dev` 的仓库目录中启动 zsh 时照常生成补全。旧的 `.failed` 标记无害，可执行 `zcache-clear` 清除。
+
+## P-055 容器镜像把构建时的代理写进 env.sh，覆盖运行时注入的代理
+
+- **现象**（2026-11-09，dev 主会话）：按 `files/container/Dockerfile.example` 用 `docker build --network host --build-arg http_proxy=http://127.0.0.1:7890 …` 构建，
+  镜像中 `~/.local/state/bootstrap/env.sh` 含 `http_proxy` / `https_proxy` / `all_proxy=127.0.0.1:7890`。`~/.zshenv` 加载它，覆盖了 compose 注入的
+  `http://host.docker.internal:7890`；运行时容器里 127.0.0.1:7890 不通，GitHub 与 npm 下载失败（`curl: (7) Failed to connect to 127.0.0.1 port 7890`）。
+- **原因**：`bs_detect_proxy` 检测到可用的环境代理后，`bs_write_env` 把它写进 env.sh。这对 Linux 主机成立（代理是本机 mihomo，地址不变），
+  但容器的构建网络与运行网络不同，构建时可用的地址在运行时不一定可用。
+- **解决**：容器角色不在 env.sh 中写代理，运行时的代理只来自编排注入的环境；env.sh 只在运行时有代理时把本机、云内网镜像与 GitHub 加速代理补进 `no_proxy`（可重复加载，不重复追加）。
+  `tests/container/verify.sh` 增加检查（`tests/run.sh` 部署时注入代理也能验证）。已有镜像需重新构建，或在容器中运行一次 `bootstrap.sh --dotfiles`。
+
+## P-056 `npm install -g` 装的命令不在 PATH 上
+
+- **现象**（2026-11-09，dev 主会话在容器中）：`npm install -g` 成功，但命令找不到；登录 shell 和交互 shell 都没有 `~/.local/share/npm/bin`。
+- **原因**：mise `[env]` 设置了 `NPM_CONFIG_PREFIX=${XDG_DATA_HOME}/npm`（保持 HOME 整洁），全局包装到 `~/.local/share/npm/{lib,bin}`，但没有把 `bin` 加进 PATH。
+- **解决**：`dotfiles/.zshenv` 把 `$XDG_DATA_HOME/npm/bin` 放进 PATH，排在 mise shims 之后（同名时 mise 管理的工具优先）。
+  常用 CLI 仍建议用 mise 的 `npm:` 后端固定版本：所有机器写 `config.toml`，单台机器写 `~/.config/mise/config.local.toml`（platforms.md）。

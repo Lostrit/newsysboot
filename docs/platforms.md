@@ -56,6 +56,16 @@
 - **容器中没有任何加解密工具、gh 和 cnb-cli**：容器内不落盘机密（D-038）。gh 登录后会把凭据写进 `hosts.yml`，cnb-cli 同理（D-043）。
 - **加解密方案**：日常开发统一用 fnox（age）。sops 与 dotenvx 都不依赖 age CLI；需要加密结构化配置文件时可以加 sops，它和 fnox 共用同一把 age 密钥（D-037）。
 
+### 增加工具：所有机器与单台机器
+
+- **所有机器**：在开发检出中修改 `dotfiles/.config/mise/config.toml`（固定版本），需要时同步 `lib/tool-roles.txt`，提交推送后各机器拉取部署副本并 `mise install`。
+  不要在部署副本中运行 `mise use -g`：它会改写仓库中的 `config.toml`，让部署副本出现未提交的修改。
+- **单台机器**：写进 `~/.config/mise/config.local.toml`。`~/.config/mise` 链接到部署副本，`*.local.toml` 已被 `.gitignore` 忽略，
+  mise 会和 `config.toml` 一起加载它（2026-11-09 在 dev 与容器中实测）。命令：`mise use -p ~/.config/mise/config.local.toml npm:<包>@<版本>`。
+- **npm 命令行工具**：优先用 mise 的 `npm:` 后端（上面两种方式之一），版本固定、随 node 由 mise 管理。
+  临时用 `npm install -g` 也可以：全局前缀是 `~/.local/share/npm`（mise `[env]` 的 `NPM_CONFIG_PREFIX`），`~/.zshenv` 已把它的 `bin` 加进 PATH（排在 mise shims 之后，P-056）。
+  注意：`npm -g` 装的包不记录在任何配置里，换机器、重新部署后不会恢复。
+
 ## 3. 配置（XDG 与 Catppuccin Mocha）
 
 | 工具 | 配置 | 说明 |

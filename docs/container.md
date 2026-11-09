@@ -1,6 +1,6 @@
 # Debian 辅助开发容器
 
-更新时间：2026-11-06。运行在 Linux 主机上，用于环境隔离、实验性开发与验证、临时任务；经 SSH 登录（D-038）。
+更新时间：2026-11-09。运行在 Linux 主机上，用于环境隔离、实验性开发与验证、临时任务；经 SSH 登录（D-038）。
 示例文件：[files/container/Dockerfile.example](../files/container/Dockerfile.example)、
 [files/container/compose.example.yaml](../files/container/compose.example.yaml)。
 
@@ -21,8 +21,18 @@
 | SSH 主机密钥 | **删除** openssh-server 安装时生成的 `/etc/ssh/ssh_host_*`。留在镜像层里，就等于所有容器共用、并随镜像分发 |
 | sshd 配置 | `/etc/ssh/sshd_config.d/00-bootstrap-container.conf`：主机私钥在 `/dev/shm/bootstrap-sshd/`，授权公钥在 `/etc/ssh/bootstrap_authorized_keys`，禁止密码登录与 root 登录 |
 | 入口 | `/usr/local/bin/bootstrap-sshd`（`files/container/bootstrap-sshd.sh`） |
+| 代理 | **不写进** `~/.local/state/bootstrap/env.sh`（P-055）。构建时用的代理只在构建中生效；运行时用编排注入的代理（compose 的 `environment`）。运行时有代理时，env.sh 只把本机、云内网镜像与 GitHub 加速代理补进 `no_proxy` |
 
 镜像的 `ENV` 由 Dockerfile 负责，bootstrap 改不了它。示例中设置了 `LANG`、`LANGUAGE`、`TZ`，`docker exec` 直接运行的命令也能用上。
+
+### 代理：构建时与运行时分开
+
+- **构建**：示例用 `docker build --network host --build-arg http_proxy=http://127.0.0.1:7890 …`，构建容器在宿主机网络中，直接用宿主机的 mihomo。
+  `http_proxy` 等是 Docker 预定义的构建参数，不会进入镜像的 `ENV`；bootstrap 在容器中也不把检测到的代理写进 env.sh。
+- **运行**：容器在自己的网络中，`127.0.0.1:7890` 不通。代理由 compose 注入 `http://host.docker.internal:7890`（`extra_hosts: host.docker.internal:host-gateway`，
+  宿主机 mihomo 的 server 场景默认放行 Docker 网段）。`docker run` 时用 `--add-host host.docker.internal:host-gateway -e http_proxy=… -e https_proxy=…`。
+- 2026-11-09 之前构建的镜像会把构建时的 `127.0.0.1:7890` 写进 env.sh，覆盖运行时注入的代理，导致 GitHub、npm 下载失败。需要重新构建镜像；
+  或在容器中运行一次 `sh ~/.local/share/bootstrap/bootstrap.sh --dotfiles`，重新生成 env.sh。
 
 ## 3. SSH 主机私钥：经 fnox 注入内存
 
@@ -92,7 +102,8 @@ fnox get SSH_HOST_KEY | docker compose exec -T -u root dev bootstrap-sshd load-k
 
 `tests/run.sh`（在 dev 上运行）部署完成后，会执行 `tests/container/verify.sh`：
 
-- 工具：fnox、age、gh、btop 不存在，其余工具可用。
+- 工具：fnox、age、gh、btop、cnb 不存在，其余工具可用。
+- 代理：env.sh 中没有代理变量；运行时注入的代理不被覆盖，`no_proxy` 补上本机与加速代理。
 - 系统：procps、iproute2、locale、时区。
 - 镜像中没有主机密钥。
 - `load-key` 的校验，以及注入后的主机私钥被 sshd 使用。

@@ -2,7 +2,7 @@
 
 更新时间：2026-11-09。本文档汇总**在仓库其他文档中不容易直接看出、但继续开发必须知道**的信息：开发环境、测试方法、工作约定与待办。
 功能与架构见 [plan.md](plan.md)、[usage.md](usage.md)；状态见 [progress.md](progress.md)；每个决定的原因见 [decisions.md](decisions.md)（D-001～D-043）；
-踩过的坑见 [pitfalls.md](pitfalls.md)（P-001～P-054）；调研结论见 [research.md](research.md)（R-001～R-016）。
+踩过的坑见 [pitfalls.md](pitfalls.md)（P-001～P-056）；调研结论见 [research.md](research.md)（R-001～R-016）。
 
 ## 1. 仓库与推送
 

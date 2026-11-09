@@ -10,6 +10,13 @@ asu() { su - "$u" -c "$1"; }
 st=$(getent passwd "$u" | cut -d: -f6)/.local/state/bootstrap
 
 check "BOOTSTRAP_ROLE=container" "grep -qx \"export BOOTSTRAP_ROLE='container'\" $st/env.sh"
+# 代理（P-055）：env.sh 不写代理；运行时注入的代理不被覆盖，no_proxy 补上本机与加速代理
+check "env.sh 中没有代理变量" "! grep -qE '^export (http|https|all)_proxy=' $st/env.sh"
+out=$(su - "$u" -c 'http_proxy=http://px.invalid:7890 no_proxy=localhost zsh -c "print -r -- \$http_proxy \$no_proxy"' 2>/dev/null)
+echo "运行时代理：$out"
+check "运行时代理不被覆盖、no_proxy 补全" "case '$out' in 'http://px.invalid:7890 localhost,localhost,127.0.0.1,'*) exit 0 ;; esac; exit 1"
+# npm 全局安装的命令（P-056）
+check "npm 全局 bin 在 PATH 中" "su - $u -c 'zsh -c \"print -l \\\$path\"' | grep -qx \"\$(getent passwd $u | cut -d: -f6)/.local/share/npm/bin\""
 check "MISE_DISABLE_TOOLS：fnox age gh btop cnb" "grep -q \"^export MISE_DISABLE_TOOLS='fnox,age,aqua:cli/cli,aqua:aristocratos/btop,npm:@cnbcool/cnb-cli'\" $st/env.sh"
 for t in fnox age gh btop cnb; do
   check "不安装 ${t}（容器中不落盘机密）" "! su - $u -c 'zsh -lc \"command -v $t\"'"
