@@ -433,3 +433,11 @@
 - **原因**：mise 2026.10 内置的 Homebrew 软件包实现只支持 arm64 macOS 与 Linux。用户的 Mac 是 Intel 芯片，正好在不支持之列。
 - **解决**：改用 `scripts/macos-brew-packages.sh` 直接调用 `brew install`（Intel 与 Apple 芯片都适用），在 mise bootstrap 之后执行；
   Homebrew 的镜像变量沿用 `lib/macos.sh` 的设置。
+
+## P-054 zsh 启动时报「ztool: 生成 taplo / lefthook 的 comp 失败」
+
+- **现象**：在 dev 上（2026-11-09）新开 zsh 时打印「ztool: 生成 taplo 的 comp 失败」「ztool: 生成 lefthook 的 comp 失败」，24 小时后再次出现。
+- **原因**：taplo、lefthook 在 `mise.dev.toml` 中，只在 `MISE_ENV=dev` 时激活；但安装过之后 mise 会为它们生成 shim，而 `~/.local/share/mise/shims` 在 PATH 中，
+  所以 `$+commands[taplo]` 为真，ztool 以为已安装。运行 shim 时因未激活报 `No version is set for shim`，生成失败。
+- **解决**：`lib/zcache.zsh` 的 `ztool` 在命令只解析到 `*/mise/shims/*` 时按未安装跳过（激活的工具会由 `mise activate` 解析到带版本号的安装路径，见 design-zsh-tools.md）。
+  在 `MISE_ENV=dev` 的仓库目录中启动 zsh 时照常生成补全。旧的 `.failed` 标记无害，可执行 `zcache-clear` 清除。

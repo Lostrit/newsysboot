@@ -19,6 +19,9 @@ function ztool {
   setopt extended_glob
   local cmd=$1 kind=$2 gen=$3 out
   (( $+commands[$cmd] )) || return 0
+  # 只找到 mise 的 shim：该工具在当前目录 / 环境中未激活（如只在 MISE_ENV=dev 时启用的 taplo、lefthook），
+  # 运行 shim 会报错，按「没有安装」跳过（激活的工具由 mise activate 解析到带版本号的安装路径）
+  [[ ${commands[$cmd]} == */mise/shims/* ]] && return 0
   case $kind in
     comp) out=$ZCACHE_DIR/completions/_$cmd ;;
     env | init) out=$ZCACHE_DIR/$kind/$cmd.zsh ;;
