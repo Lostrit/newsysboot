@@ -14,7 +14,7 @@ print "macOS $(sw_vers -productVersion) $(uname -m)  MISE_DISABLE_TOOLS=$MISE_DI
 
 check "BOOTSTRAP_ROLE=macos"            "[[ \$BOOTSTRAP_ROLE == macos ]]"
 # 启用的工具都能运行（D-036）
-for t in bat fd rg starship atuin fzf jq micro vivid nvim node bun lazygit gh fnox age; do
+for t in bat fd rg starship atuin fzf jq micro vivid nvim node bun lazygit gh cnb fnox age; do
   check "工具 $t" "mise which $t && \$(mise which $t) --version"
 done
 for t in eza delta; do

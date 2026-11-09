@@ -19,14 +19,16 @@ macos:     aqua:eza-community/eza aqua:dandavison/delta
 # delta 保留：git 的 pager 写死为 delta（dotfiles/.config/git/config），SteamOS 自带 git
 steamos:   aqua:tmux/tmux-builds aqua:herdrdev/herdr claude aqua:aristocratos/btop
 steamos:   node bun aqua:jesseduffield/lazygit aqua:neovim/neovim aqua:tree-sitter/tree-sitter aqua:cli/cli age
+# cnb-cli 是 npm 包，需要 node
+steamos:   npm:@cnbcool/cnb-cli
 
 # 同 steamos，另外不装 git（也就不需要 delta）
 windows:   aqua:tmux/tmux-builds aqua:herdrdev/herdr claude aqua:aristocratos/btop
 windows:   node bun aqua:jesseduffield/lazygit aqua:neovim/neovim aqua:tree-sitter/tree-sitter aqua:cli/cli age
-windows:   aqua:dandavison/delta
+windows:   aqua:dandavison/delta npm:@cnbcool/cnb-cli
 
 # Linux 主机：全部启用
 host:
 
-# 容器中不落盘任何机密（D-038）：不装加解密工具与 gh（登录凭据会写入 hosts.yml）；btop 只给主机
-container: fnox age aqua:cli/cli aqua:aristocratos/btop
+# 容器中不落盘任何机密（D-038）：不装加解密工具、gh 与 cnb-cli（登录凭据会写入配置目录）；btop 只给主机
+container: fnox age aqua:cli/cli aqua:aristocratos/btop npm:@cnbcool/cnb-cli

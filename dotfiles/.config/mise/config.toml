@@ -116,7 +116,7 @@ asset_pattern = "atuin-aarch64-unknown-linux-musl.tar.gz"
 version = "0.26.1"
 
 [tools."claude"]
-version = "2.1.312"
+version = "2.1.319"
 
 [tools."aqua:dandavison/delta"]
 version = "0.19.2"
@@ -131,7 +131,7 @@ version = "10.5.0"
 version = "0.56.3"
 
 [tools."aqua:herdrdev/herdr"]
-version = "0.9.1"
+version = "0.9.5"
 
 [tools."aqua:micro-editor/micro"]
 version = "2.0.15"
@@ -154,6 +154,10 @@ version = "1.8.2"
 # GitHub CLI（macOS、Linux 主机）：配置遵循 XDG（~/.config/gh）；登录凭据在 hosts.yml，因此只链接 config.yml（D-037）
 [tools."aqua:cli/cli"]
 version = "2.103.3"
+
+# CNB CLI（macOS、Linux 主机）：cnb.cool 的命令行与 git 凭据助手（`cnb git-credential`）；npm 包，依赖 node（D-043）
+[tools."npm:@cnbcool/cnb-cli"]
+version = "1.19.9"
 
 # 进程监控（Linux 主机）：musl 静态链接版；配置与主题在 ~/.config/btop（Catppuccin Mocha）
 [tools."aqua:aristocratos/btop"]

@@ -26,7 +26,8 @@ Check 'PowerShell 7' { Get-Command pwsh -ErrorAction SilentlyContinue }
 # 启用的工具都能运行；排除的工具 mise 不提供（D-036）
 $on = 'eza', 'bat', 'fd', 'rg', 'starship', 'atuin', 'fzf', 'jq', 'micro', 'vivid', 'fnox'
 $off = @{ nvim = 'aqua:neovim/neovim'; node = 'node'; bun = 'bun'; lazygit = 'aqua:jesseduffield/lazygit'; delta = 'aqua:dandavison/delta'
-  tmux = 'aqua:tmux/tmux-builds'; herdr = 'aqua:herdrdev/herdr'; claude = 'claude'; gh = 'aqua:cli/cli'; age = 'age'; btop = 'aqua:aristocratos/btop' }
+  tmux = 'aqua:tmux/tmux-builds'; herdr = 'aqua:herdrdev/herdr'; claude = 'claude'; gh = 'aqua:cli/cli'; age = 'age'; btop = 'aqua:aristocratos/btop'
+  cnb = 'npm:@cnbcool/cnb-cli' }
 foreach ($t in $on) { Check "工具 $t" { $p = mise which $t 2>$null; $LASTEXITCODE -eq 0 -and $p -and (Test-Path $p) } }
 foreach ($t in $off.Keys) { Check "不启用 $t" { ",$env:MISE_DISABLE_TOOLS," -like "*,$($off[$t]),*" -and -not (mise which $t 2>$null) } }
 Check 'jq 配色（mise [env]）' { (mise env --json | ConvertFrom-Json).JQ_COLORS -like '38;2;*' }

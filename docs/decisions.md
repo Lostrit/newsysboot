@@ -691,3 +691,16 @@ Linux 主机为 server（`allow-lan: true`，只放行本机和 Docker 网段）
 - **备选方案**：
   - 直接把部署副本当开发仓库：两份副本不会不同步，但改坏 dotfiles 会立即影响 dev，所以没有采用。
   - 把用户的 age 私钥复制到 dev：违反「私钥只在用户手中」的约束，所以改为增加一个接收者。
+
+## D-043 全局工具增加 cnb-cli（npm 包），版本固定 ✅
+
+- **决策**（2026-11-09）：`dotfiles/.config/mise/config.toml` 增加 `[tools."npm:@cnbcool/cnb-cli"]`，固定为 1.19.9（命令 `cnb`）。
+  - 只在 **macOS 与 Linux 主机**启用；SteamOS、Windows 没有 node，容器中不落盘登录凭据（同 gh，D-038），三者写入 `lib/tool-roles.txt` 排除。
+  - 来源：dev 主会话在部署副本中用 `mise use -g` 添加的是 `"latest"`；迁入开发检出时改为固定版本，与其他全局工具一致（`platforms.md`：全部工具版本锁定），升级仍走开发检出的 `mise upgrade --bump`。
+  - 同次迁入的还有 claude 2.1.319、herdr 0.9.5 与 btop 的两项用户偏好（`shown_boxes`、`proc_sorting = "command"`，btop 新版的排序名，与配置注释中的旧列表不同）。
+  - mise `--bump` 会把 `[tools."claude"]` 改写为 `[tools.claude]`，属于格式变化，保留仓库原写法。
+  - 验证（dev，2026-11-09）：`tests/run.sh debian:13` FAIL 0（容器排除 cnb）；`tests/run-host.sh` 全部通过（cnb-cli 在 node 之后安装，`cnb --version` 可运行）。
+- **原因**：cnb-cli 是推送 CNB 的 git 凭据助手（D-042），开发主机与 macOS 主力机都要用；`latest` 会让不同主机、不同时间部署出不同版本，也绕过 CI 验证。
+- **备选方案**：
+  - 保留 `"latest"`：省去手动升级，但违背版本锁定，所以没有采用。
+  - 改用 `bun:` 后端：mise 的 npm 后端已能经 `NPM_CONFIG_REGISTRY` 使用国内镜像，没有必要。

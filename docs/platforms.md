@@ -34,6 +34,7 @@
 | tmux、herdr（终端复用） | — | — | — | ✅ | ✅ |
 | claude（Claude Code CLI） | —（用桌面版） | —（用桌面版） | — | ✅ | ✅ |
 | gh（GitHub CLI） | ✅ | — | — | ✅ | — |
+| cnb-cli（CNB CLI，npm 包） | ✅ | — | — | ✅ | — |
 | fnox（机密管理） | ✅ | 仅部署时 | 仅部署时 | ✅ | — |
 | age（生成密钥） | ✅ | — | — | ✅ | — |
 | btop（进程监控） | — | — | — | ✅ | — |
@@ -52,7 +53,7 @@
   - Homebrew 已不再为 macOS 13 提供预编译包时，会从源码编译，耗时较长（需在真机上确认）。
 - **SteamOS 保留 delta**：系统自带 git，而 git 配置中的 pager 写死为 delta。
 - **fnox「仅部署时」**：重新部署时用它解密 mihomo 节点。它不在排除清单里，所以也会出现在 PATH 中。
-- **容器中没有任何加解密工具和 gh**：容器内不落盘机密（D-038）。gh 登录后会把凭据写进 `hosts.yml`。
+- **容器中没有任何加解密工具、gh 和 cnb-cli**：容器内不落盘机密（D-038）。gh 登录后会把凭据写进 `hosts.yml`，cnb-cli 同理（D-043）。
 - **加解密方案**：日常开发统一用 fnox（age）。sops 与 dotenvx 都不依赖 age CLI；需要加密结构化配置文件时可以加 sops，它和 fnox 共用同一把 age 密钥（D-037）。
 
 ## 3. 配置（XDG 与 Catppuccin Mocha）

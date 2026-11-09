@@ -40,7 +40,7 @@ check "zsh plugin origin canonical"    "git -C ~/.local/share/zsh/plugins/zsh-de
 check "nvim plugin origin canonical"   "git -C ~/.local/share/nvim/lazy/lazy.nvim remote get-url origin | grep -q '^https://github.com/'"
 # 所有 mise 工具都能运行（捕获 glibc 版本不兼容等问题，P-043；tree-sitter 在 glibc < 2.39 上已知无法运行，单独列出）
 bad=()
-for t in node bun atuin bat claude delta eza fd fzf herdr micro rg starship vivid lazygit nvim jq gh btop fnox age; do
+for t in node bun atuin bat claude delta eza fd fzf herdr micro rg starship vivid lazygit nvim jq gh cnb btop fnox age; do
   out=$($t --version 2>&1 | head -1); [[ $out == *GLIBC* || $out == *"error while loading"* ]] && bad+=($t)
 done
 check "all mise tools run${bad:+ (FAIL: $bad)}" "(( ${#bad} == 0 ))"

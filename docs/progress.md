@@ -27,7 +27,7 @@
 - **mihomo**（D-016、D-020、D-027～D-029）：锁定版本 + sha256；节点 fnox + age 加密；三个分流场景（server / desktop / steamos）；
   Linux 主机经环境变量，本地设备默认 TUN；两次执行，代理可用后切换（含 `--dotfiles` 与容器中检测已有代理，P-028）
 - **Docker**（D-005、D-013）：只在 Linux 主机安装；镜像源 + Docker Hub 镜像 + docker 组 + dockerd 代理
-- **按环境分配工具**（D-036）：本地系统（macOS / Windows / SteamOS）与远程系统（Linux 主机 / 容器）；全局配置为 23 个工具的全集，
+- **按环境分配工具**（D-036）：本地系统（macOS / Windows / SteamOS）与远程系统（Linux 主机 / 容器）；全局配置为 24 个工具的全集（2026-11-09 增加 cnb-cli，D-043），
   各环境排除的写在 `lib/tool-roles.txt`（`MISE_DISABLE_TOOLS`）；新增 jq、gh、btop，fnox / age 改为全局工具（D-037）；差异见 [platforms.md](platforms.md)
 - **远程系统**（D-038）：locale zh_CN.UTF-8、时区 Asia/Shanghai、openssh-server；容器另装 procps / iproute2，不装加解密工具，
   sshd 的主机私钥经 fnox 注入内存（[container.md](container.md)）
