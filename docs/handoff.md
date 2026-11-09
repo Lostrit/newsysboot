@@ -45,9 +45,9 @@
 | 机器 | 说明 |
 | --- | --- |
 | 开发机 | 腾讯云，**2 核 2G、无 swap**（2026-11-03 曾因测试容器中并行编译 treesitter 解析器内存耗尽而重启，P-042）。只适合编辑、提交、轻量测试；**较重的测试（完整容器流程、主机测试、PowerShell 测试）放到 dev 上跑** |
-| dev（测试主机） | 腾讯云轻量应用服务器，`62.234.97.210`，2 核 7.5G；本机 `~/.ssh/config` 中 `Host dev`。用户会按需重装为不同系统，重装后要更新 `known_hosts`，`User` 随系统变化（Debian 镜像默认 root，Ubuntu 镜像默认 ubuntu） |
-| dev 当前状态 | 由 `tests/run-cloud.sh` 管理（经腾讯云 API 重装，D-032）；最近一次为 Debian 13、以 root 部署并新建 lostrit 用户（用户已用 Ghostty 登录确认） |
-| 计划 | 用户正在注册可以通过腾讯云 API 重装 dev 的密钥，供 agent 把 dev 重装为不同系统版本做真机测试（见第 6 节待办 1） |
+| dev（正式开发环境） | 腾讯云轻量应用服务器，`62.234.97.210`，2 核 7.5G；本机 `~/.ssh/config` 中 `Host dev`（`User` 写的是 ubuntu，当前系统要用 `lostrit@dev`） |
+| dev 当前状态 | **2026-11-09 起用户把 dev 当作正式开发环境使用，不再是可随意重装的测试主机。** Debian 13，以 root 部署并新建 lostrit 用户，部署代码为 ffbac1b（之后的提交只改了文档和 CI 检查），角色 host |
+| 注意 | **不要再对 dev 运行 `tests/run-cloud.sh`**：它会经腾讯云 API 重装系统，dev 上的数据会全部丢失。真机版本矩阵测试需要另开一台临时主机（改 `DEV_IP` 与实例配置）。在 dev 上跑容器测试可以，但结束后要清理测试容器、镜像和 `~/bstest*` |
 
 在 dev 上跑重型测试的方法（不经 GitHub，直接传工作区快照）：
 

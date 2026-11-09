@@ -5,6 +5,7 @@
 #   Debian 镜像：sh tests/run-cloud.sh lhbp-mxml4cnq root
 #   Ubuntu 镜像：sh tests/run-cloud.sh lhbp-1l4ptuvm ubuntu              # 以已有 sudo 用户运行（D-025）
 #                sh tests/run-cloud.sh lhbp-qg4ymn4o ubuntu --as-root    # 经 sudo 以 root 运行，新建用户 lostrit
+# 警告：dev（62.234.97.210）自 2026-11-09 起是用户的正式开发环境，不要再用本脚本重装它；真机测试请另开临时主机并设置 DEV_IP。
 # 环境变量：DEV_IP（默认 62.234.97.210）、BOOTSTRAP_SOURCE（github | cnb，默认 github）、TEST_SKIP_RESET=1（不重装）
 #
 # 需要 ~/.config/tencentcloud/dev.env（scripts/tccloud.py）。部署的是**已推送**的代码：入口脚本从 CNB 拉取（国内直连）。
