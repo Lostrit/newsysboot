@@ -116,7 +116,7 @@ asset_pattern = "atuin-aarch64-unknown-linux-musl.tar.gz"
 version = "0.26.1"
 
 [tools."claude"]
-version = "2.1.319"
+version = "2.1.332"
 
 [tools."aqua:dandavison/delta"]
 version = "0.19.2"

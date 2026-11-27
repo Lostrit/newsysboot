@@ -700,6 +700,7 @@ Linux 主机为 server（`allow-lan: true`，只放行本机和 Docker 网段）
   - 同次迁入的还有 claude 2.1.319、herdr 0.9.5 与 btop 的两项用户偏好（`shown_boxes`、`proc_sorting = "command"`，btop 新版的排序名，与配置注释中的旧列表不同）。
   - mise `--bump` 会把 `[tools."claude"]` 改写为 `[tools.claude]`，属于格式变化，保留仓库原写法。
   - 验证（dev，2026-11-09）：`tests/run.sh debian:13` FAIL 0（容器排除 cnb）；`tests/run-host.sh` 全部通过（cnb-cli 在 node 之后安装，`cnb --version` 可运行）。
+  - 后续（2026-11-27）：dev 主会话在部署副本中把 claude 升到 2.1.332（`mise ls-remote claude` 的最新版本）；同样迁入开发检出，保留 `[tools."claude"]` 写法，不采用 mise 改写的 `[tools.claude]`。
 - **原因**：cnb-cli 是推送 CNB 的 git 凭据助手（D-042），开发主机与 macOS 主力机都要用；`latest` 会让不同主机、不同时间部署出不同版本，也绕过 CI 验证。
 - **备选方案**：
   - 保留 `"latest"`：省去手动升级，但违背版本锁定，所以没有采用。
